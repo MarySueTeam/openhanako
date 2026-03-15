@@ -69,4 +69,14 @@ contextBridge.exposeInMainWorld("hana", {
   startDrag: (filePaths) => ipcRenderer.send("start-drag", filePaths),
   // 系统通知
   showNotification: (title, body) => ipcRenderer.invoke("show-notification", title, body),
+  // 窗口控制（Windows/Linux 自绘标题栏）
+  getPlatform: () => ipcRenderer.invoke("get-platform"),
+  windowMinimize: () => ipcRenderer.invoke("window-minimize"),
+  windowMaximize: () => ipcRenderer.invoke("window-maximize"),
+  windowClose: () => ipcRenderer.invoke("window-close"),
+  windowIsMaximized: () => ipcRenderer.invoke("window-is-maximized"),
+  onMaximizeChange: (cb) => {
+    ipcRenderer.on("window-maximized", () => cb(true));
+    ipcRenderer.on("window-unmaximized", () => cb(false));
+  },
 });

@@ -70,12 +70,13 @@ function killPid(pid, force = false) {
   }
 }
 
-/** macOS 标题栏选项（hiddenInset + 红绿灯位置），Windows/Linux 用原生边框 */
+/** 跨平台标题栏选项：macOS hiddenInset + 红绿灯，Windows/Linux 无框 */
 function titleBarOpts(trafficLight = { x: 16, y: 16 }) {
   if (process.platform === "darwin") {
     return { titleBarStyle: "hiddenInset", trafficLightPosition: trafficLight };
   }
-  return {};
+  // Windows/Linux：无框窗口 + 前端自绘 window controls
+  return { frame: false };
 }
 
 /**
@@ -463,6 +464,10 @@ function createMainWindow() {
   // 窗口移动/缩放时保存状态
   mainWindow.on("resize", saveWindowState);
   mainWindow.on("move", saveWindowState);
+
+  // 广播最大化状态变化（Windows/Linux 自绘标题栏的最大化/还原按钮需要）
+  mainWindow.on("maximize", () => mainWindow.webContents.send("window-maximized"));
+  mainWindow.on("unmaximize", () => mainWindow.webContents.send("window-unmaximized"));
 
   // macOS 风格：点关闭按钮只是隐藏窗口，不退出 app
   mainWindow.on("close", (e) => {
@@ -1746,6 +1751,22 @@ ipcMain.handle("onboarding-complete", () => {
   }
   // 创建主窗口（隐藏），前端 init 完成后通过 app-ready 显示
   createMainWindow();
+});
+
+// ── 窗口控制 IPC（Windows/Linux 自绘标题栏用）──
+ipcMain.handle("get-platform", () => process.platform);
+ipcMain.handle("window-minimize", (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize();
+});
+ipcMain.handle("window-maximize", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win?.isMaximized()) win.restore(); else win?.maximize();
+});
+ipcMain.handle("window-close", (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close();
+});
+ipcMain.handle("window-is-maximized", (event) => {
+  return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false;
 });
 
 // 前端初始化完成后调用，关闭 splash / onboarding，显示主窗口

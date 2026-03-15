@@ -139,6 +139,50 @@ body {
     margin-right: 4px;
 }
 
+/* Windows/Linux：左侧不让位，右侧让位给 window controls */
+html[data-platform="win32"] .tb-toggle-left,
+html[data-platform="linux"] .tb-toggle-left {
+    margin-left: 4px;
+}
+html[data-platform="win32"] .tb-toggle-right,
+html[data-platform="linux"] .tb-toggle-right {
+    margin-right: 140px;
+}
+
+/* ── Windows/Linux 自绘窗口控制按钮 ── */
+.window-controls {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+    -webkit-app-region: no-drag;
+    pointer-events: auto;
+}
+
+.wc-btn {
+    width: 46px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #888);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s;
+}
+
+.wc-btn:hover {
+    background: var(--overlay-light, rgba(0,0,0,0.06));
+}
+
+.wc-close:hover {
+    background: #e81123;
+    color: #fff;
+}
+
 /* ── 浮动卡片（hover toggle 时弹出精简列表） ── */
 .float-card {
     position: fixed;
