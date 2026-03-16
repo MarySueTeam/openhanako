@@ -102,8 +102,9 @@ export class Hub {
       from,
       to,
       onDelta,
+      images,
     } = opts;
-    const o = { sessionKey, role, ephemeral, meta, isGroup, cwd, model, persist, from, to, onDelta };
+    const o = { sessionKey, role, ephemeral, meta, isGroup, cwd, model, persist, from, to, onDelta, images };
 
     // 路由表：按顺序匹配，第一条命中即执行。
     // 优先级通过位置保证，新增路由在此处显式插入，不依赖散落在各处的 if 顺序。
@@ -114,7 +115,7 @@ export class Hub {
       },
       { // 桌面端 owner
         match: o => !o.sessionKey && !o.ephemeral && o.role === "owner",
-        handle: () => this._engine.prompt(text),
+        handle: () => this._engine.prompt(text, { images: o.images }),
       },
       { // Bridge guest
         match: o => o.sessionKey && o.role === "guest",

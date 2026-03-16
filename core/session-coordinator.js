@@ -174,10 +174,11 @@ export class SessionCoordinator {
     return this.createSession(sessionMgr, cwd, memoryEnabled);
   }
 
-  async prompt(text) {
+  async prompt(text, opts) {
     if (!this._session) throw new Error("没有活跃的 session，请先调用 createSession()");
     this._sessionStarted = true;
-    await this._session.prompt(text);
+    const promptOpts = opts?.images?.length ? { images: opts.images } : undefined;
+    await this._session.prompt(text, promptOpts);
     const sp = this._session.sessionManager?.getSessionFile?.();
     if (sp) this._d.getAgent()._memoryTicker?.notifyTurn(sp);
   }

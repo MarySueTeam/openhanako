@@ -37,6 +37,7 @@ function generateModelDefaults(modelId) {
   return {
     id: modelId,
     name: humanizeName(modelId),
+    input: ["text", "image"],
   };
 }
 

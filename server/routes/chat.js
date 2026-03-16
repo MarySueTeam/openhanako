@@ -444,7 +444,7 @@ export default async function chatRoute(app, { engine, hub }) {
           ss.titlePreview = "";
           beginSessionStream(ss);
           broadcast({ type: "status", isStreaming: true });
-          await hub.send(msg.text);
+          await hub.send(msg.text, msg.images ? { images: msg.images } : undefined);
           // prompt 完成时，只有仍在活跃 session 才发 status:false
           if (engine.currentSessionPath === promptSessionPath) {
             broadcast({ type: "status", isStreaming: false });

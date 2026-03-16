@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../stores';
+import { isImageFile } from '../utils/format';
 import { hanaFetch } from '../hooks/use-hana-fetch';
 import { useI18n } from '../hooks/use-i18n';
 import type { ThinkingLevel } from '../stores/model-slice';
@@ -296,12 +297,35 @@ function InputAreaInner() {
         _sb().loadSessions();
       }
 
+      // 分离图片和非图片附件
+      const imageFiles = hasFiles ? attachedFiles.filter(f => !f.isDirectory && isImageFile(f.name)) : [];
+      const otherFiles = hasFiles ? attachedFiles.filter(f => f.isDirectory || !isImageFile(f.name)) : [];
+
       let finalText = text;
-      if (hasFiles) {
-        const fileBlock = attachedFiles
+      if (otherFiles.length > 0) {
+        const fileBlock = otherFiles
           .map(f => f.isDirectory ? `[目录] ${f.path}` : `[附件] ${f.path}`)
           .join('\n');
         finalText = text ? `${text}\n\n${fileBlock}` : fileBlock;
+      }
+
+      // 图片文件读 base64 编码
+      const hana = (window as any).hana;
+      const images: Array<{ type: 'image'; data: string; mimeType: string }> = [];
+      if (imageFiles.length > 0 && hana?.readFileBase64) {
+        for (const img of imageFiles) {
+          try {
+            const base64: string = await hana.readFileBase64(img.path);
+            if (base64) {
+              const ext = img.name.toLowerCase().replace(/^.*\./, '');
+              const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml' };
+              images.push({ type: 'image', data: base64, mimeType: mimeMap[ext] || 'image/png' });
+            }
+          } catch {
+            // 读取失败的图片降级为路径文本
+            finalText = finalText ? `${finalText}\n\n[附件] ${img.path}` : `[附件] ${img.path}`;
+          }
+        }
       }
 
       // 文档上下文：把当前打开的文档路径附加到消息里
@@ -328,7 +352,9 @@ function InputAreaInner() {
       setInputText('');
       clearAttachedFiles();
 
-      state.ws?.send(JSON.stringify({ type: 'prompt', text: finalText }));
+      const wsMsg: any = { type: 'prompt', text: finalText };
+      if (images.length > 0) wsMsg.images = images;
+      state.ws?.send(JSON.stringify(wsMsg));
     } finally {
       setSending(false);
     }

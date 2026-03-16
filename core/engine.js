@@ -201,7 +201,7 @@ export class HanaEngine {
 
   async createSession(mgr, cwd, mem) { return this._sessionCoord.createSession(mgr, cwd, mem); }
   async switchSession(p) { return this._sessionCoord.switchSession(p); }
-  async prompt(text) { return this._sessionCoord.prompt(text); }
+  async prompt(text, opts) { return this._sessionCoord.prompt(text, opts); }
   async abort() { return this._sessionCoord.abort(); }
   steer(text) { return this._sessionCoord.steer(text); }
   isBridgeSessionStreaming(key) { return this._bridge?.isSessionStreaming(key) ?? false; }
