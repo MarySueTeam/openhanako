@@ -2,6 +2,7 @@
  * 配置管理 REST 路由
  */
 import fs from "fs/promises";
+import { existsSync } from "fs";
 import path from "path";
 import { t } from "../i18n.js";
 import { debugLog } from "../../lib/debug-log.js";
@@ -59,6 +60,10 @@ export default async function configRoute(app, { engine }) {
       // 注入全局设置（存于 preferences，跨 agent 共享）
       if (!config.desk) config.desk = {};
       config.desk.home_folder = engine.getHomeFolder() || "";
+      // 过滤掉已被删除的工作目录
+      if (Array.isArray(config.cwd_history)) {
+        config.cwd_history = config.cwd_history.filter(p => existsSync(p));
+      }
       config.thinking_level = engine.getThinkingLevel();
       config.sandbox = engine.getSandbox();
       const globalLocale = engine.getLocale();

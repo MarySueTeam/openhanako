@@ -56,7 +56,10 @@ export class ConfigCoordinator {
   // ── Home Folder ──
 
   getHomeFolder() {
-    return this._prefs().home_folder || path.join(os.homedir(), "Desktop");
+    const configured = this._prefs().home_folder;
+    if (configured && fs.existsSync(configured)) return configured;
+    // 配置的文件夹已被删除 → fallback 到桌面
+    return path.join(os.homedir(), "Desktop");
   }
 
   setHomeFolder(folder) {
