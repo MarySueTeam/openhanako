@@ -534,13 +534,15 @@ function renderChannelMessages(): void {
     return;
   }
 
+  const ch = s.channels.find((c: any) => c.id === s.currentChannel);
+  const isDM = ch?.isDM ?? false;
   let lastSender: string | null = null;
 
   for (const msg of s.channelMessages) {
     const isContinuation = msg.sender === lastSender;
     const senderInfo = resolveChannelMember(msg.sender);
-    // DM 里主 agent 的消息放右边，群聊里用户的消息放右边
-    const isSelf = senderInfo.isUser || msg.sender === (s.currentAgentId || '');
+    // DM 里主 agent 的消息放右边，群聊里只有用户的消息放右边
+    const isSelf = senderInfo.isUser || (isDM && msg.sender === (s.currentAgentId || ''));
 
     const el = document.createElement('div');
     el.className = 'channel-msg'
