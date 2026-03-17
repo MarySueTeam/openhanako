@@ -228,7 +228,14 @@ async function startServer() {
         path.join(gitRoot, "cmd"),
       ].filter(p => fs.existsSync(p));
       if (gitPaths.length) {
-        serverEnv.PATH = gitPaths.join(";") + ";" + (process.env.PATH || "");
+        // Windows 的 PATH 环境变量 key 可能是 "Path"（title case）或 "PATH"，
+        // { ...process.env } 展开后变成普通对象（区分大小写）。
+        // 必须找到原始 key 并删除，否则会同时存在 Path 和 PATH 两个 key，
+        // 导致 fork 子进程的 PATH 不可预测。
+        const pathKey = Object.keys(serverEnv).find(k => k.toLowerCase() === "path") || "PATH";
+        const existingPath = serverEnv[pathKey] || "";
+        if (pathKey !== "PATH") delete serverEnv[pathKey];
+        serverEnv.PATH = gitPaths.join(";") + ";" + existingPath;
       }
     }
 
