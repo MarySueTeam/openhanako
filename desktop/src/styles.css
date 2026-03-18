@@ -4168,6 +4168,32 @@ body.resizing .jian-sidebar-inner {
     background: var(--overlay-light);
 }
 
+.desk-cwd-ctx-menu {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 12px var(--shadow);
+    padding: 4px 0;
+    min-width: 140px;
+}
+
+.desk-cwd-ctx-menu button {
+    display: block;
+    width: 100%;
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    color: var(--text);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+.desk-cwd-ctx-menu button:hover {
+    background: var(--accent-light);
+}
+
 .desk-cwd-desc-text {
     font-size: 0.6rem;
     color: var(--text-muted);

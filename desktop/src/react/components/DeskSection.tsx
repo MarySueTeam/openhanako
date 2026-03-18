@@ -757,6 +757,15 @@ function DeskCwdSkillsPanel() {
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [dragging, setDragging] = useState(false);
+  const [cmPos, setCmPos] = useState<{ x: number; y: number } | null>(null);
+
+  // 点击任意位置关闭右键菜单
+  useEffect(() => {
+    if (!cmPos) return;
+    const close = () => setCmPos(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [cmPos]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -808,11 +817,7 @@ function DeskCwdSkillsPanel() {
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          const dir = useStore.getState().deskBasePath;
-          if (dir) {
-            const skillsPath = dir + '/.agents/skills';
-            (window as any).platform?.showInFinder?.(skillsPath);
-          }
+          setCmPos({ x: e.clientX, y: e.clientY });
         }}
         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
@@ -860,6 +865,18 @@ function DeskCwdSkillsPanel() {
             ))}
             <p className="desk-cwd-hint">{t('desk.cwdSkillsDrop') || '拖入文件夹或 .zip 安装技能'}</p>
           </>
+        )}
+        {/* 右键菜单 */}
+        {cmPos && (
+          <div className="desk-cwd-ctx-menu" style={{ position: 'fixed', left: cmPos.x, top: cmPos.y, zIndex: 9999 }}>
+            <button onClick={() => {
+              const dir = useStore.getState().deskBasePath;
+              if (dir) (window as any).platform?.showInFinder?.(dir + '/.agents/skills');
+              setCmPos(null);
+            }}>
+              {t('desk.openInFinder')}
+            </button>
+          </div>
         )}
       </div>
     </div>
