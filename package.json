@@ -94,7 +94,8 @@
     "mac": {
       "target": "dmg",
       "category": "public.app-category.productivity",
-      "icon": "desktop/src/icon.icns"
+      "icon": "desktop/src/icon.icns",
+      "artifactName": "${productName}-${version}-macOS-${arch}.${ext}"
     },
     "dmg": {
       "title": "Hanako",
@@ -120,6 +121,7 @@
     "win": {
       "target": "nsis",
       "icon": "desktop/src/icon.png",
+      "artifactName": "${productName}-${version}-Windows-${arch}.${ext}",
       "requestedExecutionLevel": "asInvoker",
       "extraResources": [
         {
