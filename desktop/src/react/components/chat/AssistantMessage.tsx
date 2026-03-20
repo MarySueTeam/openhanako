@@ -8,6 +8,7 @@ import { MoodBlock } from './MoodBlock';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolGroupBlock } from './ToolGroupBlock';
 import { XingCard } from './XingCard';
+import { SettingsConfirmCard } from './SettingsConfirmCard';
 import type { ChatMessage, ContentBlock } from '../../stores/chat-types';
 import { useStore } from '../../stores';
 import { hanaFetch } from '../../hooks/use-hana-fetch';
@@ -131,7 +132,9 @@ const ContentBlockView = memo(function ContentBlockView({ block, agentName, yuan
     case 'skill':
       return <SkillCard skillName={block.skillName} skillFilePath={block.skillFilePath} />;
     case 'cron_confirm':
-      return <CronConfirmCard jobData={block.jobData} status={block.status} />;
+      return <CronConfirmCard confirmId={(block as any).confirmId} jobData={block.jobData} status={block.status} />;
+    case 'settings_confirm':
+      return <SettingsConfirmCard {...block} />;
     default:
       return null;
   }
@@ -245,22 +248,41 @@ const BrowserScreenshot = memo(function BrowserScreenshot({ base64, mimeType }: 
   );
 });
 
-const CronConfirmCard = memo(function CronConfirmCard({ jobData, status: initialStatus }: { jobData: Record<string, unknown>; status: string }) {
+const CronConfirmCard = memo(function CronConfirmCard({ confirmId, jobData, status: initialStatus }: { confirmId?: string; jobData: Record<string, unknown>; status: string }) {
   const [status, setStatus] = useState(initialStatus);
   const label = (jobData.label as string) || (jobData.prompt as string)?.slice(0, 40) || '';
 
   const handleApprove = async () => {
     try {
-      await hanaFetch('/api/desk/cron', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add', ...jobData }),
-      });
+      if (confirmId) {
+        // 新的阻塞式确认：通过 ConfirmStore resolve
+        await hanaFetch(`/api/confirm/${confirmId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'confirmed' }),
+        });
+      } else {
+        // 旧的非阻塞模式 fallback
+        await hanaFetch('/api/desk/cron', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'add', ...jobData }),
+        });
+      }
       setStatus('approved');
     } catch { /* silent */ }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
+    if (confirmId) {
+      try {
+        await hanaFetch(`/api/confirm/${confirmId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'rejected' }),
+        });
+      } catch { /* silent */ }
+    }
     setStatus('rejected');
   };
 

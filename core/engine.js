@@ -171,6 +171,7 @@ export class HanaEngine {
   get agent() { return this._agentMgr.agent; }
   getAgent(agentId) { return this._agentMgr.getAgent(agentId); }
   get currentAgentId() { return this._agentMgr.activeAgentId; }
+  get confirmStore() { return this._confirmStore; }
 
   // 向后兼容 getter
   get agentDir() { return this.agent?.agentDir || path.join(this.agentsDir, this.currentAgentId); }
