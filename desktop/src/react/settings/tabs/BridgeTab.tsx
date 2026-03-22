@@ -5,24 +5,59 @@ import { t } from '../helpers';
 import { KeyInput } from '../widgets/KeyInput';
 import { Toggle } from '../widgets/Toggle';
 import styles from '../Settings.module.css';
+import bridgeStyles from './BridgeTab.module.css';
 
 const platform = window.platform;
 
+// ── Types ──
+
+interface PlatformStatusBase {
+  status?: string;
+  error?: string;
+  enabled?: boolean;
+}
+
+interface TelegramStatus extends PlatformStatusBase {
+  tokenMasked?: string;
+}
+
+interface FeishuStatus extends PlatformStatusBase {
+  appId?: string;
+  appSecretMasked?: string;
+}
+
+interface QQStatus extends PlatformStatusBase {
+  appID?: string;
+  appSecretMasked?: string;
+}
+
+interface WechatStatus extends PlatformStatusBase {
+  tokenMasked?: string;
+}
+
+interface KnownUser {
+  userId: string;
+  name?: string;
+}
+
 interface BridgeStatus {
-  telegram: any;
-  feishu: any;
-  whatsapp: any;
-  qq: any;
-  wechat: any;
+  telegram: TelegramStatus;
+  feishu: FeishuStatus;
+  whatsapp: PlatformStatusBase;
+  qq: QQStatus;
+  wechat: WechatStatus;
   readOnly: boolean;
-  knownUsers: { telegram?: any[]; feishu?: any[]; whatsapp?: any[]; qq?: any[]; wechat?: any[] };
+  knownUsers: { telegram?: KnownUser[]; feishu?: KnownUser[]; whatsapp?: KnownUser[]; qq?: KnownUser[]; wechat?: KnownUser[] };
   owner: { telegram?: string; feishu?: string; whatsapp?: string; qq?: string; wechat?: string };
 }
+
+type BridgePlatform = 'telegram' | 'feishu' | 'whatsapp' | 'qq' | 'wechat';
 
 export function BridgeTab() {
   const store = useSettingsStore();
   const { showToast } = store;
   const [status, setStatus] = useState<BridgeStatus | null>(null);
+  const [testingPlatform, setTestingPlatform] = useState<BridgePlatform | null>(null);
 
   // Public Ishiki
   const [publicIshiki, setPublicIshiki] = useState('');
@@ -48,8 +83,8 @@ export function BridgeTab() {
       });
       setPublicIshikiOriginal(publicIshiki);
       showToast(t('settings.saved'), 'success');
-    } catch (err: any) {
-      showToast(t('settings.saveFailed') + ': ' + err.message, 'error');
+    } catch (err: unknown) {
+      showToast(t('settings.saveFailed') + ': ' + (err instanceof Error ? err.message : String(err)), 'error');
     }
   };
 
@@ -90,7 +125,7 @@ export function BridgeTab() {
     return () => window.removeEventListener('hana-bridge-reload', handler);
   }, []);
 
-  const saveBridgeConfig = async (platform_: string, credentials: any, enabled?: boolean) => {
+  const saveBridgeConfig = async (platform_: string, credentials: Record<string, string> | null, enabled?: boolean) => {
     try {
       await hanaFetch('/api/bridge/config', {
         method: 'POST',
@@ -99,14 +134,13 @@ export function BridgeTab() {
       });
       showToast(t('settings.saved'), 'success');
       await loadStatus();
-    } catch (err: any) {
-      showToast(t('settings.saveFailed') + ': ' + err.message, 'error');
+    } catch (err: unknown) {
+      showToast(t('settings.saveFailed') + ': ' + (err instanceof Error ? err.message : String(err)), 'error');
     }
   };
 
-  const testPlatform = async (platform_: string, credentials: any, btn: HTMLButtonElement) => {
-    btn.disabled = true;
-    btn.textContent = '...';
+  const testPlatform = async (platform_: BridgePlatform, credentials: Record<string, string>) => {
+    setTestingPlatform(platform_);
     try {
       const res = await hanaFetch('/api/bridge/test', {
         method: 'POST',
@@ -120,11 +154,10 @@ export function BridgeTab() {
       } else {
         showToast(t('settings.bridge.testFail') + ': ' + (data.error || ''), 'error');
       }
-    } catch (err: any) {
-      showToast(t('settings.bridge.testFail') + ': ' + err.message, 'error');
+    } catch (err: unknown) {
+      showToast(t('settings.bridge.testFail') + ': ' + (err instanceof Error ? err.message : String(err)), 'error');
     } finally {
-      btn.disabled = false;
-      btn.textContent = t('settings.bridge.test');
+      setTestingPlatform(null);
     }
   };
 
@@ -209,13 +242,14 @@ export function BridgeTab() {
             />
             <button
               className="bridge-test-btn"
-              onClick={(e) => {
+              disabled={testingPlatform === 'telegram'}
+              onClick={() => {
                 const trimmed = tgToken.trim();
                 if (!trimmed || isMasked(trimmed)) { showToast(t('settings.bridge.noToken'), 'error'); return; }
-                testPlatform('telegram', { token: trimmed }, e.currentTarget);
+                testPlatform('telegram', { token: trimmed });
               }}
             >
-              {t('settings.bridge.test')}
+              {testingPlatform === 'telegram' ? '...' : t('settings.bridge.test')}
             </button>
           </div>
           <span className={styles['settings-field-hint']}>{t('settings.bridge.telegramHint')}</span>
@@ -243,7 +277,7 @@ export function BridgeTab() {
                 showToast(t('settings.bridge.noCredentials'), 'error');
                 return;
               }
-              const creds = hasRealSecret ? { appId: fsAppId, appSecret: fsAppSecret } : (fsAppId ? { appId: fsAppId } : null);
+              const creds: Record<string, string> | null = hasRealSecret ? { appId: fsAppId, appSecret: fsAppSecret } : (fsAppId ? { appId: fsAppId } : null);
               await saveBridgeConfig('feishu', creds, on);
             }}
           />
@@ -277,12 +311,13 @@ export function BridgeTab() {
             />
             <button
               className="bridge-test-btn"
-              onClick={(e) => {
+              disabled={testingPlatform === 'feishu'}
+              onClick={() => {
                 if (!fsAppId.trim() || !fsAppSecret.trim() || isMasked(fsAppSecret)) { showToast(t('settings.bridge.noCredentials'), 'error'); return; }
-                testPlatform('feishu', { appId: fsAppId.trim(), appSecret: fsAppSecret.trim() }, e.currentTarget);
+                testPlatform('feishu', { appId: fsAppId.trim(), appSecret: fsAppSecret.trim() });
               }}
             >
-              {t('settings.bridge.test')}
+              {testingPlatform === 'feishu' ? '...' : t('settings.bridge.test')}
             </button>
           </div>
           <span className={styles['settings-field-hint']}>{t('settings.bridge.feishuHint')}</span>
@@ -344,12 +379,13 @@ export function BridgeTab() {
             />
             <button
               className="bridge-test-btn"
-              onClick={(e) => {
+              disabled={testingPlatform === 'qq'}
+              onClick={() => {
                 if (!qqAppId.trim() || !qqAppSecret.trim() || isMasked(qqAppSecret)) { showToast(t('settings.bridge.noCredentials'), 'error'); return; }
-                testPlatform('qq', { appID: qqAppId.trim(), appSecret: qqAppSecret.trim() }, e.currentTarget);
+                testPlatform('qq', { appID: qqAppId.trim(), appSecret: qqAppSecret.trim() });
               }}
             >
-              {t('settings.bridge.test')}
+              {testingPlatform === 'qq' ? '...' : t('settings.bridge.test')}
             </button>
           </div>
           <span className={styles['settings-field-hint']}>{t('settings.bridge.qqHint')}</span>
@@ -381,11 +417,11 @@ export function BridgeTab() {
         </div>
         <div className={styles['settings-field']}>
           {wxInfo.tokenMasked ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '8px 0' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            <div className={bridgeStyles['wechat-logged-in']}>
+              <span className={bridgeStyles['wechat-login-info']}>
                 {t('settings.bridge.wechatLoggedIn')}: {wxInfo.tokenMasked}
               </span>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className={bridgeStyles['wechat-btn-row']}>
                 <button
                   className="bridge-test-btn"
                   onClick={() => window.dispatchEvent(new Event('hana-show-wechat-qrcode'))}
@@ -395,13 +431,23 @@ export function BridgeTab() {
                 <button
                   className="bridge-test-btn"
                   onClick={async () => {
-                    await saveBridgeConfig('wechat', { botToken: '' }, false);
-                    await hanaFetch('/api/bridge/owner', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ platform: 'wechat', userId: null }),
-                    }).catch(() => {});
-                    showToast(t('settings.bridge.wechatUnbound'), 'success');
+                    try {
+                      await Promise.all([
+                        hanaFetch('/api/bridge/config', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ platform: 'wechat', credentials: { botToken: '' }, enabled: false }),
+                        }),
+                        hanaFetch('/api/bridge/owner', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ platform: 'wechat', userId: null }),
+                        }),
+                      ]);
+                      showToast(t('settings.bridge.wechatUnbound'), 'success');
+                    } catch {
+                      showToast(t('settings.saveFailed'), 'error');
+                    }
                     await loadStatus();
                   }}
                 >
@@ -410,18 +456,17 @@ export function BridgeTab() {
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
-            <button
-              className="bridge-test-btn"
-              onClick={() => window.dispatchEvent(new Event('hana-show-wechat-qrcode'))}
-            >
-              {t('settings.bridge.wechatScan')}
-            </button>
+            <div className={bridgeStyles['wechat-scan-row']}>
+              <button
+                className="bridge-test-btn"
+                onClick={() => window.dispatchEvent(new Event('hana-show-wechat-qrcode'))}
+              >
+                {t('settings.bridge.wechatScan')}
+              </button>
             </div>
           )}
           <span className={styles['settings-field-hint']}>{t('settings.bridge.wechatHint')}</span>
         </div>
-        {/* 微信只绑定一个账号，扫码时自动设 owner，无需手动选择 */}
       </section>
 
       {/* WhatsApp */}
@@ -491,7 +536,7 @@ function BridgeStatusText({ status, error }: { status?: string; error?: string }
 }
 
 function OwnerSelect({ platform_, users, currentOwner, onChange }: {
-  platform_: string; users: any[]; currentOwner?: string; onChange: (userId: string) => void;
+  platform_: string; users: KnownUser[]; currentOwner?: string; onChange: (userId: string) => void;
 }) {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
 
@@ -523,7 +568,7 @@ function OwnerSelect({ platform_, users, currentOwner, onChange }: {
         disabled={users.length === 0}
       >
         <option value="">{users.length > 0 ? '—' : t('settings.bridge.ownerNone')}</option>
-        {users.map((u: any) => (
+        {users.map((u) => (
           <option key={u.userId} value={u.userId}>{u.name || u.userId}</option>
         ))}
       </select>

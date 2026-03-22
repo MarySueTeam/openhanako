@@ -18,7 +18,6 @@ let _updateState = {
   releaseNotes: null,
   releaseUrl: null,     // GitHub release page URL
   downloadUrl: null,    // direct download URL (asset)
-  progress: null,
   error: null,
 };
 
@@ -40,7 +39,7 @@ function setState(patch) {
 function resetState() {
   _updateState = {
     status: "idle", version: null, releaseNotes: null,
-    releaseUrl: null, downloadUrl: null, progress: null, error: null,
+    releaseUrl: null, downloadUrl: null, error: null,
   };
 }
 
@@ -70,7 +69,7 @@ function getAssetExt() {
 }
 
 async function checkUpdate() {
-  setState({ status: "checking", error: null, version: null, progress: null });
+  setState({ status: "checking", error: null, version: null });
   try {
     // beta: 取所有 releases 的第一个（含 prerelease）
     // stable: 取 /latest（只返回非 prerelease）
@@ -156,11 +155,7 @@ function initAutoUpdater(mainWindow) {
 }
 
 async function checkForUpdatesAuto() {
-  try {
-    return await checkUpdate();
-  } catch {
-    return null;
-  }
+  return checkUpdate();
 }
 
 function setUpdateChannel(channel) {
