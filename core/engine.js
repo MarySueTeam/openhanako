@@ -422,6 +422,8 @@ export class HanaEngine {
     log(`[init] 1/5 Pi SDK 初始化...`);
     this._models.init();
     this._models.setPreferences(this._prefs);
+    // 注册用户覆盖源：从当前 agent 的 config.models.overrides 动态读取
+    this._models.modelCatalog.setOverridesGetter(() => this.agent?.config?.models?.overrides || null);
     await this._models.modelCatalog.build();
     log(`[init] 1/5 AuthStorage + ModelRegistry + Catalog 就绪`);
 

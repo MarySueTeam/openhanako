@@ -78,6 +78,7 @@ export class ModelCatalog {
     this._catalog.clear();
     this._buildFromModelsJson();
     this._buildFromRegistry();
+    this._applyUserOverrides();
   }
 
   /**
@@ -195,6 +196,30 @@ export class ModelCatalog {
           reasoning: false,
         });
       }
+    }
+  }
+
+  /**
+   * 设置用户覆盖源（每次 build/refresh 后自动 apply）
+   * @param {() => Record<string, { context?: number; maxOutput?: number; displayName?: string }> | null} getter
+   */
+  setOverridesGetter(getter) {
+    this._overridesGetter = getter;
+  }
+
+  /**
+   * 应用用户手动设置的模型覆盖（models.overrides）
+   * 优先级：用户覆盖 > known-models > API 返回值
+   */
+  _applyUserOverrides() {
+    const overrides = this._overridesGetter?.();
+    if (!overrides || typeof overrides !== "object") return;
+    for (const entry of this._catalog.values()) {
+      const ov = overrides[entry.modelId];
+      if (!ov) continue;
+      if (ov.context) entry.contextWindow = ov.context;
+      if (ov.maxOutput) entry.maxTokens = ov.maxOutput;
+      if (ov.displayName) entry.displayName = ov.displayName;
     }
   }
 
