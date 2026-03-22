@@ -37,6 +37,7 @@ import { hunyuanPlugin } from "../lib/providers/hunyuan.js";
 import { baiduCloudPlugin } from "../lib/providers/baidu-cloud.js";
 import { modelscopePlugin } from "../lib/providers/modelscope.js";
 import { infiniPlugin } from "../lib/providers/infini.js";
+import { mimoPlugin } from "../lib/providers/mimo.js";
 // 国际
 import { groqPlugin } from "../lib/providers/groq.js";
 import { togetherPlugin } from "../lib/providers/together.js";
@@ -71,6 +72,7 @@ const BUILTIN_PLUGINS = [
   baiduCloudPlugin,
   modelscopePlugin,
   infiniPlugin,
+  mimoPlugin,
   // 国际
   groqPlugin,
   togetherPlugin,
