@@ -16,6 +16,7 @@ import {
 import { createModuleLogger } from "../lib/debug-log.js";
 import { BrowserManager } from "../lib/browser/browser-manager.js";
 import { t, getLocale } from "../server/i18n.js";
+import { READ_ONLY_BUILTIN_TOOLS } from "./config-coordinator.js";
 
 const log = createModuleLogger("session");
 
@@ -61,6 +62,7 @@ export class SessionCoordinator {
     this._sessions = new Map();
     this._headlessRefCount = 0;
     this._titlesCache = new Map(); // sessionDir → { titles, ts }
+    this._pendingPlanMode = false;
   }
 
   static _TITLES_TTL = 60_000; // 60 秒
@@ -95,6 +97,24 @@ export class SessionCoordinator {
     const creatingAgent = agent;
     creatingAgent.setMemoryEnabled(memoryEnabled);
 
+    const baseResourceLoader = this._d.getResourceLoader();
+    const sessionEntry = {}; // populated after session creation; resourceLoader proxy references this
+
+    // Wrap resourceLoader to dynamically inject plan mode context into system prompt
+    const resourceLoader = Object.create(baseResourceLoader, {
+      getAppendSystemPrompt: {
+        value: () => {
+          const base = baseResourceLoader.getAppendSystemPrompt();
+          if (!sessionEntry.planMode) return base;
+          const isZh = String(this._d.getAgent().config?.locale || "").startsWith("zh");
+          const planModePrompt = isZh
+            ? "【系统通知】当前处于「只读模式」，用户在设置中关闭了「操作电脑」权限。你只能使用只读工具（read、grep、find、ls）和自定义工具。不能执行写入、编辑、删除等操作。如果用户要求你做这些操作，请告知当前处于只读模式，需要先在输入框旁的按钮开启「操作电脑」权限。"
+            : "[System Notice] Currently in READ-ONLY MODE. The user has disabled 'Computer Access' in settings. You can only use read-only tools (read, grep, find, ls) and custom tools. You cannot write, edit, or delete. If the user asks for these operations, inform them that read-only mode is active and they need to enable 'Computer Access' via the button next to the input area.";
+          return [...base, planModePrompt];
+        },
+      },
+    });
+
     const { tools: sessionTools, customTools: sessionCustomTools } = this._d.buildTools(effectiveCwd, null, { workspace: this._d.getHomeCwd() });
     const { session } = await createAgentSession({
       cwd: effectiveCwd,
@@ -104,7 +124,7 @@ export class SessionCoordinator {
       modelRegistry: models.modelRegistry,
       model: models.currentModel,
       thinkingLevel: models.resolveThinkingLevel(this._d.getPrefs().getThinkingLevel()),
-      resourceLoader: this._d.getResourceLoader(),
+      resourceLoader,
       tools: sessionTools,
       customTools: sessionCustomTools,
     });
@@ -119,17 +139,30 @@ export class SessionCoordinator {
       this._d.emitEvent(event, sessionPath);
     });
 
-    // 存入 map（SessionEntry）
+    // 存入 map（SessionEntry）— sessionEntry is the same object the resourceLoader proxy references
     const mapKey = sessionPath || `_anon_${Date.now()}`;
     const old = this._sessions.get(mapKey);
     if (old) old.unsub();
-    this._sessions.set(mapKey, {
+
+    const initialPlanMode = this._pendingPlanMode;
+    this._pendingPlanMode = false;
+
+    Object.assign(sessionEntry, {
       session,
       agentId: this._d.getActiveAgentId(),
       memoryEnabled,
+      planMode: initialPlanMode,
       lastTouchedAt: Date.now(),
       unsub,
     });
+    this._sessions.set(mapKey, sessionEntry);
+
+    // If plan mode was pending, apply tool restriction now
+    if (initialPlanMode) {
+      const agent = this._d.getAgent();
+      const customNames = (agent.tools || []).map(t => t.name);
+      session.setActiveToolsByName([...READ_ONLY_BUILTIN_TOOLS, ...customNames]);
+    }
 
     // LRU 淘汰：按 lastTouchedAt 排序，跳过 streaming 和焦点 session
     if (this._sessions.size > MAX_CACHED_SESSIONS) {
@@ -258,6 +291,43 @@ export class SessionCoordinator {
     if (!entry?.session.isStreaming) return false;
     await entry.session.abort();
     return true;
+  }
+
+  /** Get plan mode for the current (focused) session */
+  getPlanMode() {
+    const sp = this.currentSessionPath;
+    if (!sp) return this._pendingPlanMode;
+    return this._sessions.get(sp)?.planMode ?? false;
+  }
+
+  /** Set plan mode for the current (focused) session */
+  setPlanMode(enabled, allBuiltInTools) {
+    const sp = this.currentSessionPath;
+
+    // No session yet (welcome page) — store for when session is created
+    if (!sp) {
+      this._pendingPlanMode = !!enabled;
+      this._d.emitEvent({ type: "plan_mode", enabled: this._pendingPlanMode }, null);
+      this._d.emitDevLog(`Plan Mode: ${this._pendingPlanMode ? "ON (只读)" : "OFF (正常)"}`, "info");
+      return;
+    }
+
+    const entry = this._sessions.get(sp);
+    if (!entry) return;
+
+    entry.planMode = !!enabled;
+    const agent = this._d.getAgent();
+    const customNames = (agent.tools || []).map(t => t.name);
+
+    if (entry.planMode) {
+      entry.session.setActiveToolsByName([...READ_ONLY_BUILTIN_TOOLS, ...customNames]);
+    } else {
+      const allNames = allBuiltInTools.map(t => t.name);
+      entry.session.setActiveToolsByName([...allNames, ...customNames]);
+    }
+
+    this._d.emitEvent({ type: "plan_mode", enabled: entry.planMode }, sp);
+    this._d.emitDevLog(`Plan Mode: ${entry.planMode ? "ON (只读)" : "OFF (正常)"}`, "info");
   }
 
   /** 中断所有正在 streaming 的 session */

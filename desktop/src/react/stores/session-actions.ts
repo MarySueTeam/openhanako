@@ -126,6 +126,9 @@ export async function switchSession(path: string): Promise<void> {
       browserThumbnail: data.browserRunning ? state.browserThumbnail : null,
     });
 
+    // Sync plan mode for the switched-to session
+    window.dispatchEvent(new CustomEvent('hana-plan-mode', { detail: { enabled: data.planMode ?? false } }));
+
     // renderBrowserCard — no-op (browser card rendering handled by React)
 
     // updateFolderButton — no-op (React-driven)
@@ -251,6 +254,9 @@ export async function ensureSession(): Promise<boolean> {
     }
 
     useStore.setState(patch);
+
+    // New session defaults to plan mode OFF
+    window.dispatchEvent(new CustomEvent('hana-plan-mode', { detail: { enabled: data.planMode ?? false } }));
 
     await loadSessions();
 

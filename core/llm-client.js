@@ -1,21 +1,25 @@
 /**
  * core/llm-client.js — 统一的非流式 LLM 调用入口
  *
- * 替代原先手写 HTTP 的 callProviderText()，所有调用走 Pi SDK completeSimple()。
- * 确保 URL 构造、header、协议适配和 Chat 链路完全一致，消灭分裂。
+ * 直接 HTTP POST（非流式），不走 Pi SDK 的 completeSimple（强制流式）。
+ * Pi SDK completeSimple 对 DashScope 等供应商有 20-40x 延迟膨胀（stream SSE 首 token 慢），
+ * utility 短文本生成（50-200 token）不需要流式，直接 POST 最快。
+ *
+ * URL 构造规则与 Pi SDK 内部一致，确保和 Chat 链路（走 Pi SDK stream）访问同一个端点：
+ *   - openai-completions:  baseUrl + "/chat/completions"
+ *   - anthropic-messages:  baseUrl + "/v1/messages"
+ *   - openai-responses:    baseUrl + "/responses"
  */
-
-import { completeSimple } from "@mariozechner/pi-ai";
 
 /**
  * 统一非流式文本生成。
  *
  * @param {object} opts
- * @param {string} opts.api            API 协议 ("openai-completions" | "anthropic-messages" | ...)
+ * @param {string} opts.api            API 协议
  * @param {string} opts.apiKey         API key（本地模型可省略）
  * @param {string} opts.baseUrl        Provider base URL
  * @param {string} opts.model          模型 ID
- * @param {string} [opts.provider]     Provider ID（可选，用于 SDK 自动检测 compat）
+ * @param {string} [opts.provider]     Provider ID
  * @param {string} [opts.systemPrompt] System prompt
  * @param {Array}  [opts.messages]     消息数组 [{ role, content }]
  * @param {number} [opts.temperature]  温度 (default 0.3)
@@ -38,10 +42,8 @@ export async function callText({
   signal,
 }) {
   // ── 1. 消息归一化：提取 system 消息合并到 systemPrompt ──
-  // Pi SDK Context.messages 只接受 user / assistant / toolResult，
-  // system 必须走 context.systemPrompt。
-  let mergedSystemPrompt = systemPrompt || "";
-  const filteredMessages = [];
+  let mergedSystem = systemPrompt || "";
+  const normalizedMessages = [];
   for (const m of messages) {
     if (m.role === "system") {
       const text = typeof m.content === "string"
@@ -49,62 +51,119 @@ export async function callText({
         : Array.isArray(m.content)
           ? m.content.map(c => c.text || "").join("")
           : "";
-      if (text) {
-        mergedSystemPrompt += (mergedSystemPrompt ? "\n" : "") + text;
-      }
+      if (text) mergedSystem += (mergedSystem ? "\n" : "") + text;
     } else {
-      filteredMessages.push({
-        ...m,
-        timestamp: m.timestamp || Date.now(),
-      });
+      normalizedMessages.push({ role: m.role, content: typeof m.content === "string" ? m.content : JSON.stringify(m.content) });
     }
   }
 
-  // ── 2. 本地 URL 无 key 处理 ──
-  // Pi SDK 在 apiKey 为空时会直接抛 "No API key for provider"。
-  // 本地模型（Ollama 等）不需要认证，注入 dummy key 绕过校验。
-  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/.test(baseUrl || "");
-  const effectiveApiKey = apiKey || (isLocal ? "ollama" : undefined);
-
-  // ── 3. 构造最小 SDK Model 对象 ──
-  const sdkModel = {
-    id: model,
-    name: model,
-    api,
-    provider,
-    baseUrl,
-    reasoning: false,
-    input: ["text"],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 128000,
-    maxTokens,
-  };
-
-  // ── 4. 超时信号 ──
+  // ── 2. 超时信号 ──
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const combinedSignal = signal
     ? AbortSignal.any([signal, timeoutSignal])
     : timeoutSignal;
 
-  // ── 5. 调用 Pi SDK completeSimple ──
-  const result = await completeSimple(sdkModel, {
-    systemPrompt: mergedSystemPrompt || undefined,
-    messages: filteredMessages,
-  }, {
-    temperature,
-    maxTokens,
+  // ── 3. 按协议构造请求 ──
+  const base = (baseUrl || "").replace(/\/+$/, "");
+  let endpoint, headers, body;
+
+  if (api === "anthropic-messages") {
+    // Anthropic Messages API：baseUrl + /v1/messages（和 Pi SDK Anthropic provider 一致）
+    endpoint = `${base}/v1/messages`;
+    headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
+    if (apiKey) headers["x-api-key"] = apiKey;
+
+    // Anthropic 格式：system 和 messages 分离
+    const anthropicMessages = normalizedMessages.filter(m => m.role === "user" || m.role === "assistant");
+    if (anthropicMessages.length === 0) anthropicMessages.push({ role: "user", content: "" });
+    body = {
+      model, temperature, max_tokens: maxTokens,
+      ...(mergedSystem && { system: mergedSystem }),
+      messages: anthropicMessages,
+    };
+  } else if (api === "openai-responses" || api === "openai-codex-responses") {
+    // OpenAI Responses API
+    endpoint = `${base}/responses`;
+    headers = { "Content-Type": "application/json" };
+    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+    body = {
+      model, temperature, max_output_tokens: maxTokens,
+      ...(mergedSystem && { instructions: mergedSystem }),
+      input: normalizedMessages,
+    };
+  } else {
+    // OpenAI Completions API（默认）：baseUrl + /chat/completions
+    endpoint = `${base}/chat/completions`;
+    headers = { "Content-Type": "application/json" };
+    if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+
+    const allMessages = [];
+    if (mergedSystem) allMessages.push({ role: "system", content: mergedSystem });
+    allMessages.push(...normalizedMessages);
+    body = {
+      model, temperature, max_tokens: maxTokens,
+      messages: allMessages,
+      enable_thinking: false,
+    };
+  }
+
+  // ── 4. 发送请求 ──
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
     signal: combinedSignal,
-    apiKey: effectiveApiKey,
+  }).catch(err => {
+    if (err.name === "AbortError" || err.name === "TimeoutError") {
+      const abortErr = new Error(`LLM request aborted (model=${model})`);
+      abortErr.name = "AbortError";
+      throw abortErr;
+    }
+    throw err;
   });
 
-  // ── 6. 提取文本（跳过 thinking 块）──
-  const text = result.content
-    .filter(c => c.type === "text")
-    .map(c => c.text)
-    .join("");
+  // ── 5. 解析响应 ──
+  const rawText = await res.text();
+  let data;
+  try {
+    data = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    throw new Error(`LLM returned invalid JSON (status=${res.status})`);
+  }
 
-  if (!text.trim()) {
-    throw new Error(`LLM returned empty response (model=${model}, stopReason=${result.stopReason})`);
+  if (!res.ok) {
+    const message = data?.error?.message || data?.message || rawText || `HTTP ${res.status}`;
+    throw new Error(message);
+  }
+
+  // ── 6. 提取文本 ──
+  let text = "";
+  if (api === "anthropic-messages") {
+    text = (data?.content || [])
+      .filter(c => c?.type === "text" && typeof c.text === "string")
+      .map(c => c.text).join("\n").trim();
+  } else if (api === "openai-responses" || api === "openai-codex-responses") {
+    if (typeof data?.output_text === "string") {
+      text = data.output_text.trim();
+    } else {
+      text = (data?.output || [])
+        .filter(item => item?.type === "message" && item?.role === "assistant")
+        .flatMap(item => (item.content || []).filter(c => typeof c?.text === "string").map(c => c.text.trim()))
+        .join("\n").trim();
+    }
+  } else {
+    text = (typeof data?.choices?.[0]?.message?.content === "string")
+      ? data.choices[0].message.content.trim()
+      : "";
+  }
+
+  if (!text) {
+    if (combinedSignal.aborted) {
+      const err = new Error(`LLM request aborted (model=${model})`);
+      err.name = "AbortError";
+      throw err;
+    }
+    throw new Error(`LLM returned empty response (model=${model})`);
   }
 
   return text;

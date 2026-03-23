@@ -206,13 +206,8 @@ function InputAreaInner() {
     }
   }, [addAttachedFile, t]);
 
-  // ── Load plan mode + thinking level on mount ──
+  // ── Load thinking level on mount + listen for plan mode sync ──
   useEffect(() => {
-    hanaFetch('/api/plan-mode')
-      .then(r => r.json())
-      .then(d => setPlanMode(d.enabled ?? false))
-      .catch(() => {});
-
     hanaFetch('/api/config')
       .then(r => r.json())
       .then(d => { if (d.thinking_level) setThinkingLevel(d.thinking_level as ThinkingLevel); })

@@ -48,10 +48,7 @@ export class ConfigCoordinator {
    */
   constructor(deps) {
     this._d = deps;
-    this._planMode = false;
   }
-
-  get planMode() { return this._planMode; }
 
   // ── Home Folder ──
 
@@ -262,27 +259,6 @@ export class ConfigCoordinator {
         console.error("[config] persistMemoryEnabled failed:", err.message);
       }
     }
-  }
-
-  // ── Plan Mode ──
-
-  setPlanMode(enabled, allBuiltInTools) {
-    this._planMode = !!enabled;
-    const session = this._d.getSession();
-    if (!session) return;
-    const agent = this._d.getAgent();
-
-    if (this._planMode) {
-      const customNames = (agent.tools || []).map(t => t.name);
-      session.setActiveToolsByName([...READ_ONLY_BUILTIN_TOOLS, ...customNames]);
-    } else {
-      const allNames = allBuiltInTools.map(t => t.name);
-      const customNames = (agent.tools || []).map(t => t.name);
-      session.setActiveToolsByName([...allNames, ...customNames]);
-    }
-
-    this._d.emitEvent({ type: "plan_mode", enabled: this._planMode }, null);
-    this._d.emitDevLog(`Plan Mode: ${this._planMode ? "ON (只读)" : "OFF (正常)"}`, "info");
   }
 
   // ── updateConfig ──

@@ -26,13 +26,15 @@ export const getToolArgs = (b) => b.input || b.arguments;
  * @param {number} [opts.max_tokens=100]
  * @returns {Promise<string|null>} 回复文本
  */
-async function callLlm({ model, api, api_key, base_url, messages, temperature = 0.3, max_tokens = 100 }) {
+async function callLlm({ model, api, api_key, base_url, messages, temperature = 0.3, max_tokens = 100, timeoutMs, signal }) {
   return callText({
     api, model,
     apiKey: api_key,
     baseUrl: base_url,
     messages, temperature,
     maxTokens: max_tokens,
+    ...(timeoutMs != null && { timeoutMs }),
+    ...(signal != null && { signal }),
   });
 }
 
@@ -87,8 +89,12 @@ export function buildLocalSummary(assistantText, toolCalls) {
 
 /**
  * 生成对话标题
+ * @param {object} utilConfig - resolveUtilityConfig() 结果
+ * @param {string} userText
+ * @param {string} assistantText
+ * @param {{ timeoutMs?: number, signal?: AbortSignal }} [opts]
  */
-export async function summarizeTitle(utilConfig, userText, assistantText) {
+export async function summarizeTitle(utilConfig, userText, assistantText, opts = {}) {
   try {
     const isZh = getLocale().startsWith("zh");
     const { utility: model, api_key, base_url, api } = utilConfig;
@@ -123,8 +129,12 @@ Rules:
         },
       ],
       max_tokens: 50,
+      timeoutMs: opts.timeoutMs,
+      signal: opts.signal,
     });
   } catch (err) {
+    // AbortError（超时）不算失败，静默返回 null 让调用方走 fallback
+    if (err.name === "AbortError" || err.name === "TimeoutError") return null;
     console.error("[llm-utils] summarizeTitle failed:", err.message);
     return null;
   }

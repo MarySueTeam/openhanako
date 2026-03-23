@@ -259,6 +259,7 @@ export default async function sessionsRoute(app, { engine }) {
         cwd: engine.cwd,
         agentId: engine.currentAgentId,
         agentName: engine.agentName,
+        planMode: engine.planMode,
         memoryModelUnavailableReason: engine.memoryModelUnavailableReason || null,
       };
     } catch (err) {
@@ -294,6 +295,7 @@ export default async function sessionsRoute(app, { engine }) {
         ok: true,
         messageCount: engine.messages.length,
         memoryEnabled: engine.memoryEnabled,
+        planMode: engine.planMode,
         memoryModelUnavailableReason: engine.memoryModelUnavailableReason || null,
         cwd: engine.cwd,
         agentId: engine.currentAgentId,

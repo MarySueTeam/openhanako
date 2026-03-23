@@ -693,11 +693,8 @@ async function generateSessionTitle(engine, notify, opts = {}) {
     const assistantText = (opts.assistantTextHint || extractText(assistantMsg?.content)).trim();
     if (!userText || !assistantText) return false;
 
-    const TITLE_TIMEOUT = 15_000; // 15 秒超时
-    let title = await Promise.race([
-      engine.summarizeTitle(userText, assistantText),
-      new Promise(resolve => setTimeout(() => resolve(null), TITLE_TIMEOUT)),
-    ]);
+    // 超时由 callText 内部的 AbortSignal 统一控制：超时即取消 Pi SDK 连接，无空跑
+    let title = await engine.summarizeTitle(userText, assistantText, { timeoutMs: 15_000 });
 
     // API 失败时，用用户第一条消息截取作为 fallback 标题
     if (!title) {

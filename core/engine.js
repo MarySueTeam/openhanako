@@ -112,6 +112,7 @@ export class HanaEngine {
       getSkills: () => this._skills,
       buildTools: (cwd, ct, opts) => this.buildTools(cwd, ct, opts),
       emitEvent: (e, sp) => this._emitEvent(e, sp),
+      emitDevLog: (t, l) => this.emitDevLog(t, l),
       getHomeCwd: () => this.homeCwd,
       agentIdFromSessionPath: (p) => this.agentIdFromSessionPath(p),
       switchAgentOnly: (id) => this._agentMgr.switchAgentOnly(id),
@@ -252,7 +253,7 @@ export class HanaEngine {
   get availableModels() { return this._models.availableModels; }
   get memoryEnabled() { return this.agent.memoryEnabled; }
   get memoryModelUnavailableReason() { return this.agent.memoryModelUnavailableReason; }
-  get planMode() { return this._configCoord.planMode; }
+  get planMode() { return this._sessionCoord.getPlanMode(); }
   get homeCwd() { return this._configCoord.getHomeFolder() || null; }
   get authStorage() { return this._models.authStorage; }
   get modelRegistry() { return this._models.modelRegistry; }
@@ -292,7 +293,7 @@ export class HanaEngine {
   setMemoryEnabled(v) { return this._configCoord.setMemoryEnabled(v); }
   setMemoryMasterEnabled(id, v) { return this._configCoord.setMemoryMasterEnabled(id, v); }
   persistMemoryEnabled() { return this._configCoord.persistMemoryEnabled(); }
-  setPlanMode(enabled) { return this._configCoord.setPlanMode(enabled, allBuiltInTools); }
+  setPlanMode(enabled) { return this._sessionCoord.setPlanMode(enabled, allBuiltInTools); }
   async updateConfig(p) { return this._configCoord.updateConfig(p); }
 
   getPreferences() { return this._readPreferences(); }
@@ -619,8 +620,8 @@ export class HanaEngine {
     });
   }
 
-  async summarizeTitle(ut, at) {
-    return _summarizeTitle(this.resolveUtilityConfig(), ut, at);
+  async summarizeTitle(ut, at, opts) {
+    return _summarizeTitle(this.resolveUtilityConfig(), ut, at, opts);
   }
 
   async translateSkillNames(names, lang) {
