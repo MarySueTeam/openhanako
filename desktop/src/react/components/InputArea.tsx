@@ -44,7 +44,9 @@ function InputAreaInner() {
   const isStreaming = useStore(s => s.isStreaming);
   const connected = useStore(s => s.connected);
   const pendingNewSession = useStore(s => s.pendingNewSession);
-  const sessionTodos = useStore(s => s.sessionTodos);
+  const todosBySession = useStore(s => s.todosBySession);
+  const currentSessionPath = useStore(s => s.currentSessionPath);
+  const sessionTodos = (todosBySession && currentSessionPath && todosBySession[currentSessionPath]) || [];
   const attachedFiles = useStore(s => s.attachedFiles);
   const docContextAttached = useStore(s => s.docContextAttached);
   const quotedSelection = useStore(s => s.quotedSelection);

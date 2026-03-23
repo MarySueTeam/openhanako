@@ -54,15 +54,17 @@ export interface ParsedAttachments {
   text: string;
   files: Array<{ path: string; name: string; isDirectory: boolean }>;
   deskContext: { dir: string; fileCount: number } | null;
+  quotedText: string | null;
 }
 
 export function parseUserAttachments(content: string): ParsedAttachments {
-  if (!content) return { text: '', files: [], deskContext: null };
+  if (!content) return { text: '', files: [], deskContext: null, quotedText: null };
   const lines = content.split('\n');
   const textLines: string[] = [];
   const files: Array<{ path: string; name: string; isDirectory: boolean }> = [];
   const attachRe = /^\[(附件|目录|参考文档)\]\s+(.+)$/;
   let deskContext: { dir: string; fileCount: number } | null = null;
+  let quotedText: string | null = null;
   let inDeskBlock = false;
 
   for (const line of lines) {
@@ -80,6 +82,14 @@ export function parseUserAttachments(content: string): ParsedAttachments {
       inDeskBlock = false;
     }
 
+    const quoteMatch = line.match(/^\[引用片段\]\s+(.+)$/);
+    if (quoteMatch) {
+      const raw = quoteMatch[1];
+      const titleMatch = raw.match(/^(.+?)（第\d/);
+      quotedText = titleMatch ? titleMatch[1].trim() : raw.trim();
+      continue;
+    }
+
     const m = line.match(attachRe);
     if (m) {
       const isDir = m[1] === '目录';
@@ -91,7 +101,7 @@ export function parseUserAttachments(content: string): ParsedAttachments {
     }
   }
   const text = textLines.join('\n').replace(/\n+$/, '').trim();
-  return { text, files, deskContext };
+  return { text, files, deskContext, quotedText };
 }
 
 // ── 工具详情提取 ──

@@ -28,8 +28,8 @@ export async function loadMessages(forPath?: string): Promise<void> {
   try {
     const res = await hanaFetch(`/api/sessions/messages?path=${encodeURIComponent(targetPath)}`);
     const data = await res.json();
-    // 总是更新 todos（包括清空），避免残留上一个 session 的 todo
-    useStore.setState({ sessionTodos: data.todos || [] });
+    // per-session todos
+    useStore.getState().setSessionTodosForPath(targetPath, data.todos || []);
     const items = buildItemsFromHistory(data);
     if (items.length > 0) {
       useStore.getState().initSession(targetPath, items, data.hasMore ?? false);

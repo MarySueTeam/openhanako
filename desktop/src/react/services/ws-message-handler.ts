@@ -115,7 +115,8 @@ export function handleServerMessage(msg: any): void {
     }
     // tool_end 后更新 todo
     if (msg.type === 'tool_end' && msg.name === 'todo' && msg.details?.todos) {
-      useStore.setState({ sessionTodos: msg.details.todos });
+      const sp = useStore.getState().currentSessionPath;
+      if (sp) useStore.getState().setSessionTodosForPath(sp, msg.details.todos);
     }
     // compaction_end 后更新 token
     if (msg.type === 'compaction_end') {

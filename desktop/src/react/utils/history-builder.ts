@@ -60,7 +60,7 @@ export function buildItemsFromHistory(data: HistoryApiResponse): ChatListItem[] 
     if (m.role === 'user') {
       // strip steer 前缀（内部标记，不应展示给用户）
       const rawContent = (m.content || '').replace(/^（插话，无需 MOOD）\n?/, '');
-      const { text, files, deskContext } = parseUserAttachments(rawContent);
+      const { text, files, deskContext, quotedText } = parseUserAttachments(rawContent);
       const fileAtts = files.map(f => ({
         path: f.path,
         name: f.name,
@@ -81,6 +81,7 @@ export function buildItemsFromHistory(data: HistoryApiResponse): ChatListItem[] 
         textHtml: text ? renderMarkdown(text) : undefined,
         attachments: allAtts.length ? allAtts : undefined,
         deskContext: deskContext || undefined,
+        quotedText: quotedText || undefined,
       };
       items.push({ type: 'message', data: msg });
     } else if (m.role === 'assistant') {
