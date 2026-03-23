@@ -18,6 +18,7 @@ import { fileIconSvg } from '../utils/icons';
 import { ArtifactEditor } from './ArtifactEditor';
 import { TabBar } from './preview/TabBar';
 import { FloatingActions } from './preview/FloatingActions';
+import { captureSelection, clearSelection } from '../stores/selection-actions';
 import type { Artifact } from '../types';
 import previewStyles from './Preview.module.css';
 
@@ -58,6 +59,17 @@ export function PreviewPanel() {
       language: artifact.language,
     });
   }, [artifact, setEditorDetached, setPreviewOpen]);
+
+  // DOM 模式选区捕获（非编辑模式下 mouseup 时检测选中文本）
+  const handleMouseUp = useCallback(() => {
+    if (!artifact || editable) return;
+    captureSelection(artifact);
+  }, [artifact, editable]);
+
+  // 切换 tab 时清除选区
+  useEffect(() => {
+    clearSelection();
+  }, [activeTabId]);
 
   // 非编辑模式：渲染 artifact 内容到 body（命令式 DOM）
   // 注意：editable 时也要清理上一次命令式插入的残留 DOM（iframe 等），
@@ -210,7 +222,7 @@ export function PreviewPanel() {
       <div className="resize-handle resize-handle-left" id="previewResizeHandle"></div>
       <div className={previewStyles.previewPanelInner}>
         <TabBar />
-        <div className={previewStyles.previewPanelBody} id="previewBody" ref={bodyRef}>
+        <div className={previewStyles.previewPanelBody} id="previewBody" ref={bodyRef} onMouseUp={handleMouseUp}>
           {previewOpen && artifact && (
             <FloatingActions
               content={artifact.content}
@@ -224,6 +236,9 @@ export function PreviewPanel() {
               filePath={artifact.filePath}
               mode={getEditorMode(artifact)}
               language={artifact.language}
+              onSelectionChange={(view) => {
+                if (artifact) captureSelection(artifact, view);
+              }}
             />
           )}
         </div>

@@ -39,6 +39,7 @@ export interface ArtifactEditorProps {
   filePath?: string;
   mode: 'markdown' | 'code' | 'text';
   language?: string | null;
+  onSelectionChange?: (view: EditorView) => void;
 }
 
 const SAVE_DELAY = 600;
@@ -223,13 +224,15 @@ function setupFileChangeListener() {
 /* ── Editor Component ── */
 
 export const ArtifactEditor = forwardRef<ArtifactEditorHandle, ArtifactEditorProps>(
-  function ArtifactEditor({ content, filePath, mode, language }, ref) {
+  function ArtifactEditor({ content, filePath, mode, language, onSelectionChange }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const selfSaveRef = useRef(false);
     const filePathRef = useRef(filePath);
     filePathRef.current = filePath;
+    const selectionCbRef = useRef(onSelectionChange);
+    selectionCbRef.current = onSelectionChange;
 
     // Per-instance compartments for dynamic reconfiguration
     const cRef = useRef({
@@ -276,6 +279,11 @@ export const ArtifactEditor = forwardRef<ArtifactEditorHandle, ArtifactEditorPro
             saveTimerRef.current = null;
             saveToFile(text);
           }, SAVE_DELAY);
+        }),
+        EditorView.updateListener.of((update) => {
+          if (update.selectionSet && selectionCbRef.current) {
+            selectionCbRef.current(update.view);
+          }
         }),
         // Dynamic compartments
         c.gutter.of(isMd ? [] : lineNumbers()),

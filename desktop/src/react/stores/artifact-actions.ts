@@ -30,6 +30,7 @@ export function closePreview(): void {
   const s = useStore.getState();
   s.setPreviewOpen(false);
   useStore.setState({ activeTabId: null });
+  if (s.quotedSelection) s.clearQuotedSelection();
   updateLayout();
 }
 
