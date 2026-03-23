@@ -25,6 +25,7 @@ import path from "path";
 import YAML from "js-yaml";
 import { saveConfig, getAllProviders, saveGlobalProviders, clearConfigCache } from "../../lib/memory/config-loader.js";
 import { rebuildIndex } from "../../lib/tools/experience.js";
+import { splitByScope, injectGlobalFields } from '../../shared/config-scope.js';
 
 // ── 工具函数 ──
 
@@ -244,19 +245,8 @@ export default async function agentsRoute(app, { engine }) {
         utility_api: { provider: config.utility_api?.provider || "", base_url: config.utility_api?.base_url || "" },
       };
 
-      // 注入全局设置（存于 preferences，跨 agent 共享）
-      if (!config.desk) config.desk = {};
-      config.desk.home_folder = engine.getHomeFolder() || "";
-      config.sandbox = engine.getSandbox();
-      const globalLocale = engine.getLocale();
-      if (globalLocale) config.locale = globalLocale;
-      const globalTz = engine.getTimezone();
-      if (globalTz) config.timezone = globalTz;
-      // learn_skills → 全局 preferences（覆盖 agent config 中的值）
-      if (!config.capabilities) config.capabilities = {};
-      config.capabilities.learn_skills = engine.getLearnSkills();
-      config.thinking_level = engine.getThinkingLevel();
-      config.update_channel = engine.getUpdateChannel();
+      // 自动注入全局字段（schema-driven，替代手写逐个注入）
+      injectGlobalFields(config, engine);
 
       // 供应商列表
       try {
@@ -295,63 +285,23 @@ export default async function agentsRoute(app, { engine }) {
         reply.code(400);
         return { error: "invalid JSON body" };
       }
-      // ── 全局设置拦截：存 preferences / providers.yaml 而非 agent config ──
-
-      // thinking_level → 全局 preferences
-      if (partial.thinking_level !== undefined) {
-        engine.setThinkingLevel(partial.thinking_level);
-        delete partial.thinking_level;
-      }
-
-      // sandbox → 全局 preferences
-      if (partial.sandbox !== undefined) {
-        engine.setSandbox(partial.sandbox);
-        delete partial.sandbox;
-      }
-
-      // locale → 全局 preferences
-      if (partial.locale !== undefined) {
-        engine.setLocale(partial.locale);
-        delete partial.locale;
-      }
-
-      // timezone → 全局 preferences
-      if (partial.timezone !== undefined) {
-        engine.setTimezone(partial.timezone);
-        delete partial.timezone;
-      }
-
-      // update_channel → 全局 preferences
-      if (partial.update_channel !== undefined) {
-        engine.setUpdateChannel(partial.update_channel);
-        delete partial.update_channel;
-      }
-
-      // capabilities.learn_skills → 全局 preferences
-      if (partial.capabilities?.learn_skills) {
-        engine.setLearnSkills(partial.capabilities.learn_skills);
-        delete partial.capabilities.learn_skills;
-        if (Object.keys(partial.capabilities).length === 0) delete partial.capabilities;
-      }
-
-      // desk.home_folder
-      if (partial.desk?.home_folder !== undefined) {
-        engine.setHomeFolder(partial.desk.home_folder || null);
-        delete partial.desk.home_folder;
-        if (Object.keys(partial.desk).length === 0) delete partial.desk;
+      // ── schema-driven 全局字段分流 ──
+      const { global: globalFields, agent: agentPartial } = splitByScope(partial);
+      for (const { setter, value } of globalFields) {
+        engine[setter](value);
       }
 
       // providers 块 → 全局 providers.yaml
       let providersChanged = false;
-      if (partial.providers) {
-        saveGlobalProviders({ providers: partial.providers });
-        delete partial.providers;
+      if (agentPartial.providers) {
+        saveGlobalProviders({ providers: agentPartial.providers });
+        delete agentPartial.providers;
         providersChanged = true;
       }
 
       // 内联 API 凭证 → 全局 providers.yaml 对应条目
       for (const blockName of ["api", "embedding_api", "utility_api"]) {
-        const block = partial[blockName];
+        const block = agentPartial[blockName];
         if (block?.api_key || block?.base_url) {
           const cfgPath = path.join(agentDir(engine, id), "config.yaml");
           const agentCfg = YAML.load(fsSync.readFileSync(cfgPath, "utf-8")) || {};
@@ -380,30 +330,30 @@ export default async function agentsRoute(app, { engine }) {
         await engine.updateConfig({});
       }
 
-      if (Object.keys(partial).length === 0) {
+      if (Object.keys(agentPartial).length === 0) {
         return { ok: true };
       }
 
       // 记忆总开关：写入时间戳（用于过滤关闭期间的 session）
-      if (partial.memory && "enabled" in partial.memory) {
+      if (agentPartial.memory && "enabled" in agentPartial.memory) {
         const now = new Date().toISOString();
-        if (partial.memory.enabled === false) {
-          partial.memory.disabledSince = now;
+        if (agentPartial.memory.enabled === false) {
+          agentPartial.memory.disabledSince = now;
         } else {
-          partial.memory.reenableAt = now;
+          agentPartial.memory.reenableAt = now;
         }
       }
 
       const configPath = path.join(agentDir(engine, id), "config.yaml");
-      saveConfig(configPath, partial);
+      saveConfig(configPath, agentPartial);
       engine.invalidateAgentListCache();
       // active agent 需要额外触发模块刷新 + prompt 重建
       if (isActiveAgent(engine, id)) {
-        await engine.updateConfig(partial);
+        await engine.updateConfig(agentPartial);
       }
       // 记忆总开关：无论是否 active agent，都需要刷新运行时状态（因为 ticker 后台在跑）
-      if (partial.memory && "enabled" in partial.memory) {
-        engine.setMemoryMasterEnabled(id, partial.memory.enabled !== false);
+      if (agentPartial.memory && "enabled" in agentPartial.memory) {
+        engine.setMemoryMasterEnabled(id, agentPartial.memory.enabled !== false);
       }
       return { ok: true };
     } catch (err) {
