@@ -70,6 +70,17 @@ MOOD 内容为意识流式记录，而非分析、评价或修改建议，不判
    - 环境变量路径用 `os.homedir()` 取
    - Electron 快捷键用 `CommandOrControl`
 
+## 打包架构（v0.67.0）
+
+- **Server**：Vite bundle（`vite.config.server.js`）把 server/core/lib/shared/hub 源码打成 5 个 chunk（~780KB），external 依赖（PI SDK、飞书 SDK、better-sqlite3、telegram、exceljs）通过 npm install 安装
+- **Electron main**：Vite bundle（`vite.config.main.js`）把 main.cjs + ws + mammoth + exceljs 打成单文件 `desktop/main.bundle.cjs`（~2.3MB），asar 内零 node_modules
+- **build-server.mjs**：Vite bundle → 复制资源文件（lib/ 数据文件、locales、skills2set）→ npm install external deps → PI SDK patch → 清理 .bin
+- **@vercel/nft**（待集成）：构建后追踪 node_modules 实际需要的文件，删除未追踪的。注意事项：
+  - 项目源码全部使用固定字符串路径的 import/require，nft 能完整追踪
+  - PI SDK 的 jiti 动态加载和飞书 SDK 的 protobufjs 动态 require 是第三方包行为，这些包作为 external 保留完整 node_modules，不受 nft 影响
+  - **新增 npm 依赖时**：如果是 external 包（native addon 或无法 bundle 的），加到 `vite.config.server.js` 的 external 列表和 `build-server.mjs` 的 EXTERNAL_DEPS 数组；如果是纯 JS 包，Vite 自动 bundle，不需要额外配置
+  - **如果新包使用了动态路径加载**（如 `require(variable)` 而非 `require("fixed-string")`），需要将其加入 external 或为 nft 添加 hint
+
 ## 操作规则
 
 1. **数据目录是 `~/.hanako-dev/`**，不是 `~/.hanako/`。开发环境用 `~/.hanako-dev/`，`~/.hanako/` 是生产数据，开发时不要读写
