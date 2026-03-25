@@ -28,7 +28,7 @@ exports.default = async function (context) {
         "Contents", "Resources")
     : path.join(context.appOutDir, "resources");
   const serverDir = path.join(resourcesDir, "server");
-  const osDirName = platformName === "mac" ? "mac" : platformName === "windows" ? "win32" : "linux";
+  const osDirName = platformName === "mac" ? "mac" : platformName === "windows" ? "win" : "linux";
   const serverBuildModules = path.join(__dirname, "..", "dist-server", `${osDirName}-${arch}`, "node_modules");
 
   if (fs.existsSync(serverDir) && fs.existsSync(serverBuildModules)) {
