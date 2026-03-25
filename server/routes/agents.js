@@ -191,6 +191,7 @@ export function createAgentsRoute(engine) {
       try { await fs.unlink(path.join(dir, `agent.${oldExt}`)); } catch {}
     }
     await fs.writeFile(path.join(dir, `agent.${ext}`), buf);
+    engine.invalidateAgentListCache();
     return c.json({ ok: true, ext });
   });
 
@@ -203,6 +204,7 @@ export function createAgentsRoute(engine) {
     for (const ext of ["png", "jpg", "jpeg", "webp"]) {
       try { await fs.unlink(path.join(dir, `agent.${ext}`)); } catch {}
     }
+    engine.invalidateAgentListCache();
     return c.json({ ok: true });
   });
 

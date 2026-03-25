@@ -192,7 +192,9 @@ export function AgentCardStack({ agents, selectedId, currentAgentId, onSelect, o
                 <img
                   className={styles['agent-card-avatar']}
                   draggable={false}
-                  src={hanaUrl(`/api/agents/${agent.id}/avatar?t=${ts}`)}
+                  src={agent.hasAvatar
+                    ? hanaUrl(`/api/agents/${agent.id}/avatar?t=${ts}`)
+                    : yuanFallbackAvatar(agent.yuan)}
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
                     img.onerror = null;
