@@ -158,10 +158,13 @@ export class ProviderRegistry {
   /** 将 providers 对象写入 _hanakoHome/providers.yaml */
   _saveProvidersYaml(providers) {
     const ymlPath = path.join(this._hanakoHome, "providers.yaml");
+    // 读取现有文件以保留 _migrated 等顶层元数据
+    const existing = safeReadYAMLSync(ymlPath, {}, YAML) || {};
     const header =
       "# Hanako 供应商配置（全局，跨 agent 共享）\n" +
       "# 由设置页面管理\n\n";
-    const yamlStr = header + YAML.dump({ providers }, {
+    const data = { ...existing, providers };
+    const yamlStr = header + YAML.dump(data, {
       indent: 2,
       lineWidth: -1,
       sortKeys: false,
