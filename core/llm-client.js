@@ -23,6 +23,7 @@ import { errorBus } from '../shared/error-bus.js';
  * @param {string} opts.baseUrl        Provider base URL
  * @param {string} opts.model          模型 ID
  * @param {string} [opts.provider]     Provider ID
+ * @param {string[]} [opts.quirks]     Provider quirk flags (e.g. ["enable_thinking"])
  * @param {string} [opts.systemPrompt] System prompt
  * @param {Array}  [opts.messages]     消息数组 [{ role, content }]
  * @param {number} [opts.temperature]  温度 (default 0.3)
@@ -37,6 +38,7 @@ export async function callText({
   baseUrl,
   model,
   provider = "custom",
+  quirks = [],
   systemPrompt = "",
   messages = [],
   temperature = 0.3,
@@ -106,7 +108,7 @@ export async function callText({
     body = {
       model, temperature, max_tokens: maxTokens,
       messages: allMessages,
-      enable_thinking: false,
+      ...(quirks.includes("enable_thinking") && { enable_thinking: false }),
     };
   }
 

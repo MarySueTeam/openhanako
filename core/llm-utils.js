@@ -26,7 +26,7 @@ export const getToolArgs = (b) => b.input || b.arguments;
  * @param {number} [opts.max_tokens=100]
  * @returns {Promise<string|null>} 回复文本
  */
-async function callLlm({ model, api, api_key, base_url, messages, temperature = 0.3, max_tokens = 100, timeoutMs, signal }) {
+async function callLlm({ model, api, api_key, base_url, messages, temperature = 0.3, max_tokens = 100, timeoutMs, signal, quirks }) {
   return callText({
     api, model,
     apiKey: api_key,
@@ -35,6 +35,7 @@ async function callLlm({ model, api, api_key, base_url, messages, temperature = 
     maxTokens: max_tokens,
     ...(timeoutMs != null && { timeoutMs }),
     ...(signal != null && { signal }),
+    ...(quirks != null && { quirks }),
   });
 }
 
