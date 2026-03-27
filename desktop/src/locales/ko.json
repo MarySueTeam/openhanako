@@ -652,7 +652,9 @@
         "xhigh": "최대"
       },
       "addedModels": "추가된 모델",
-      "displayName": "표시 이름"
+      "displayName": "표시 이름",
+      "vision": "비전",
+      "reasoning": "추론"
     },
     "memory": {
       "sectionTitle": "기억",

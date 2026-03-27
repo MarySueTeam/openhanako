@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSettingsStore } from '../../store';
 import { t, lookupModelMeta, autoSaveConfig, CONTEXT_PRESETS, OUTPUT_PRESETS } from '../../helpers';
 import { ComboInput } from '../../widgets/ComboInput';
+import { Toggle } from '../../widgets/Toggle';
 import styles from '../../Settings.module.css';
 
 export function ModelEditPanel({ modelId, anchorEl, onClose }: {
@@ -14,6 +15,8 @@ export function ModelEditPanel({ modelId, anchorEl, onClose }: {
   const [displayName, setDisplayName] = useState(meta.displayName || '');
   const [ctxVal, setCtxVal] = useState(String(meta.context || ''));
   const [outVal, setOutVal] = useState(String(meta.maxOutput || ''));
+  const [vision, setVision] = useState<boolean>(meta.vision === true);
+  const [reasoning, setReasoning] = useState<boolean>(meta.reasoning === true);
   const panelRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<React.CSSProperties>({});
 
@@ -29,13 +32,15 @@ export function ModelEditPanel({ modelId, anchorEl, onClose }: {
   }, [anchorEl]);
 
   const save = async () => {
-    const entry: Record<string, string | number> = {};
+    const entry: Record<string, string | number | boolean> = {};
     const name = displayName.trim();
     const ctx = ctxVal.trim();
     const maxOut = outVal.trim();
     if (name) entry.displayName = name;
     if (ctx) entry.context = parseInt(ctx);
     if (maxOut) entry.maxOutput = parseInt(maxOut);
+    entry.vision = vision;
+    entry.reasoning = reasoning;
     const config = useSettingsStore.getState().settingsConfig;
     const currentOverrides = config?.models?.overrides || {};
     await autoSaveConfig({ models: { overrides: { ...currentOverrides, [modelId]: entry } } });
@@ -69,6 +74,16 @@ export function ModelEditPanel({ modelId, anchorEl, onClose }: {
         <div className={styles['pv-model-edit-field']}>
           <label className={styles['pv-model-edit-label']}>{t('settings.api.maxOutput')}</label>
           <ComboInput presets={OUTPUT_PRESETS} value={outVal} onChange={setOutVal} placeholder="16384" />
+        </div>
+      </div>
+      <div className={styles['pv-model-edit-row']}>
+        <div className={styles['pv-model-edit-field']}>
+          <label className={styles['pv-model-edit-label']}>{t('settings.api.vision')}</label>
+          <Toggle on={vision} onChange={setVision} />
+        </div>
+        <div className={styles['pv-model-edit-field']}>
+          <label className={styles['pv-model-edit-label']}>{t('settings.api.reasoning')}</label>
+          <Toggle on={reasoning} onChange={setReasoning} />
         </div>
       </div>
       <div className={styles['pv-model-edit-actions']}>

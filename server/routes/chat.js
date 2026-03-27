@@ -634,7 +634,10 @@ export function createChatRoute(engine, hub, { upgradeWebSocket }) {
               }
               // 非 vision 模型：静默剥离图片，只发文字。不拦截、不报错。
               // vision 未知（undefined）的模型：放行，让 API 决定。
-              if (msg.images?.length && engine.currentModel?.vision === false) {
+              // 用户 overrides 优先于 known-models 词典值。
+              const _visionOv = engine.config?.models?.overrides?.[engine.currentModel?.id]?.vision;
+              const _effectiveVision = _visionOv !== undefined ? _visionOv : engine.currentModel?.vision;
+              if (msg.images?.length && _effectiveVision === false) {
                 msg.images = undefined;
               }
               // 只发图片没文字时补一个占位文本，防止空 text 导致某些 API 异常

@@ -653,7 +653,9 @@
         "xhigh": "Max"
       },
       "addedModels": "Added models",
-      "displayName": "Display name"
+      "displayName": "Display name",
+      "vision": "Vision",
+      "reasoning": "Reasoning"
     },
     "memory": {
       "sectionTitle": "Memory",

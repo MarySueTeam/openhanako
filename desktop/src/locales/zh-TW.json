@@ -652,7 +652,9 @@
         "xhigh": "極限"
       },
       "addedModels": "已新增的模型",
-      "displayName": "顯示名稱"
+      "displayName": "顯示名稱",
+      "vision": "視覺",
+      "reasoning": "推理"
     },
     "memory": {
       "sectionTitle": "記憶",

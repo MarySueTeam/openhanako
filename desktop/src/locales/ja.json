@@ -652,7 +652,9 @@
         "xhigh": "最大"
       },
       "addedModels": "追加済みモデル",
-      "displayName": "表示名"
+      "displayName": "表示名",
+      "vision": "ビジョン",
+      "reasoning": "推論"
     },
     "memory": {
       "sectionTitle": "記憶",
