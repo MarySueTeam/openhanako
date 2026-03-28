@@ -60,6 +60,7 @@ export function AboutTab() {
     hana?.autoUpdateSetChannel?.(channel);
     await autoSaveConfig({ update_channel: channel }, { silent: true });
     await loadSettingsConfig();
+    hana?.autoUpdateCheck?.();
   }, []);
 
   const renderUpdateStatus = () => {
@@ -81,13 +82,16 @@ export function AboutTab() {
         );
       case 'downloading':
         return (
-          <div className={styles['about-update']}>
+          <div className={styles['about-update']} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
             <span>
               {t('settings.about.updateDownloading', {
                 agentName: settingsConfig?.agent?.name || 'Hanako',
                 percent: progress ? Math.round(progress.percent) : 0,
               })}
             </span>
+            <div className={styles['about-update-bar-track']}>
+              <div className={styles['about-update-bar-fill']} style={{ width: `${progress ? Math.round(progress.percent) : 0}%` }} />
+            </div>
           </div>
         );
       case 'downloaded':

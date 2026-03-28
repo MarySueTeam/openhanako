@@ -204,7 +204,7 @@ jobs:
                     currentFile.size = parseInt(line.split('size:')[1].trim());
                   } else if (!line.startsWith(' ') && !line.startsWith('-')) {
                     const kv = line.match(/^(\w+):\s*(.+)/);
-                    if (kv && kv[1] !== 'files') obj[kv[1]] = kv[2].trim();
+                    if (kv && kv[1] !== 'files') obj[kv[1]] = kv[2].trim().replace(/^'(.*)'$/, '$1');
                     currentFile = null;
                   }
                 }

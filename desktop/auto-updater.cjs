@@ -140,6 +140,7 @@ function setupAutoUpdater() {
   autoUpdater.autoDownload = false;          // 由我们控制（磁盘空间检查后手动触发）
   autoUpdater.autoInstallOnAppQuit = false;  // 等用户手动触发
   autoUpdater.allowPrerelease = false;       // 由频道控制
+  autoUpdater.disableDifferentialDownload = true;
 
   // ── 事件 → 状态映射 ──
 
