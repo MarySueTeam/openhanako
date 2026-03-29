@@ -73,6 +73,7 @@ const Panel = memo(function Panel({ path, active }: { path: string; active: bool
   const hasMore = useStore(s => s.chatSessions[path]?.hasMore ?? false);
   const loadingMore = useStore(s => s.chatSessions[path]?.loadingMore ?? false);
   const isSessionStreaming = useStore(s => s.streamingSessions.includes(path));
+  const sessionAgentId = useStore(s => s.sessions.find(se => se.path === path)?.agentId ?? null);
   const ref = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const isAtBottom = useRef(true);
@@ -188,6 +189,7 @@ const Panel = memo(function Panel({ path, active }: { path: string; active: bool
             key={item.type === 'message' ? item.data.id : `c-${i}`}
             item={item}
             prevItem={i > 0 ? items[i - 1] : undefined}
+            agentId={sessionAgentId}
           />
         ))}
         {isSessionStreaming && (
@@ -227,9 +229,10 @@ function ScrollToBottomBtn() {
 
 // ── ItemView ──
 
-const ItemView = memo(function ItemView({ item, prevItem }: {
+const ItemView = memo(function ItemView({ item, prevItem, agentId }: {
   item: ChatListItem;
   prevItem?: ChatListItem;
+  agentId?: string | null;
 }) {
   if (item.type === 'compaction') return null;
   const msg = item.data;
@@ -238,5 +241,5 @@ const ItemView = memo(function ItemView({ item, prevItem }: {
   if (msg.role === 'user') {
     return <UserMessage message={msg} showAvatar={showAvatar} />;
   }
-  return <AssistantMessage message={msg} showAvatar={showAvatar} />;
+  return <AssistantMessage message={msg} showAvatar={showAvatar} agentId={agentId} />;
 });

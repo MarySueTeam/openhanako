@@ -11,7 +11,7 @@ import { XingCard } from './XingCard';
 import { SettingsConfirmCard } from './SettingsConfirmCard';
 import type { ChatMessage, ContentBlock } from '../../stores/chat-types';
 import { useStore } from '../../stores';
-import { hanaFetch } from '../../hooks/use-hana-fetch';
+import { hanaFetch, hanaUrl } from '../../hooks/use-hana-fetch';
 import { useI18n } from '../../hooks/use-i18n';
 import { openFilePreview, openSkillPreview } from '../../utils/file-preview';
 import { openPreview } from '../../stores/artifact-actions';
@@ -22,28 +22,31 @@ import styles from './Chat.module.css';
 interface Props {
   message: ChatMessage;
   showAvatar: boolean;
+  agentId?: string | null;
 }
 
-export const AssistantMessage = memo(function AssistantMessage({ message, showAvatar }: Props) {
-  const agentName = useStore(s => s.agentName) || 'Hanako';
-  const agentYuan = useStore(s => s.agentYuan) || 'hanako';
-  const agentAvatarUrl = useStore(s => s.agentAvatarUrl);
-  const sessionAgent = useStore(s => s.sessionAgent);
+export const AssistantMessage = memo(function AssistantMessage({ message, showAvatar, agentId }: Props) {
+  const agents = useStore(s => s.agents);
+  const globalAgentName = useStore(s => s.agentName) || 'Hanako';
+  const globalYuan = useStore(s => s.agentYuan) || 'hanako';
   const [avatarFailed, setAvatarFailed] = useState(false);
 
-  // 非主 agent session 用 sessionAgent 信息
-  const displayName = sessionAgent?.name || agentName;
-  const displayYuan = sessionAgent?.yuan || agentYuan;
+  // Resolve agent identity from agentId prop; fall back to global values
+  const agent = agentId ? agents.find(a => a.id === agentId) : null;
+  const displayName = agent?.name || globalAgentName;
+  const displayYuan = agent?.yuan || globalYuan;
   const fallbackAvatar = useMemo(() => {
     const types = (window.t?.('yuan.types') || {}) as Record<string, { avatar?: string }>;
     const entry = types[displayYuan] || types['hanako'];
     return `assets/${entry?.avatar || 'Hanako.png'}`;
   }, [displayYuan]);
-  const avatarSrc = sessionAgent?.avatarUrl || agentAvatarUrl || fallbackAvatar;
+  const avatarSrc = (agent?.hasAvatar && agentId)
+    ? hanaUrl(`/api/agents/${agentId}/avatar?t=${agentId}`)
+    : fallbackAvatar;
 
   useEffect(() => {
     setAvatarFailed(false);
-  }, [sessionAgent?.avatarUrl, agentAvatarUrl, fallbackAvatar]);
+  }, [avatarSrc, fallbackAvatar]);
 
   const blocks = message.blocks || [];
 
