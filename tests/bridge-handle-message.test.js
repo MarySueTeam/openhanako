@@ -56,7 +56,7 @@ function createMocks() {
 
   const bm = new BridgeManager({ engine, hub });
   // Inject mock adapter directly (bypass startPlatform)
-  bm._platforms.set("telegram", { adapter, status: "connected" });
+  bm._platforms.set("telegram", { adapter, status: "connected", agentId: null, platform: "telegram" });
   // Disable block streaming for simpler assertions
   bm.blockStreaming = false;
 
