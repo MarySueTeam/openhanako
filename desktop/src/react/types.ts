@@ -105,12 +105,6 @@ export interface TodoItem {
   done: boolean;
 }
 
-export interface SessionAgent {
-  name: string;
-  yuan: string;
-  avatarUrl: string | null;
-}
-
 // ── 浮动面板类型 ──
 export type ActivePanel = 'activity' | 'automation' | 'bridge' | null;
 export type TabType = 'chat' | 'channels';
