@@ -318,10 +318,6 @@ export function handleServerMessage(msg: any): void {
       if (sp) {
         useStore.setState(s => ({ inlineErrors: { ...s.inlineErrors, [sp]: msg.message } }));
       }
-      // Compat: only update global if current session
-      if (!msg.sessionPath || msg.sessionPath === useStore.getState().currentSessionPath) {
-        useStore.getState().setInlineError(msg.message);
-      }
       break;
     }
 
@@ -360,7 +356,6 @@ export function handleServerMessage(msg: any): void {
           useStore.setState(s => ({
             streamingSessions: s.streamingSessions.includes(sp) ? s.streamingSessions : [...s.streamingSessions, sp],
             inlineErrors: { ...s.inlineErrors, [sp]: null },
-            ...(sp === s.currentSessionPath ? { inlineError: null } : {}),
           }));
         } else {
           useStore.setState(s => ({

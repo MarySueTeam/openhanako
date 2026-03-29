@@ -3,9 +3,6 @@ export interface StreamingSlice {
   streamingSessions: string[];
   addStreamingSession: (path: string) => void;
   removeStreamingSession: (path: string) => void;
-  /** 内联错误提示（输入框上方显示，替代 toast） */
-  inlineError: string | null;
-  setInlineError: (msg: string | null) => void;
   /** 按 session path 存储的内联错误（权威源） */
   inlineErrors: Record<string, string | null>;
 }
@@ -22,7 +19,5 @@ export const createStreamingSlice = (
   removeStreamingSession: (path) => set((s) => ({
     streamingSessions: s.streamingSessions.filter(p => p !== path),
   })),
-  inlineError: null,
-  setInlineError: (msg) => set({ inlineError: msg }),
   inlineErrors: {},
 });
