@@ -1,6 +1,6 @@
 ---
 name: image-gen-guide
-description: Guide for using the image generation tool
+description: 当用户要求生成、绘制、画图片时，必须先读取此技能了解 prompt 编写规范和调用流程
 ---
 
 # 图片生成
