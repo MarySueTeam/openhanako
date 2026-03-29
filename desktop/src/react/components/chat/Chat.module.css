@@ -733,6 +733,7 @@
     background: var(--bg-card, var(--bg));
     border: 1px solid var(--border, rgba(0,0,0,0.1));
     border-radius: var(--radius-lg);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
     overflow: hidden;
     transition: background 0.15s, border-color 0.15s;
 }
@@ -805,8 +806,10 @@
     max-width: 100%;
     margin: var(--space-sm) 0;
     padding: 0.5rem;
+    background: var(--bg-card, var(--bg));
     border: 1px solid var(--border, rgba(0,0,0,0.1));
     border-radius: var(--radius-lg);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
     transition: border-color 0.15s;
 }
 

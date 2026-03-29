@@ -19,8 +19,19 @@ export const volcengineAdapter = {
       output_format: outputFormat,
     };
 
-    if (size || providerDefaults?.size) body.size = size || providerDefaults.size;
-    if (aspectRatio || providerDefaults?.aspect_ratio) body.aspect_ratio = aspectRatio || providerDefaults.aspect_ratio;
+    // 火山引擎 size 字段支持两种格式：
+    // 1. 比例字符串（"16:9"）+ quality 传分辨率档位（"2K"/"4K"）
+    // 2. 精确像素（"2848x1600"）
+    // 当有 aspect_ratio 时用方式 1，否则用 size 原值
+    const effectiveRatio = aspectRatio || providerDefaults?.aspect_ratio;
+    if (effectiveRatio) {
+      body.size = effectiveRatio;
+      // 分辨率档位通过 quality 字段传递
+      const resolution = size || providerDefaults?.size;
+      if (resolution) body.quality = resolution;
+    } else if (size || providerDefaults?.size) {
+      body.size = size || providerDefaults.size;
+    }
     if (image) body.image = Array.isArray(image) ? image : [image];
 
     // Apply provider-specific defaults (watermark defaults to false)
