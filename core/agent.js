@@ -31,7 +31,7 @@ import { createNotifyTool } from "../lib/tools/notify-tool.js";
 import { createUpdateSettingsTool } from "../lib/tools/update-settings-tool.js";
 import { createSubagentTool } from "../lib/tools/subagent-tool.js";
 import { READ_ONLY_BUILTIN_TOOLS } from "./config-coordinator.js";
-import { formatSkillsForPrompt } from "@mariozechner/pi-coding-agent";
+import { formatSkillsForPrompt } from "../lib/pi-sdk/index.js";
 import { runCompatChecks } from "../lib/compat/index.js";
 
 export class Agent {

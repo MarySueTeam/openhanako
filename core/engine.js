@@ -19,13 +19,7 @@ import { migrateConfigScope } from "../shared/migrate-config-scope.js";
 import { migrateToProvidersYaml } from "./migrate-providers.js";
 import { findModel } from "../shared/model-ref.js";
 import { PluginManager } from "./plugin-manager.js";
-import {
-  DefaultResourceLoader,
-  codingTools,
-  grepTool,
-  findTool,
-  lsTool,
-} from "@mariozechner/pi-coding-agent";
+import { DefaultResourceLoader, codingTools, grepTool, findTool, lsTool } from "../lib/pi-sdk/index.js";
 
 /** 已知的外部 AI 工具技能目录（相对 $HOME） */
 const WELL_KNOWN_SKILL_PATHS = [
