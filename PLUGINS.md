@@ -108,9 +108,12 @@ restricted 插件的 tool/command 代码在主进程运行，有完整的 Node.j
 ```json
 {
   "id": "my-advanced-plugin",
-  "trust": "full-access"
+  "trust": "full-access",
+  "minAppVersion": "0.82.0"
 }
 ```
+
+`minAppVersion`（可选）声明插件运行所需的最低 Hanako 版本。如果当前 app 版本低于该值，插件不会加载，状态标记为 `incompatible`。建议所有插件都声明此字段，避免用户在旧版本上遇到不兼容问题。
 
 用户需要在设置 → 插件页面开启"允许全权插件"开关。**开关关着时，full-access 插件完全不会加载**（不会部分加载），直到用户主动打开开关。
 

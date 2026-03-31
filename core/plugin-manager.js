@@ -7,17 +7,29 @@ const KNOWN_CONTRIBUTION_DIRS = [
   "tools", "routes", "skills", "agents", "commands", "providers",
 ];
 
+/** Semver compare: returns true if a >= b */
+function semverGte(a, b) {
+  const pa = (a || "0.0.0").split(".").map(Number);
+  const pb = (b || "0.0.0").split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return true;
+    if ((pa[i] || 0) < (pb[i] || 0)) return false;
+  }
+  return true;
+}
+
 export class PluginManager {
   /**
    * @param {{ pluginsDirs: string[], dataDir: string, bus: object }} opts
    * pluginsDirs: 多个扫描目录，先内嵌后用户（靠前的优先）
    * 兼容旧签名 { pluginsDir: string } → 自动转为单元素数组
    */
-  constructor({ pluginsDirs, pluginsDir, dataDir, bus, preferencesManager }) {
+  constructor({ pluginsDirs, pluginsDir, dataDir, bus, preferencesManager, appVersion }) {
     this._pluginsDirs = pluginsDirs || (pluginsDir ? [pluginsDir] : []);
     this._dataDir = dataDir;
     this._bus = bus;
     this._preferencesManager = preferencesManager || null;
+    this._appVersion = appVersion || "0.0.0";
     this._plugins = new Map();
     this._scanned = [];
     this._opQueue = Promise.resolve();
@@ -105,6 +117,16 @@ export class PluginManager {
           this._plugins.set(desc.id, entry);
           continue;
         }
+      }
+
+      // minAppVersion check
+      const minVer = desc.manifest?.minAppVersion;
+      if (minVer && !semverGte(this._appVersion, minVer)) {
+        entry.status = "incompatible";
+        entry.error = `requires app v${minVer}+, current v${this._appVersion}`;
+        this._plugins.set(desc.id, entry);
+        console.warn(`[plugin-manager] "${desc.id}" skipped: ${entry.error}`);
+        continue;
       }
 
       this._plugins.set(desc.id, entry);

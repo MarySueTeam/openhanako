@@ -108,9 +108,12 @@ Declare `"trust": "full-access"` in manifest:
 ```json
 {
   "id": "my-advanced-plugin",
-  "trust": "full-access"
+  "trust": "full-access",
+  "minAppVersion": "0.82.0"
 }
 ```
+
+`minAppVersion` (optional) declares the minimum Hanako version required to run the plugin. If the current app version is lower, the plugin will not load and its status is set to `incompatible`. All plugins should declare this field to prevent compatibility issues on older versions.
 
 The user must enable the "Allow full-access plugins" toggle in Settings → Plugins. **When the toggle is off, full-access plugins are not loaded at all** (no partial loading) until the user explicitly enables it.
 

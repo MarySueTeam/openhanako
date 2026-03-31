@@ -603,11 +603,19 @@ export class HanaEngine {
     const userPluginsDir = path.join(this.hanakoHome, "plugins");
     const pluginDataDir = path.join(this.hanakoHome, "plugin-data");
 
+    // Read app version for plugin compatibility check
+    let appVersion = "0.0.0";
+    try {
+      const pkgPath = path.join(this.productDir, "..", "package.json");
+      appVersion = JSON.parse(fs.readFileSync(pkgPath, "utf-8")).version || "0.0.0";
+    } catch {}
+
     this._pluginManager = new PluginManager({
       pluginsDirs: [builtinPluginsDir, userPluginsDir],
       dataDir: pluginDataDir,
       bus,
       preferencesManager: this._prefs,
+      appVersion,
     });
     this._pluginManager.scan();
     await this._pluginManager.loadAll();
