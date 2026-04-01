@@ -6,9 +6,11 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
 import { useStore } from '../stores';
 import { isImageFile } from '../utils/format';
-import { hanaFetch } from '../hooks/use-hana-fetch';
 import { fetchConfig } from '../hooks/use-config';
 import { useI18n } from '../hooks/use-i18n';
 import { ensureSession, loadSessions } from '../stores/session-actions';
@@ -24,6 +26,9 @@ import { ModelSelector } from './input/ModelSelector';
 import { SlashCommandMenu } from './input/SlashCommandMenu';
 import { SendButton } from './input/SendButton';
 import { QuotedSelectionCard } from './input/QuotedSelectionCard';
+import { SkillBadge } from './input/extensions/skill-badge';
+import { serializeEditor } from '../utils/editor-serializer';
+import { useSkillSlashItems } from '../hooks/use-slash-items';
 import {
   XING_PROMPT, executeDiary, executeCompact, buildSlashCommands,
   type SlashItem,
@@ -68,7 +73,6 @@ function InputAreaInner() {
   const sessionHasMessages = useStore(s => !!(s.currentSessionPath && s.chatSessions[s.currentSessionPath]?.items?.length));
 
   // Local state
-  const [inputText, setInputText] = useState('');
   const [planMode, setPlanMode] = useState(false);
   const [sending, setSending] = useState(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -76,14 +80,45 @@ function InputAreaInner() {
   const [slashBusy, setSlashBusy] = useState<string | null>(null);
   const [slashResult, setSlashResult] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isComposing = useRef(false);
+
+  // ── Placeholder ──
+  const placeholder = (() => {
+    const yuanPh = t(`yuan.placeholder.${agentYuan}`);
+    return (yuanPh && !yuanPh.startsWith('yuan.')) ? yuanPh : t('input.placeholder');
+  })();
+
+  // ── TipTap editor ──
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: false,
+        blockquote: false,
+        codeBlock: false,
+        horizontalRule: false,
+        dropcursor: false,
+        gapcursor: false,
+      }),
+      Placeholder.configure({ placeholder }),
+      SkillBadge,
+    ],
+    editorProps: {
+      attributes: {
+        class: styles['input-box'],
+        id: 'inputBox',
+        spellcheck: 'false',
+      },
+    },
+  });
+
+  // Derive inputText for backward compat with existing code
+  const inputText = editor?.getText() ?? '';
 
   // Focus trigger from store
   const inputFocusTrigger = useStore(s => s.inputFocusTrigger);
   useEffect(() => {
-    if (inputFocusTrigger > 0) textareaRef.current?.focus();
-  }, [inputFocusTrigger]);
+    if (inputFocusTrigger > 0) editor?.commands.focus();
+  }, [inputFocusTrigger, editor]);
 
   // Zustand actions
   const addAttachedFile = useStore(s => s.addAttachedFile);
@@ -138,22 +173,24 @@ function InputAreaInner() {
   }, []);
 
   const diaryFn = useCallback(
-    executeDiary(t, showSlashResult, setSlashBusy, setInputText, setSlashMenuOpen),
-    [t, showSlashResult],
+    executeDiary(t, showSlashResult, setSlashBusy, () => { editor?.commands.clearContent(); }, setSlashMenuOpen),
+    [t, showSlashResult, editor],
   );
   const xingFn = useCallback(async () => {
-    setInputText('');
+    editor?.commands.clearContent();
     setSlashMenuOpen(false);
     await sendAsUser(XING_PROMPT);
-  }, [sendAsUser]);
+  }, [sendAsUser, editor]);
   const compactFn = useCallback(
-    executeCompact(setSlashBusy, setInputText, setSlashMenuOpen),
-    [],
+    executeCompact(setSlashBusy, () => { editor?.commands.clearContent(); }, setSlashMenuOpen),
+    [editor],
   );
 
+  const skillItems = useSkillSlashItems();
+
   const slashCommands = useMemo(
-    () => buildSlashCommands(t, diaryFn, xingFn, compactFn),
-    [diaryFn, xingFn, compactFn, t],
+    () => [...buildSlashCommands(t, diaryFn, xingFn, compactFn), ...skillItems],
+    [diaryFn, xingFn, compactFn, t, skillItems],
   );
 
   const filteredCommands = useMemo(() => {
@@ -162,33 +199,26 @@ function InputAreaInner() {
     return slashCommands.filter(c => c.name.startsWith(query));
   }, [inputText, slashCommands]);
 
-  const handleInputChange = useCallback((value: string) => {
-    setInputText(value);
-    if (value.startsWith('/') && value.length <= 20) {
-      setSlashMenuOpen(true);
-      setSlashSelected(0);
-    } else {
-      setSlashMenuOpen(false);
-    }
-  }, []);
+  // Slash menu detection via TipTap onUpdate
+  useEffect(() => {
+    if (!editor) return;
+    const handler = () => {
+      const text = editor.getText();
+      if (text.startsWith('/') && text.length <= 20) {
+        setSlashMenuOpen(true);
+        setSlashSelected(0);
+      } else {
+        setSlashMenuOpen(false);
+      }
+    };
+    editor.on('update', handler);
+    return () => { editor.off('update', handler); };
+  }, [editor]);
 
   // Can send?
-  const hasContent = inputText.trim().length > 0 || attachedFiles.length > 0 || docContextAttached || !!quotedSelection;
+  const hasContent = inputText.trim().length > 0 || attachedFiles.length > 0 || docContextAttached || !!quotedSelection
+    || (editor?.getJSON().content?.some(n => n.type === 'skillBadge') ?? false);
   const canSend = hasContent && connected && !isStreaming;
-
-  // ── Auto resize ──
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-  }, [inputText]);
-
-  // ── Placeholder ──
-  const placeholder = (() => {
-    const yuanPh = t(`yuan.placeholder.${agentYuan}`);
-    return (yuanPh && !yuanPh.startsWith('yuan.')) ? yuanPh : t('input.placeholder');
-  })();
 
   // ── Paste image ──
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
@@ -232,14 +262,33 @@ function InputAreaInner() {
     return () => window.removeEventListener('hana-plan-mode', handler);
   }, [setThinkingLevel]);
 
+  // ── Handle slash selection (builtin vs skill) ──
+  const handleSlashSelect = useCallback((item: SlashItem) => {
+    if (item.type === 'builtin') {
+      item.execute();
+      return;
+    }
+    if (!editor) return;
+    editor.chain()
+      .clearContent()
+      .insertContent({ type: 'skillBadge', attrs: { name: item.name } })
+      .insertContent(' ')
+      .focus()
+      .run();
+    setSlashMenuOpen(false);
+  }, [editor]);
+
   // ── Send message ──
   const handleSend = useCallback(async () => {
-    const text = inputText.trim();
+    if (!editor) return;
+    const editorJson = editor.getJSON();
+    const { text: rawText, skills } = serializeEditor(editorJson);
+    const text = rawText.trim();
 
-    // 斜杠命令拦截
-    if (text.startsWith('/') && slashMenuOpen && filteredCommands.length > 0) {
+    // 斜杠命令拦截（仅当无 skill badge 时）
+    if (text.startsWith('/') && skills.length === 0 && slashMenuOpen && filteredCommands.length > 0) {
       const cmd = filteredCommands[slashSelected] || filteredCommands[0];
-      if (cmd) { cmd.execute(); return; }
+      if (cmd) { handleSlashSelect(cmd); return; }
     }
 
     const hasFiles = attachedFiles.length > 0;
@@ -320,6 +369,7 @@ function InputAreaInner() {
           data: {
             id: `user-${Date.now()}`, role: 'user', text,
             textHtml: renderMarkdown(text),
+            skills: skills.length > 0 ? skills : undefined,
             quotedText: qs?.text,
             attachments: allFiles.length > 0 ? allFiles.map(f => {
               const cached = imageBase64Map.get(f.path);
@@ -334,23 +384,29 @@ function InputAreaInner() {
         useStore.setState({ welcomeVisible: false });
       }
 
-      setInputText('');
+      editor.commands.clearContent();
       clearAttachedFiles();
       const qs2 = useStore.getState().quotedSelection;
       if (qs2) useStore.getState().clearQuotedSelection();
 
       const ws = getWebSocket();
-      const wsMsg: Record<string, unknown> = { type: 'prompt', text: finalText, sessionPath: useStore.getState().currentSessionPath };
+      const wsMsg: Record<string, unknown> = {
+        type: 'prompt',
+        text: finalText,
+        sessionPath: useStore.getState().currentSessionPath,
+      };
       if (images.length > 0) wsMsg.images = images;
+      if (skills.length > 0) wsMsg.skills = skills;
       ws?.send(JSON.stringify(wsMsg));
     } finally {
       setSending(false);
     }
-  }, [inputText, attachedFiles, docContextAttached, connected, isStreaming, sending, pendingNewSession, currentDoc, clearAttachedFiles, setDocContextAttached, slashMenuOpen, filteredCommands, slashSelected]);
+  }, [editor, attachedFiles, docContextAttached, connected, isStreaming, sending, pendingNewSession, currentDoc, clearAttachedFiles, setDocContextAttached, slashMenuOpen, filteredCommands, slashSelected, handleSlashSelect]);
 
   // ── Steer ──
   const handleSteer = useCallback(async () => {
-    const text = inputText.trim();
+    if (!editor) return;
+    const text = editor.getText().trim();
     if (!text || !isStreaming) return;
     const ws = getWebSocket();
     if (!ws) return;
@@ -362,9 +418,9 @@ function InputAreaInner() {
         data: { id: `user-${Date.now()}`, role: 'user', text, textHtml: renderMarkdown(text) },
       });
     }
-    setInputText('');
+    editor.commands.clearContent();
     ws.send(JSON.stringify({ type: 'steer', text, sessionPath: useStore.getState().currentSessionPath }));
-  }, [inputText, isStreaming]);
+  }, [editor, isStreaming]);
 
   // ── Stop ──
   const handleStop = useCallback(() => {
@@ -374,18 +430,23 @@ function InputAreaInner() {
   }, [isStreaming]);
 
   // ── Key handler ──
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const handleEditorKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (slashMenuOpen && filteredCommands.length > 0) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setSlashSelected(i => (i + 1) % filteredCommands.length); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); setSlashSelected(i => (i - 1 + filteredCommands.length) % filteredCommands.length); return; }
-      if (e.key === 'Tab') { e.preventDefault(); const cmd = filteredCommands[slashSelected]; if (cmd) setInputText('/' + cmd.name); return; }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const cmd = filteredCommands[slashSelected];
+        if (cmd) editor?.commands.setContent('/' + cmd.name);
+        return;
+      }
       if (e.key === 'Escape') { e.preventDefault(); setSlashMenuOpen(false); return; }
     }
     if (e.key === 'Enter' && !e.shiftKey && !isComposing.current) {
       e.preventDefault();
-      if (isStreaming && inputText.trim()) handleSteer(); else handleSend();
+      if (isStreaming && (editor?.getText().trim())) handleSteer(); else handleSend();
     }
-  }, [handleSend, handleSteer, isStreaming, inputText, slashMenuOpen, filteredCommands, slashSelected]);
+  }, [handleSend, handleSteer, isStreaming, editor, slashMenuOpen, filteredCommands, slashSelected]);
 
   return (
     <>
@@ -421,14 +482,17 @@ function InputAreaInner() {
       )}
       {slashMenuOpen && filteredCommands.length > 0 && (
         <SlashCommandMenu commands={filteredCommands} selected={slashSelected} busy={slashBusy}
-          onSelect={(cmd) => cmd.execute()} onHover={(i) => setSlashSelected(i)} />
+          onSelect={handleSlashSelect} onHover={(i) => setSlashSelected(i)} />
       )}
       <div className={styles['input-wrapper']}>
-        <textarea ref={textareaRef} id="inputBox" className={styles['input-box']} placeholder={placeholder}
-          rows={1} spellCheck={false} value={inputText}
-          onChange={e => handleInputChange(e.target.value)} onKeyDown={handleKeyDown} onPaste={handlePaste}
+        <div
+          onKeyDown={handleEditorKeyDown}
+          onPaste={handlePaste}
           onCompositionStart={() => { isComposing.current = true; }}
-          onCompositionEnd={() => { isComposing.current = false; }} />
+          onCompositionEnd={() => { isComposing.current = false; }}
+        >
+          <EditorContent editor={editor} />
+        </div>
         <div className={styles['input-bottom-bar']}>
           <div className={styles['input-actions']}>
             <PlanModeButton enabled={planMode} onToggle={setPlanMode} />

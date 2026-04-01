@@ -861,3 +861,32 @@
     flex-wrap: wrap;
     gap: 0.3rem;
 }
+
+/* TipTap editor container */
+.input-box :global(.tiptap) {
+    outline: none;
+    min-height: 1.6em;
+    max-height: 120px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+.input-box :global(.tiptap)::-webkit-scrollbar {
+    display: none;
+}
+
+.input-box :global(.tiptap p.is-editor-empty:first-child::before) {
+    content: attr(data-placeholder);
+    color: var(--text-muted);
+    pointer-events: none;
+    float: left;
+    height: 0;
+}
+
+.input-box :global(.tiptap p) {
+    margin: 0;
+}
