@@ -239,6 +239,36 @@ function hasExistingConfig() {
   return false;
 }
 
+/**
+ * 一次性迁移：为 onboarding 功能上线前的老用户补写 setupComplete 标记。
+ * 判断依据：agents/ 下存在至少一个含 config.yaml 的目录 → 用户配置过 agent → 老用户。
+ * 补写后后续启动直接走 isSetupComplete() 快速路径，不再弹任何 onboarding 窗口。
+ */
+function migrateSetupComplete() {
+  if (isSetupComplete()) return;
+  const agentsDir = path.join(hanakoHome, "agents");
+  try {
+    const entries = fs.readdirSync(agentsDir, { withFileTypes: true });
+    const hasAgent = entries.some(
+      (e) => e.isDirectory() && fs.existsSync(path.join(agentsDir, e.name, "config.yaml"))
+    );
+    if (!hasAgent) return;
+  } catch {
+    return;
+  }
+  const prefsPath = path.join(hanakoHome, "user", "preferences.json");
+  try {
+    let prefs = {};
+    try { prefs = JSON.parse(fs.readFileSync(prefsPath, "utf-8")); } catch {}
+    prefs.setupComplete = true;
+    fs.mkdirSync(path.dirname(prefsPath), { recursive: true });
+    fs.writeFileSync(prefsPath, JSON.stringify(prefs, null, 2) + "\n", "utf-8");
+    console.log("[desktop] 检测到老用户（已有 agent 配置），自动补写 setupComplete");
+  } catch (err) {
+    console.error("[desktop] migrateSetupComplete failed:", err);
+  }
+}
+
 // ── 启动 Server ──
 // 收集 server 的 stdout/stderr 用于崩溃诊断
 let _serverLogs = [];
@@ -2161,6 +2191,7 @@ app.whenReady().then(async () => {
     }
 
     // 4. 检测是否需要 onboarding
+    migrateSetupComplete();
     if (isSetupComplete()) {
       // 已完成配置：直接创建主窗口
       createMainWindow();
