@@ -146,7 +146,6 @@ jobs:
             dist/*.dmg
             dist/*.zip
             dist/*.exe
-            dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: error
 
