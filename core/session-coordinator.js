@@ -110,12 +110,27 @@ export class SessionCoordinator {
       getAppendSystemPrompt: {
         value: () => {
           const base = baseResourceLoader.getAppendSystemPrompt();
-          if (!sessionEntry.planMode) return base;
-          const isZh = String(this._d.getAgent().config?.locale || "").startsWith("zh");
-          const planModePrompt = isZh
-            ? "【系统通知】当前处于「只读模式」，用户在设置中关闭了「操作电脑」权限。你只能使用只读工具（read、grep、find、ls）和自定义工具。不能执行写入、编辑、删除等操作。如果用户要求你做这些操作，请告知当前处于只读模式，需要先在输入框旁的按钮开启「操作电脑」权限。"
-            : "[System Notice] Currently in READ-ONLY MODE. The user has disabled 'Computer Access' in settings. You can only use read-only tools (read, grep, find, ls) and custom tools. You cannot write, edit, or delete. If the user asks for these operations, inform them that read-only mode is active and they need to enable 'Computer Access' via the button next to the input area.";
-          return [...base, planModePrompt];
+          const parts = [...base];
+
+          // Plan mode prompt (existing logic, preserved verbatim)
+          if (sessionEntry.planMode) {
+            const isZh = String(this._d.getAgent().config?.locale || "").startsWith("zh");
+            const planModePrompt = isZh
+              ? "【系统通知】当前处于「只读模式」，用户在设置中关闭了「操作电脑」权限。你只能使用只读工具（read、grep、find、ls）和自定义工具。不能执行写入、编辑、删除等操作。如果用户要求你做这些操作，请告知当前处于只读模式，需要先在输入框旁的按钮开启「操作电脑」权限。"
+              : "[System Notice] Currently in READ-ONLY MODE. The user has disabled 'Computer Access' in settings. You can only use read-only tools (read, grep, find, ls) and custom tools. You cannot write, edit, or delete. If the user asks for these operations, inform them that read-only mode is active and they need to enable 'Computer Access' via the button next to the input area.";
+            parts.push(planModePrompt);
+          }
+
+          // Deferred result prompt (new)
+          if (this._d.getDeferredResultStore?.()) {
+            const isZh = String(this._d.getAgent()?.config?.locale || "").startsWith("zh");
+            parts.push(isZh
+              ? "收到 <hana-background-result> 标签中的内容时，这是后台任务完成的系统通知，不是用户发送的消息。请根据通知内容自然地告知用户任务结果。如果通知中包含文件路径，使用 stage_files 工具呈现给用户。"
+              : "When you receive content inside <hana-background-result> tags, this is a system notification about a completed background task, NOT a user message. Respond naturally to inform the user about the task result. If file paths are included, use stage_files to present them to the user."
+            );
+          }
+
+          return parts;
         },
       },
     });
@@ -186,6 +201,7 @@ export class SessionCoordinator {
         const agent = this._d.getAgentById(entry.agentId) || this._d.getAgent();
         agent?._memoryTicker?.notifySessionEnd(key).catch(() => {});
         entry.unsub();
+        this._d.getDeferredResultStore?.()?.clearBySession(key);
         this._sessions.delete(key);
         if (this._sessions.size <= MAX_CACHED_SESSIONS) break;
       }
@@ -413,6 +429,7 @@ export class SessionCoordinator {
 
       // 清理该 session 的 pending confirmation
       this._d.getConfirmStore?.()?.abortBySession(sessionPath);
+      this._d.getDeferredResultStore?.()?.clearBySession(sessionPath);
     }
     if (sessionPath === this.currentSessionPath) {
       this._session = null;
