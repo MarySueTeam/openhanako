@@ -352,10 +352,10 @@ function App() {
         <PreviewPanel />
 
         {/* Right sidebar (Jian) */}
-        <aside className={`jian-sidebar${jianOpen && !isPluginTab ? '' : ' collapsed'}`} id="jianSidebar">
+        <aside className={`jian-sidebar${jianOpen ? '' : ' collapsed'}`} id="jianSidebar">
           <div className="resize-handle resize-handle-left" id="jianResizeHandle"></div>
           <div className="jian-sidebar-inner">
-            <div className={`jian-chat-content${currentTab === 'chat' ? '' : ' hidden'}`}>
+            <div className={`jian-chat-content${currentTab === 'chat' || isPluginTab ? '' : ' hidden'}`}>
               {jianView === 'desk' ? (
                 <RegionalErrorBoundary region="desk">
                   <DeskSection />
