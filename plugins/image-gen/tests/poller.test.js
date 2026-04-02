@@ -8,6 +8,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { shouldCheckThisTick, Poller } from "../lib/poller.js";
 
+// Mock readImageSize so poller tests don't depend on real file I/O.
+vi.mock("../lib/image-size.js", () => ({
+  readImageSize: vi.fn(async () => null),
+}));
+
 // ── shouldCheckThisTick ──────────────────────────────────────────────────────
 
 describe("shouldCheckThisTick", () => {
@@ -317,7 +322,10 @@ describe("Poller", () => {
     poller.start();
     poller.add("task1");
 
-    await vi.advanceTimersByTimeAsync(5_000);
+    // MAX_CONSECUTIVE_ERRORS = 5; need 5 ticks to exhaust the retry budget.
+    for (let i = 0; i < 5; i++) {
+      await vi.advanceTimersByTimeAsync(5_000);
+    }
 
     expect(mockStore.update).toHaveBeenCalledWith(
       "task1",

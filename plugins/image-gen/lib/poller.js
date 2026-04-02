@@ -12,6 +12,9 @@
  * and marks the task successful immediately.
  */
 
+import { join as pathJoin } from "node:path";
+import { readImageSize } from "./image-size.js";
+
 const TICK_MS = 5_000;
 const TWO_MINUTES = 2 * 60 * 1000;
 const TEN_MINUTES = 10 * 60 * 1000;
@@ -110,6 +113,15 @@ export class Poller {
 
   // ── Private ────────────────────────────────────────────────────────────────
 
+  async _readImageDimensions(files) {
+    if (!files?.length) return { imageWidth: null, imageHeight: null };
+    const filePath = pathJoin(this._generatedDir, files[0]);
+    const size = await readImageSize(filePath).catch(() => null);
+    return size
+      ? { imageWidth: size.width, imageHeight: size.height }
+      : { imageWidth: null, imageHeight: null };
+  }
+
   _tick() {
     this._tickCount += 1;
     const tick = this._tickCount;
@@ -145,8 +157,10 @@ export class Poller {
   async _checkTask(taskId, task) {
     // Fake-async: adapter populated files synchronously during submit.
     if (task.files && task.files.length > 0) {
+      const dims = await this._readImageDimensions(task.files);
       this._store.update(taskId, {
         status: "done",
+        ...dims,
         completedAt: new Date().toISOString(),
       });
       this._active.delete(taskId);
@@ -203,9 +217,11 @@ export class Poller {
 
     if (status === "success") {
       const files = result.files ?? [];
+      const dims = await this._readImageDimensions(files);
       this._store.update(taskId, {
         status: "done",
         files,
+        ...dims,
         completedAt: new Date().toISOString(),
       });
       this._active.delete(taskId);
