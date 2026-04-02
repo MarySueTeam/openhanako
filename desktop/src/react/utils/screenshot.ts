@@ -128,12 +128,13 @@ export async function takeScreenshot(targetMessageId: string, sessionPath: strin
     if (ok) {
       state.addToast(t('common.screenshotSaved').replace('{path}', filePath), 'success', 4000);
     } else {
-      state.addToast(t('common.screenshotFailed'), 'error');
+      state.addToast(`${t('common.screenshotFailed')}: write failed → ${filePath}`, 'error', 8000);
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('[screenshot]', err);
     const t = window.t ?? ((p: string) => p);
-    state.addToast(t('common.screenshotFailed'), 'error');
+    const detail = err?.message || String(err);
+    state.addToast(`${t('common.screenshotFailed')}: ${detail}`, 'error', 8000);
   } finally {
     container.remove();
   }
