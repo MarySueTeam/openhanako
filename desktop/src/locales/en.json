@@ -491,7 +491,8 @@
       "skills": "Skills",
       "bridge": "Social",
       "plugins": "Plugins",
-      "about": "About"
+      "about": "About",
+      "security": "Security"
     },
     "appearance": {
       "title": "Appearance",
@@ -571,15 +572,6 @@
       "license": "License",
       "copyright": "Copyright",
       "licenseToggle": "License full text",
-      "permissions": "Permissions",
-      "fullAccess": "Full Access Mode",
-      "fullAccessDesc": "Disable sandbox isolation and command restrictions. The agent gets full filesystem and terminal access (takes effect on new sessions)",
-      "fullAccessWarningTitle": "About Full Access Mode",
-      "fullAccessWarningBody1": "Once enabled, the agent will have full system privileges, including:",
-      "fullAccessWarningBody2": "1. Filesystem is not sandboxed — can read/write any path\n2. Terminal commands are unrestricted — can run sudo, chmod, etc.\n3. OS-level isolation (macOS Seatbelt / Linux bubblewrap) will be disabled",
-      "fullAccessWarningBody3": "Only recommended when you fully trust the agent's behavior and need system-level operations.",
-      "fullAccessCancel": "Cancel",
-      "fullAccessConfirm": "I understand the risks, enable",
       "updateAvailable": "New version available: v{version}",
       "updateDownload": "Download",
       "updateChecking": "Checking for updates…",
@@ -593,6 +585,24 @@
       "updateNeedInstall": "Please move Hanako to the Applications folder first",
       "updateDiskSpace": "Not enough disk space to download update",
       "betaUpdates": "Receive beta updates"
+    },
+    "security": {
+      "sandbox": "Sandbox",
+      "sandboxDesc": "Restrict the AI's filesystem access to the workspace and necessary data folders only",
+      "sandboxWarning": "Disabling the sandbox allows the AI to access any file on the system, which may have unexpected consequences",
+      "fileBackup": "File Backup",
+      "fileBackupDesc": "Automatically save original file content before AI modifications or deletions",
+      "retention": "Retention",
+      "retention1d": "1 day",
+      "retention3d": "3 days",
+      "retention7d": "7 days",
+      "maxFileSize": "Ignore files larger than",
+      "viewBackups": "View Backups",
+      "hideBackups": "Hide",
+      "restoreBtn": "Restore",
+      "noBackups": "No backups yet",
+      "restoreSuccess": "Restored",
+      "restoreFailed": "Restore failed"
     },
     "me": {
       "title": "Me",
@@ -1598,7 +1608,9 @@
       "workingDir": "Working Directory",
       "workingDirDesc": "Agent file system working directory",
       "theme": "Theme",
-      "chatModel": "Chat Model"
+      "chatModel": "Chat Model",
+      "fileBackup": "File Backup",
+      "fileBackupDesc": "Auto-backup files before AI modifications"
     }
   },
   "cli": {

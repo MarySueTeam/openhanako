@@ -489,7 +489,8 @@
       "skills": "스킬",
       "bridge": "소셜",
       "plugins": "플러그인",
-      "about": "소개"
+      "about": "소개",
+      "security": "보안"
     },
     "appearance": {
       "title": "외관",
@@ -567,15 +568,6 @@
       "license": "라이선스",
       "copyright": "저작권",
       "licenseToggle": "라이선스 전문",
-      "permissions": "권한",
-      "fullAccess": "전체 접근 모드",
-      "fullAccessDesc": "샌드박스 격리와 명령 제한을 비활성화해요. 에이전트가 파일 시스템과 터미널에 완전히 접근할 수 있어요 (새 세션부터 적용)",
-      "fullAccessWarningTitle": "전체 접근 모드에 대해서",
-      "fullAccessWarningBody1": "활성화하면 에이전트가 다음을 포함한 전체 시스템 권한을 가지게 돼요:",
-      "fullAccessWarningBody2": "1. 파일 시스템이 샌드박스되지 않아 모든 경로를 읽고 쓸 수 있어요\n2. 터미널 명령이 제한되지 않아 sudo, chmod 등을 실행할 수 있어요\n3. OS 수준 격리(macOS Seatbelt / Linux bubblewrap)가 비활성화돼요",
-      "fullAccessWarningBody3": "에이전트의 행동을 완전히 신뢰하고 시스템 수준 작업이 필요한 경우에만 권장해요.",
-      "fullAccessCancel": "취소",
-      "fullAccessConfirm": "위험을 이해했어요, 활성화",
       "updateAvailable": "새 버전 출시: v{version}",
       "updateDownload": "다운로드",
       "updateChecking": "업데이트 확인 중…",
@@ -589,6 +581,24 @@
       "updateNeedInstall": "먼저 Hanako를 응용 프로그램 폴더로 이동하세요",
       "updateDiskSpace": "디스크 공간이 부족하여 업데이트를 다운로드할 수 없습니다",
       "betaUpdates": "베타 업데이트 수신"
+    },
+    "security": {
+      "sandbox": "샌드박스",
+      "sandboxDesc": "AI의 파일 시스템 접근을 작업 디렉토리와 필수 데이터 폴더로 제한합니다",
+      "sandboxWarning": "샌드박스를 비활성화하면 AI가 시스템의 모든 파일에 접근할 수 있어 예상치 못한 결과가 발생할 수 있습니다",
+      "fileBackup": "파일 백업",
+      "fileBackupDesc": "AI가 파일을 수정하거나 삭제하기 전에 원본 내용을 자동으로 저장합니다",
+      "retention": "보존 기간",
+      "retention1d": "1일",
+      "retention3d": "3일",
+      "retention7d": "7일",
+      "maxFileSize": "다음 크기 이상 무시",
+      "viewBackups": "백업 보기",
+      "hideBackups": "닫기",
+      "restoreBtn": "복원",
+      "noBackups": "아직 백업이 없습니다",
+      "restoreSuccess": "복원됨",
+      "restoreFailed": "복원 실패"
     },
     "me": {
       "title": "나",
@@ -1559,7 +1569,9 @@
       "workingDir": "작업 디렉토리",
       "workingDirDesc": "Agent의 파일 시스템 작업 디렉토리",
       "theme": "테마",
-      "chatModel": "대화 모델"
+      "chatModel": "대화 모델",
+      "fileBackup": "파일 백업",
+      "fileBackupDesc": "AI 수정 전 파일 자동 백업"
     }
   },
   "cli": {

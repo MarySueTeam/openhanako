@@ -489,7 +489,8 @@
       "skills": "スキル",
       "bridge": "ソーシャル",
       "plugins": "プラグイン",
-      "about": "概要"
+      "about": "概要",
+      "security": "セキュリティ"
     },
     "appearance": {
       "title": "外観",
@@ -567,15 +568,6 @@
       "license": "ライセンス",
       "copyright": "著作権",
       "licenseToggle": "ライセンス全文",
-      "permissions": "権限",
-      "fullAccess": "フルアクセスモード",
-      "fullAccessDesc": "サンドボックス隔離とコマンド制限を無効にします。エージェントがファイルシステムとターミナルに完全にアクセスできるようになります（新しいセッションから有効）",
-      "fullAccessWarningTitle": "フルアクセスモードについて",
-      "fullAccessWarningBody1": "有効にすると、エージェントに完全なシステム権限が付与されます：",
-      "fullAccessWarningBody2": "1. ファイルシステムのサンドボックスが解除され、すべてのパスに読み書き可能\n2. ターミナルコマンドが無制限になり、sudo、chmod 等を実行可能\n3. OS レベルの隔離（macOS Seatbelt / Linux bubblewrap）が無効化",
-      "fullAccessWarningBody3": "エージェントの動作を完全に信頼し、システムレベルの操作が必要な場合のみ推奨します。",
-      "fullAccessCancel": "キャンセル",
-      "fullAccessConfirm": "リスクを理解した上で有効にする",
       "updateAvailable": "新しいバージョンがあります：v{version}",
       "updateDownload": "ダウンロード",
       "updateChecking": "アップデートを確認中…",
@@ -589,6 +581,24 @@
       "updateNeedInstall": "先に Hanako をアプリケーションフォルダに移動してください",
       "updateDiskSpace": "ディスク容量不足のため、アップデートをダウンロードできません",
       "betaUpdates": "ベータ版アップデートを受け取る"
+    },
+    "security": {
+      "sandbox": "サンドボックス",
+      "sandboxDesc": "AIのファイルシステムアクセスをワークスペースと必要なデータフォルダに制限します",
+      "sandboxWarning": "サンドボックスを無効にすると、AIがシステム上の任意のファイルにアクセスできるようになり、予期しない結果を招く可能性があります",
+      "fileBackup": "ファイルバックアップ",
+      "fileBackupDesc": "AIがファイルを変更・削除する前に元の内容を自動保存します",
+      "retention": "保持期間",
+      "retention1d": "1日",
+      "retention3d": "3日",
+      "retention7d": "7日",
+      "maxFileSize": "次のサイズ以上を無視",
+      "viewBackups": "バックアップを表示",
+      "hideBackups": "閉じる",
+      "restoreBtn": "復元",
+      "noBackups": "バックアップはまだありません",
+      "restoreSuccess": "復元しました",
+      "restoreFailed": "復元に失敗しました"
     },
     "me": {
       "title": "自分",
@@ -1559,7 +1569,9 @@
       "workingDir": "作業ディレクトリ",
       "workingDirDesc": "Agent のファイルシステム作業ディレクトリ",
       "theme": "テーマ",
-      "chatModel": "チャットモデル"
+      "chatModel": "チャットモデル",
+      "fileBackup": "ファイルバックアップ",
+      "fileBackupDesc": "AI変更前にファイルを自動バックアップ"
     }
   },
   "cli": {

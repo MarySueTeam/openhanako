@@ -489,7 +489,8 @@
       "skills": "技能",
       "bridge": "社群平台",
       "plugins": "插件",
-      "about": "關於"
+      "about": "關於",
+      "security": "安全"
     },
     "appearance": {
       "title": "外觀",
@@ -567,15 +568,6 @@
       "license": "許可證",
       "copyright": "版權",
       "licenseToggle": "許可證全文",
-      "permissions": "權限",
-      "fullAccess": "全權模式",
-      "fullAccessDesc": "關閉沙盒隔離和命令限制，Agent 擁有完整的檔案系統和終端權限（新對話生效）",
-      "fullAccessWarningTitle": "關於全權模式",
-      "fullAccessWarningBody1": "開啟後，Agent 將獲得完整的系統權限，包括：",
-      "fullAccessWarningBody2": "1. 檔案系統不受沙盒保護，可讀寫任意路徑\n2. 終端命令不受限制，可執行 sudo、chmod 等操作\n3. OS 級隔離（macOS Seatbelt / Linux bubblewrap）將被關閉",
-      "fullAccessWarningBody3": "僅建議在完全信任 Agent 行為且需要系統級操作時開啟。",
-      "fullAccessCancel": "取消",
-      "fullAccessConfirm": "我了解風險，開啟",
       "updateAvailable": "有新版本可用：v{version}",
       "updateDownload": "下載",
       "updateChecking": "正在檢查更新…",
@@ -589,6 +581,24 @@
       "updateNeedInstall": "請先將 Hanako 移動到應用程式資料夾",
       "updateDiskSpace": "磁碟空間不足，無法下載更新",
       "betaUpdates": "接收測試版更新"
+    },
+    "security": {
+      "sandbox": "沙盒",
+      "sandboxDesc": "限制 AI 的檔案系統存取範圍，僅允許操作工作目錄和必要的資料夾",
+      "sandboxWarning": "關閉沙盒後 AI 可以存取系統上的任意檔案，可能產生意想不到的結果",
+      "fileBackup": "檔案備份",
+      "fileBackupDesc": "AI 修改或刪除檔案前自動儲存原始內容",
+      "retention": "保留時間",
+      "retention1d": "1 天",
+      "retention3d": "3 天",
+      "retention7d": "7 天",
+      "maxFileSize": "忽略大於",
+      "viewBackups": "查看備份",
+      "hideBackups": "收起",
+      "restoreBtn": "還原",
+      "noBackups": "暫無備份紀錄",
+      "restoreSuccess": "已還原",
+      "restoreFailed": "還原失敗"
     },
     "me": {
       "title": "我",
@@ -1559,7 +1569,9 @@
       "workingDir": "工作目錄",
       "workingDirDesc": "Agent 的檔案系統工作目錄",
       "theme": "主題",
-      "chatModel": "對話模型"
+      "chatModel": "對話模型",
+      "fileBackup": "檔案備份",
+      "fileBackupDesc": "AI 修改前自動備份檔案"
     }
   },
   "cli": {
