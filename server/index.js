@@ -169,7 +169,10 @@ const confirmStore = new ConfirmStore();
 engine.setConfirmStore(confirmStore);
 
 // --- Deferred Result Store ---
-const deferredResultStore = new DeferredResultStore(hub.eventBus);
+const deferredResultStore = new DeferredResultStore(
+  hub.eventBus,
+  path.join(hanakoHome, ".ephemeral", "deferred-tasks.json"),
+);
 engine.setDeferredResultStore(deferredResultStore);
 
 // Bus handlers for plugin access

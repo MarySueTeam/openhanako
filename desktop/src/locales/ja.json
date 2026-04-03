@@ -393,12 +393,12 @@
     },
     "subagent": {
       "running": "🧭 {name} 分身が調査中",
-      "done": "🧭 分身が戻ってきた",
+      "done": "🧭 分身を送り出した",
       "failed": "🧭 分身がトラブった"
     },
     "ask_agent": {
       "running": "💬 {name} が相談中",
-      "done": "💬 返事が届いた",
+      "done": "💬 質問を送った",
       "failed": "💬 返事がない"
     },
     "check_pending_tasks": {

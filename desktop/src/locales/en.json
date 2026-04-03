@@ -394,12 +394,12 @@
     },
     "subagent": {
       "running": "🧭 {name} is investigating",
-      "done": "🧭 Clone returned",
+      "done": "🧭 Clone dispatched",
       "failed": "🧭 Clone ran into trouble"
     },
     "ask_agent": {
       "running": "💬 {name} is consulting",
-      "done": "💬 Reply received",
+      "done": "💬 Question sent",
       "failed": "💬 No reply"
     },
     "check_pending_tasks": {

@@ -394,12 +394,12 @@
     },
     "subagent": {
       "running": "🧭 {name} 分身查探中",
-      "done": "🧭 分身回来了",
+      "done": "🧭 分身出发了",
       "failed": "🧭 分身出了岔子"
     },
     "ask_agent": {
       "running": "💬 {name} 请教中",
-      "done": "💬 回复已收到",
+      "done": "💬 已发出请教",
       "failed": "💬 没问到"
     },
     "check_pending_tasks": {

@@ -329,6 +329,8 @@ export class Agent {
         agentId,
         listAgents,
         engine: this._engine,
+        getDeferredStore: () => this._engine?.deferredResults,
+        getSessionPath: () => this._engine?._sessionCoord?.currentSessionPath,
       });
 
       this._dmTool = createDmTool({
@@ -365,6 +367,8 @@ export class Agent {
       },
       resolveUtilityModel: () => this._engine?.currentModel?.id || null,
       readOnlyBuiltinTools: READ_ONLY_BUILTIN_TOOLS,
+      getDeferredStore: () => this._engine?.deferredResults,
+      getSessionPath: () => this._engine?._sessionCoord?.currentSessionPath,
     });
 
     // 12. 组装 system prompt

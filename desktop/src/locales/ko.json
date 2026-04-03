@@ -393,12 +393,12 @@
     },
     "subagent": {
       "running": "🧭 {name} 분신이 조사 중",
-      "done": "🧭 분신이 돌아왔어요",
+      "done": "🧭 분신을 보냈어요",
       "failed": "🧭 분신이 문제가 생겼어요"
     },
     "ask_agent": {
       "running": "💬 {name}이(가) 상담 중",
-      "done": "💬 답변을 받았어요",
+      "done": "💬 질문을 보냈어요",
       "failed": "💬 답변을 못 받았어요"
     },
     "check_pending_tasks": {
