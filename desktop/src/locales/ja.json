@@ -894,6 +894,16 @@
       "pluginsDir": "プラグインディレクトリ：{path}",
       "needsFullAccess": "このプラグインを使用するには「フルアクセスプラグインを許可」を有効にしてください"
     },
+    "screenshot": {
+      "title": "スクリーンショット共有",
+      "color": "カラー",
+      "width": "幅",
+      "light": "ライト",
+      "dark": "ダーク",
+      "sakura": "青空と桜",
+      "mobile": "モバイル",
+      "desktop": "デスクトップ"
+    },
     "bridge": {
       "telegram": "Telegram",
       "telegramToken": "Bot Token",

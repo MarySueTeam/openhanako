@@ -894,6 +894,16 @@
       "pluginsDir": "插件目錄：{path}",
       "needsFullAccess": "請先開啟「允許全權插件」"
     },
+    "screenshot": {
+      "title": "截圖分享",
+      "color": "配色",
+      "width": "寬度",
+      "light": "淺色",
+      "dark": "深色",
+      "sakura": "青空與櫻",
+      "mobile": "手機看",
+      "desktop": "電腦看"
+    },
     "bridge": {
       "telegram": "Telegram",
       "telegramToken": "Bot Token",

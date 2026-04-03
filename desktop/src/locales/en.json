@@ -919,6 +919,16 @@
       "pluginsDir": "Plugin directory: {path}",
       "needsFullAccess": "Enable \"Allow full-access plugins\" to use this plugin"
     },
+    "screenshot": {
+      "title": "Screenshot Sharing",
+      "color": "Color",
+      "width": "Width",
+      "light": "Light",
+      "dark": "Dark",
+      "sakura": "Sakura",
+      "mobile": "Mobile",
+      "desktop": "Desktop"
+    },
     "bridge": {
       "telegram": "Telegram",
       "telegramToken": "Bot Token",

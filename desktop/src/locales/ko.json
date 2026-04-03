@@ -894,6 +894,16 @@
       "pluginsDir": "플러그인 디렉토리: {path}",
       "needsFullAccess": "이 플러그인을 사용하려면 「전체 권한 플러그인 허용」을 먼저 활성화하세요"
     },
+    "screenshot": {
+      "title": "스크린샷 공유",
+      "color": "색상",
+      "width": "너비",
+      "light": "라이트",
+      "dark": "다크",
+      "sakura": "푸른 하늘과 벚꽃",
+      "mobile": "모바일",
+      "desktop": "데스크톱"
+    },
     "bridge": {
       "telegram": "Telegram",
       "telegramToken": "Bot Token",
