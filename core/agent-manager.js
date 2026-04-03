@@ -44,7 +44,7 @@ export class AgentManager {
     this._d = deps;
     this._agents = new Map();
     this._activeAgentId = null;
-    this._switching = false;
+    this._switchQueue = Promise.resolve();
     this._activityStores = new Map();
     this._agentListCache = null;       // { raw: [{id,name,yuan,identity}], ts: number }
     this._descRefreshPending = false;
@@ -56,7 +56,7 @@ export class AgentManager {
   get agents() { return this._agents; }
   get activeAgentId() { return this._activeAgentId; }
   set activeAgentId(id) { this._activeAgentId = id; }
-  get switching() { return this._switching; }
+  get switching() { return this._switchQueue !== Promise.resolve(); }
 
   /** 当前焦点 agent */
   get agent() { return this._agents.get(this._activeAgentId); }
@@ -343,18 +343,38 @@ export class AgentManager {
 
   // ── Switch ──
 
+  /**
+   * 仅切换 agent 指针（不创建 session）。排队执行，不会并发。
+   * SessionCoordinator.switchSession 跨 agent 时调用此方法。
+   */
   async switchAgentOnly(agentId) {
-    if (this._switching) throw new Error(t("error.agentSwitching"));
+    return this._enqueueSwitch(() => this._doSwitchAgentOnly(agentId));
+  }
+
+  /**
+   * 完整切换：切 agent 指针 + 恢复调度 + 同步 skills + 创建 session。
+   * 排队执行，快速连续切换会按序落到最终目标。
+   */
+  async switchAgent(agentId) {
+    return this._enqueueSwitch(() => this._doSwitchAgent(agentId));
+  }
+
+  /** Promise 链互斥：所有切换操作排队执行，前一个失败不阻塞后续 */
+  _enqueueSwitch(fn) {
+    const queued = this._switchQueue.catch(() => {}).then(fn);
+    this._switchQueue = queued;
+    return queued;
+  }
+
+  async _doSwitchAgentOnly(agentId) {
     if (!this._agents.has(agentId)) {
       throw new Error(t("error.agentNotFound", { id: agentId }));
     }
-    this._switching = true;
     const prevAgentId = this._activeAgentId;
     log.log(`switching agent to ${agentId}`);
     try {
       const hub = this._d.getHub();
       await hub?.pauseForAgentSwitch();
-      // Phase 1: 不再杀 session，只切 agent 指针
       clearConfigCache();
       this._activeAgentId = agentId;
 
@@ -369,34 +389,23 @@ export class AgentManager {
         }
         models.defaultModel = model;
       }
-      // 未配 models.chat 的 agent 继承当前 defaultModel
       const effectiveModel = preferredId || models.defaultModel?.id || "inherited";
       log.log(`agent switched to ${this.agent.agentName} (${agentId}), model=${effectiveModel}`);
     } catch (err) {
       this._activeAgentId = prevAgentId;
       try { this._d.getHub()?.resumeAfterAgentSwitch(); } catch {}
       throw err;
-    } finally {
-      this._switching = false;
     }
   }
 
-  async switchAgent(agentId) {
-    // switchAgentOnly 内部有 _switching 锁，但 createSession 不在锁范围内
-    // 用额外的 _switchingFull 标志保护整个流程，防止快速连续切换导致 session 用错 agent 配置
-    if (this._switchingFull) throw new Error(t("error.agentSwitching"));
-    this._switchingFull = true;
-    try {
-      await this.switchAgentOnly(agentId);
-      const hub = this._d.getHub();
-      hub?.resumeAfterAgentSwitch();
-      this._d.getSkills().syncAgentSkills(this.agent);
-      this._d.getPrefs().savePrimaryAgent(agentId);
-      await this._d.getSessionCoordinator().createSession();
-      log.log(`已切换到助手: ${this.agent.agentName} (${agentId})`);
-    } finally {
-      this._switchingFull = false;
-    }
+  async _doSwitchAgent(agentId) {
+    await this._doSwitchAgentOnly(agentId);
+    const hub = this._d.getHub();
+    hub?.resumeAfterAgentSwitch();
+    this._d.getSkills().syncAgentSkills(this.agent);
+    this._d.getPrefs().savePrimaryAgent(agentId);
+    await this._d.getSessionCoordinator().createSession();
+    log.log(`已切换到助手: ${this.agent.agentName} (${agentId})`);
   }
 
   async createSessionForAgent(agentId, cwd, memoryEnabled = true) {
