@@ -17,6 +17,11 @@ CRCCheck off
   Sleep 2000
 !macroend
 
+!macro customUnInstallCheck
+  ; 旧版卸载失败不阻塞覆盖安装：新文件会替换所有旧文件，无需卸载成功
+  ClearErrors
+!macroend
+
 !macro customUnInit
   nsExec::ExecToLog 'taskkill /F /IM "Hanako.exe"'
   nsExec::ExecToLog 'taskkill /F /IM "hana-server.exe"'
