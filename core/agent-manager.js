@@ -545,7 +545,7 @@ export class AgentManager {
       getLearnSkills:       () => getEngine()?.getLearnSkills?.() ?? {},
       resolveUtilityConfig: () => getEngine()?.resolveUtilityConfig?.(),
       getCwd:               () => getEngine()?.cwd ?? "",
-      getEngine,  // update-settings-tool 和 ask-agent-tool 仍需要完整 engine
+      getEngine,  // update-settings-tool 仍需要完整 engine
     });
     ag.setOnInstallCallback(async (skillName) => {
       const skills = this._d.getSkills();

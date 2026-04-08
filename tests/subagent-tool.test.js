@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { createSubagentTool } from "../lib/tools/subagent-tool.js";
 
+function makePrepareIsolatedSession(runResult) {
+  return vi.fn().mockResolvedValue({
+    sessionPath: "/test/child-session.jsonl",
+    run: vi.fn().mockResolvedValue(runResult),
+  });
+}
+
 describe("subagent-tool (async deferred)", () => {
   it("dispatches task via deferred store and returns immediately", async () => {
-    const executeIsolated = vi.fn().mockResolvedValue({
-      replyText: "done",
-      error: null,
-    });
+    const prepareIsolatedSession = makePrepareIsolatedSession({ replyText: "done", error: null });
 
     const mockStore = {
       defer: vi.fn(),
@@ -15,9 +19,8 @@ describe("subagent-tool (async deferred)", () => {
     };
 
     const tool = createSubagentTool({
-      executeIsolated,
+      prepareIsolatedSession,
       resolveUtilityModel: () => "utility-model",
-      readOnlyBuiltinTools: ["read", "grep", "find", "ls"],
       getDeferredStore: () => mockStore,
       getSessionPath: () => "/test/session.jsonl",
     });
@@ -34,13 +37,10 @@ describe("subagent-tool (async deferred)", () => {
       expect.objectContaining({ type: "subagent" }),
     );
 
-    // executeIsolated 应该被调用（后台执行）
-    expect(executeIsolated).toHaveBeenCalledWith(
-      expect.stringContaining("查一下项目状态"),
+    // prepareIsolatedSession 应该被调用
+    expect(prepareIsolatedSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "utility-model",
         toolFilter: "*",
-        builtinFilter: ["read", "grep", "find", "ls"],
       }),
     );
 
@@ -54,7 +54,10 @@ describe("subagent-tool (async deferred)", () => {
   });
 
   it("calls store.fail when execution errors", async () => {
-    const executeIsolated = vi.fn().mockRejectedValue(new Error("boom"));
+    const prepareIsolatedSession = vi.fn().mockResolvedValue({
+      sessionPath: "/test/child-session.jsonl",
+      run: vi.fn().mockRejectedValue(new Error("boom")),
+    });
 
     const mockStore = {
       defer: vi.fn(),
@@ -63,9 +66,8 @@ describe("subagent-tool (async deferred)", () => {
     };
 
     const tool = createSubagentTool({
-      executeIsolated,
+      prepareIsolatedSession,
       resolveUtilityModel: () => "utility-model",
-      readOnlyBuiltinTools: ["read"],
       getDeferredStore: () => mockStore,
       getSessionPath: () => "/test/session.jsonl",
     });
@@ -81,15 +83,11 @@ describe("subagent-tool (async deferred)", () => {
   });
 
   it("falls back to sync execution when deferred store is unavailable", async () => {
-    const executeIsolated = vi.fn().mockResolvedValue({
-      replyText: "sync result",
-      error: null,
-    });
+    const prepareIsolatedSession = makePrepareIsolatedSession({ replyText: "sync result", error: null });
 
     const tool = createSubagentTool({
-      executeIsolated,
+      prepareIsolatedSession,
       resolveUtilityModel: () => "utility-model",
-      readOnlyBuiltinTools: ["read"],
       getDeferredStore: () => null,
       getSessionPath: () => null,
     });
@@ -103,8 +101,11 @@ describe("subagent-tool (async deferred)", () => {
 
   it("rejects new work when the concurrency limit (5) is reached", async () => {
     const releases = [];
-    const executeIsolated = vi.fn().mockImplementation(() => new Promise((resolve) => {
-      releases.push(resolve);
+    const prepareIsolatedSession = vi.fn().mockImplementation(() => Promise.resolve({
+      sessionPath: "/test/child-session.jsonl",
+      run: () => new Promise((resolve) => {
+        releases.push(resolve);
+      }),
     }));
 
     const mockStore = {
@@ -114,9 +115,8 @@ describe("subagent-tool (async deferred)", () => {
     };
 
     const tool = createSubagentTool({
-      executeIsolated,
+      prepareIsolatedSession,
       resolveUtilityModel: () => "utility-model",
-      readOnlyBuiltinTools: ["read"],
       getDeferredStore: () => mockStore,
       getSessionPath: () => "/test/session.jsonl",
     });
@@ -136,6 +136,28 @@ describe("subagent-tool (async deferred)", () => {
     for (const release of releases) {
       release({ replyText: "ok", error: null });
     }
-    expect(executeIsolated).toHaveBeenCalledTimes(5);
+    expect(prepareIsolatedSession).toHaveBeenCalledTimes(5);
+  });
+
+  it("lists agents in discovery mode", async () => {
+    const prepareIsolatedSession = vi.fn();
+    const tool = createSubagentTool({
+      prepareIsolatedSession,
+      resolveUtilityModel: () => "utility-model",
+      getDeferredStore: () => null,
+      getSessionPath: () => null,
+      listAgents: () => [
+        { id: "agent-a", name: "Alpha", model: "gpt-4", summary: "数学专家" },
+        { id: "agent-b", name: "Beta", model: "", summary: "" },
+        { id: "self", name: "Self", model: "", summary: "" },
+      ],
+      currentAgentId: "self",
+    });
+
+    const result = await tool.execute("call_1", { task: "", agent: "?" });
+    expect(result.content[0].text).toContain("agent-a");
+    expect(result.content[0].text).toContain("Alpha");
+    expect(result.content[0].text).not.toContain("self");
+    expect(prepareIsolatedSession).not.toHaveBeenCalled();
   });
 });

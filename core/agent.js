@@ -21,7 +21,6 @@ import { createWebFetchTool } from "../lib/tools/web-fetch.js";
 import { createStageFilesTool } from "../lib/tools/output-file-tool.js";
 import { createArtifactTool } from "../lib/tools/artifact-tool.js";
 import { createChannelTool } from "../lib/tools/channel-tool.js";
-import { createAskAgentTool } from "../lib/tools/ask-agent-tool.js";
 import { createDmTool } from "../lib/tools/dm-tool.js";
 import { createBrowserTool } from "../lib/tools/browser-tool.js";
 import { createPinnedMemoryTools } from "../lib/tools/pinned-memory.js";
@@ -343,14 +342,6 @@ export class Agent {
         },
       });
 
-      this._askAgentTool = createAskAgentTool({
-        agentId,
-        listAgents,
-        engine: this._cb?.getEngine?.(),
-        getDeferredStore: () => this._cb?.getDeferredResults?.(),
-        getSessionPath: () => this._cb?.getCurrentSessionPath?.(),
-      });
-
       this._dmTool = createDmTool({
         agentId,
         agentsDir: path.dirname(this.agentDir),
@@ -379,14 +370,16 @@ export class Agent {
 
     // 11. subagent 工具
     this._subagentTool = createSubagentTool({
-      executeIsolated: (prompt, opts) => {
-        if (!this._cb?.executeIsolated) throw new Error("subagent 调用失败：engine 未初始化");
-        return this._cb.executeIsolated(prompt, opts);
+      prepareIsolatedSession: (opts) => {
+        if (!this._cb?.prepareIsolatedSession) throw new Error("subagent 调用失败：engine 未初始化");
+        return this._cb.prepareIsolatedSession(opts);
       },
       resolveUtilityModel: () => this._cb?.getCurrentModelId?.() || null,
-      readOnlyBuiltinTools: READ_ONLY_BUILTIN_TOOLS,
       getDeferredStore: () => this._cb?.getDeferredResults?.(),
       getSessionPath: () => this._cb?.getCurrentSessionPath?.(),
+      listAgents: this._listAgents || null,
+      currentAgentId: this.channelsDir && this.agentsDir ? path.basename(this.agentDir) : undefined,
+      emitEvent: (event, sp) => this._cb?.emitEvent?.(event, sp),
     });
 
     // 12. 组装 system prompt
@@ -476,7 +469,6 @@ export class Agent {
       this._stageFilesTool,
       this._artifactTool,
       this._channelTool,
-      this._askAgentTool,
       this._dmTool,
       this._browserTool,
       this._installSkillTool,
@@ -779,11 +771,11 @@ export class Agent {
         parts.push(isZh
           ? `\n## 团队\n\n` +
             `你不是独自工作。当前环境中有多个 agent，各有不同的专长和模型：\n\n${roster}\n\n` +
-            `遇到明显更适合其他 agent 专长的任务，或需要不同视角审核重要结论时，用 ask_agent 请求协助。` +
+            `遇到明显更适合其他 agent 专长的任务，或需要不同视角审核重要结论时，用 subagent 并指定 agent 参数请求协助。` +
             `先判断这件事自己做合不合适，再决定是否交出去。不确定找谁时传 \`agent="?"\` 查看详情。`
           : `\n## Team\n\n` +
             `You are not working alone. Multiple agents are available, each with different strengths and models:\n\n${roster}\n\n` +
-            `When a task clearly falls within another agent's expertise, or when an important conclusion would benefit from a different perspective, use ask_agent to request help. ` +
+            `When a task clearly falls within another agent's expertise, or when an important conclusion would benefit from a different perspective, use subagent with the agent parameter to request help. ` +
             `Judge whether you're the best fit for the job before deciding to delegate. Pass \`agent="?"\` if unsure who to ask.`
         );
       }
