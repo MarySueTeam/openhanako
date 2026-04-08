@@ -85,7 +85,6 @@ export async function callText({
       model, temperature, max_tokens: maxTokens,
       ...(mergedSystem && { system: mergedSystem }),
       messages: anthropicMessages,
-      thinking: { type: "disabled" },
     };
   } else if (api === "openai-responses" || api === "openai-codex-responses") {
     // OpenAI Responses API
