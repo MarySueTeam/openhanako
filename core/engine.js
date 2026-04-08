@@ -17,6 +17,7 @@ import os from "os";
 import path from "path";
 import { migrateConfigScope } from "../shared/migrate-config-scope.js";
 import { migrateToProvidersYaml } from "./migrate-providers.js";
+import { runMigrations } from "./migrations.js";
 import { findModel } from "../shared/model-ref.js";
 import { PluginManager } from "./plugin-manager.js";
 import { DefaultResourceLoader, codingTools, grepTool, findTool, lsTool } from "../lib/pi-sdk/index.js";
@@ -495,6 +496,15 @@ export class HanaEngine {
 
     // 0c. Model overrides 迁移（config.models.overrides → added-models.yaml，只跑一次）
     this._models.providerRegistry.migrateOverridesToAddedModels(this.agentsDir, log);
+
+    // 0d. 统一数据迁移（版本号驱动，新迁移统一加在 migrations.js）
+    runMigrations({
+      hanakoHome: this.hanakoHome,
+      agentsDir: this.agentsDir,
+      prefs: this._prefs,
+      providerRegistry: this._models.providerRegistry,
+      log,
+    });
 
     // 1. Pi SDK + 模型基础设施（必须在 agent init 之前，agent 需要解析记忆模型）
     log(`[init] 1/5 Pi SDK 初始化...`);
