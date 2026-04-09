@@ -674,21 +674,28 @@ export class Agent {
         "- **Memory can be outdated; the current conversation always takes priority.** When information conflicts, go with the conversation. Don't use old memories to correct " + this.userName + ".",
       ].join("\n");
 
-      if (pinnedMd.trim()) {
+      // memoryRule 只注入一次，置顶和记忆 section 只放内容
+      const hasPinned = pinnedMd.trim();
+      const trimmedMemory = memory.trim();
+      const hasMemory = trimmedMemory && trimmedMemory !== "（暂无记忆）" && trimmedMemory !== "(No memory yet)";
+
+      if (hasPinned || hasMemory) {
+        parts.push(memoryRule);
+      }
+      if (hasPinned) {
         parts.push(...section(
           isZh ? "# 置顶记忆" : "# Pinned Memories",
           isZh
-            ? "用户主动要求你记住的内容，始终保留。你可以读写这些记忆。\n" + memoryRule + "\n\n" + pinnedMd
-            : "Content the user explicitly asked you to remember. Always retained. You can read and write these memories.\n" + memoryRule + "\n\n" + pinnedMd
+            ? "用户主动要求你记住的内容，始终保留。你可以读写这些记忆。\n\n" + pinnedMd
+            : "Content the user explicitly asked you to remember. Always retained. You can read and write these memories.\n\n" + pinnedMd
         ));
       }
-      const trimmedMemory = memory.trim();
-      if (trimmedMemory && trimmedMemory !== "（暂无记忆）" && trimmedMemory !== "(No memory yet)") {
+      if (hasMemory) {
         parts.push(...section(
           isZh ? "# 记忆" : "# Memory",
           isZh
-            ? memoryRule.trimStart() + "\n\n以下这些是从过往对话积累的记忆。\n\n" + memory
-            : memoryRule.trimStart() + "\n\nThe following are memories accumulated from past conversations.\n\n" + memory
+            ? "以下这些是从过往对话积累的记忆。\n\n" + memory
+            : "The following are memories accumulated from past conversations.\n\n" + memory
         ));
       }
     }
