@@ -61,6 +61,11 @@ export class Scheduler {
   /** 启动某个 agent 的 cron（幂等，已有则跳过） */
   startAgentCron(agentId) { this._startAgentCron(agentId); }
 
+  /** 为指定 agent 启动 heartbeat（公共 API，供 createAgent 等场景使用） */
+  startAgentHeartbeat(agentId, agent) {
+    this._startAgentHeartbeat(agentId, agent);
+  }
+
   /** 停止并移除某个 agent 的 cron */
   async removeAgentCron(agentId) {
     const sched = this._agentCrons.get(agentId);

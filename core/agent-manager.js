@@ -337,9 +337,13 @@ export class AgentManager {
     }
     this._agents.set(agentId, ag);
 
-    // 启动 cron
+    // 启动 cron + heartbeat
     const hub = this._d.getHub();
     hub?.scheduler?.startAgentCron(agentId);
+    const newAgent = this._agents.get(agentId);
+    if (newAgent) {
+      hub?.scheduler?.startAgentHeartbeat?.(agentId, newAgent);
+    }
 
     // 注入 DM 回调
     const dmRouter = hub?.dmRouter;
@@ -443,6 +447,7 @@ export class AgentManager {
       this._agents.delete(agentId);
       this._activityStores.delete(agentId);
       await this._d.getHub()?.scheduler?.removeAgentCron(agentId);
+      await this._d.getHub()?.scheduler?.stopHeartbeat(agentId);
       await ag.dispose();
     }
 
