@@ -23,12 +23,9 @@ describe("BrowserManager URL tracking", () => {
 });
 
 describe("BrowserManager explicit sessionPath", () => {
-  it("launch() with explicit sessionPath uses it instead of resolver", async () => {
+  it("launch() with explicit sessionPath uses it", async () => {
     const manager = new BrowserManager();
     manager._sendCmd = vi.fn().mockResolvedValue({});
-
-    // Set a resolver that returns a different path
-    BrowserManager.setSessionResolver(() => "/sessions/resolver-session.json");
 
     await manager.launch("/sessions/explicit-session.json");
 
@@ -41,11 +38,11 @@ describe("BrowserManager explicit sessionPath", () => {
     });
   });
 
-  it("launch() without explicit sessionPath falls back to resolver", async () => {
+  it("launch() without explicit sessionPath falls back to _sessionPath", async () => {
     const manager = new BrowserManager();
     manager._sendCmd = vi.fn().mockResolvedValue({});
 
-    BrowserManager.setSessionResolver(() => "/sessions/fallback-session.json");
+    manager._sessionPath = "/sessions/fallback-session.json";
 
     await manager.launch();
 
@@ -67,11 +64,9 @@ describe("BrowserManager explicit sessionPath", () => {
     });
     manager._saveColdUrl = vi.fn();
 
-    BrowserManager.setSessionResolver(() => "/sessions/resolver-session.json");
-
     await manager.navigate("https://example.com/page", "/sessions/nav-session.json");
 
-    // Explicit param takes priority over _sessionPath and resolver
+    // Explicit param takes priority over _sessionPath
     expect(manager._saveColdUrl).toHaveBeenCalledWith(
       "/sessions/nav-session.json",
       "https://example.com/page",
@@ -89,11 +84,9 @@ describe("BrowserManager explicit sessionPath", () => {
     });
     manager._saveColdUrl = vi.fn();
 
-    BrowserManager.setSessionResolver(() => "/sessions/resolver-session.json");
-
     await manager.navigate("https://example.com/page");
 
-    // Falls back to _sessionPath set during launch
+    // Falls back to _sessionPath set during launch (no resolver fallback)
     expect(manager._saveColdUrl).toHaveBeenCalledWith(
       "/sessions/launch-session.json",
       "https://example.com/page",
@@ -107,11 +100,9 @@ describe("BrowserManager explicit sessionPath", () => {
     manager._sendCmd = vi.fn().mockResolvedValue({});
     manager._removeColdUrl = vi.fn();
 
-    BrowserManager.setSessionResolver(() => "/sessions/resolver-session.json");
-
     await manager.close();
 
-    // Should use _sessionPath (not resolver) for cleanup
+    // Should use _sessionPath for cleanup
     expect(manager._removeColdUrl).toHaveBeenCalledWith("/sessions/active-session.json");
     expect(manager._sessionPath).toBeNull();
     expect(manager._running).toBe(false);
@@ -123,8 +114,6 @@ describe("BrowserManager explicit sessionPath", () => {
     manager._url = "https://example.com";
     manager._sessionPath = "/sessions/bound-session.json";
     manager._loadColdState = vi.fn().mockReturnValue({});
-
-    BrowserManager.setSessionResolver(() => "/sessions/resolver-session.json");
 
     const sessions = manager.getBrowserSessions();
 

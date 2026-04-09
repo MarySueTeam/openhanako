@@ -91,7 +91,6 @@ dlog.log("server", "engine initialized");
 // 注入依赖给 BrowserManager（避免循环依赖）
 import { BrowserManager } from "../lib/browser/browser-manager.js";
 BrowserManager.setHanakoHome(engine.hanakoHome);
-BrowserManager.setSessionResolver(() => engine.currentSessionPath);
 
 if (engine.currentModel) {
   console.log("[server] ③ 创建 session...");
