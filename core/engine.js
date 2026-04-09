@@ -187,11 +187,14 @@ export class HanaEngine {
   //  Agent 代理（→ AgentManager）
   // ════════════════════════════
 
+  /** @ui-focus-only 返回 UI 焦点 agent 实例，后端逻辑应通过 getAgent(agentId) 查询 */
   get agent() { return this._agentMgr.agent; }
   getAgent(agentId) { return this._agentMgr.getAgent(agentId); }
+  /** @ui-focus-only 返回 UI 焦点 agent 的 ID */
   get currentAgentId() { return this._agentMgr.activeAgentId; }
   get confirmStore() { return this._confirmStore; }
 
+  /** @deprecated 工具应通过 emitEvent(event, sessionPath) 传入显式 sessionPath */
   emitSessionEvent(event) {
     this._emitEvent(event, this.currentSessionPath);
   }
@@ -247,6 +250,7 @@ export class HanaEngine {
   get session() { return this._sessionCoord.session; }
   get messages() { return this._sessionCoord.session?.messages ?? []; }
   get isStreaming() { return this._sessionCoord.session?.isStreaming ?? false; }
+  /** @ui-focus-only 返回 UI 焦点 session 的路径，后端逻辑不应依赖此值 */
   get currentSessionPath() { return this._sessionCoord.currentSessionPath; }
   get cwd() { return this._sessionCoord.session?.sessionManager?.getCwd?.() ?? process.cwd(); }
   get deskCwd() { return this._sessionCoord.session?.sessionManager?.getCwd?.() || this.homeCwd || null; }
