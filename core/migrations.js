@@ -20,6 +20,8 @@ const migrations = {
   1: cleanDanglingProviderRefs,
   // bridge 配置从全局 preferences 迁移到各 agent 的 config.yaml
   2: migrateBridgeToPerAgent,
+  // workspace (home_folder) 从全局 preferences 迁移到主 agent config.yaml
+  3: migrateWorkspaceToPerAgent,
 };
 
 // ── Runner ──────────────────────────────────────────────────────────────────
@@ -260,4 +262,67 @@ function migrateBridgeToPerAgent(ctx) {
   delete preferences.bridge;
   prefs.savePreferences(preferences);
   log(`[migrations] deleted prefs.bridge`);
+}
+
+/**
+ * #3 — workspace (home_folder) 从全局 preferences 迁移到主 agent config.yaml
+ *
+ * preferences.json 中 home_folder 是顶层字段（不在 desk. 下）。
+ * 迁移后写入主 agent 的 config.yaml 的 desk.home_folder，
+ * 其他 agent 运行时通过 fallback 链继承主 agent 的值。
+ */
+function migrateWorkspaceToPerAgent(ctx) {
+  const { agentsDir, prefs, log } = ctx;
+  const preferences = prefs.getPreferences();
+  const homeFolder = preferences.home_folder;
+
+  if (!homeFolder) {
+    log("[migrations] #3: no home_folder in preferences, skipping");
+    return;
+  }
+
+  // Find primary agent
+  const primaryAgentId = preferences.primaryAgent || null;
+  let targetAgentId = null;
+
+  if (primaryAgentId) {
+    const cfgPath = path.join(agentsDir, primaryAgentId, "config.yaml");
+    if (fs.existsSync(cfgPath)) {
+      targetAgentId = primaryAgentId;
+    } else {
+      log(`[migrations] #3: primaryAgent "${primaryAgentId}" config.yaml not found, scanning`);
+    }
+  }
+
+  if (!targetAgentId) {
+    try {
+      const dirs = fs.readdirSync(agentsDir, { withFileTypes: true }).filter(d => d.isDirectory());
+      for (const d of dirs) {
+        if (fs.existsSync(path.join(agentsDir, d.name, "config.yaml"))) {
+          targetAgentId = d.name;
+          break;
+        }
+      }
+    } catch {}
+  }
+
+  if (!targetAgentId) {
+    throw new Error("no agent with config.yaml found, home_folder preserved in preferences");
+  }
+
+  // Write to agent config
+  const cfgPath = path.join(agentsDir, targetAgentId, "config.yaml");
+  saveConfig(cfgPath, { desk: { home_folder: homeFolder } });
+
+  // Verify write
+  const verify = safeReadYAMLSync(cfgPath, null, YAML);
+  if (verify?.desk?.home_folder !== homeFolder) {
+    throw new Error(`write verification failed for agent ${targetAgentId}, home_folder preserved in preferences`);
+  }
+
+  // Delete from preferences only after verified write
+  delete preferences.home_folder;
+  prefs.savePreferences(preferences);
+
+  log(`[migrations] #3: migrated home_folder "${homeFolder}" → agent ${targetAgentId}`);
 }

@@ -427,3 +427,114 @@ describe("migration #2: migrateBridgeToPerAgent", () => {
     expect(cfgSecondary.bridge.readOnly).toBeUndefined();
   });
 });
+
+// ── 迁移 #3：workspace (home_folder) 从全局 prefs 迁移到 per-agent config ───
+
+describe("migration #3 — migrateWorkspaceToPerAgent", () => {
+  let tmpDir, userDir, agentsDir;
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir();
+    userDir = path.join(tmpDir, "user");
+    agentsDir = path.join(tmpDir, "agents");
+    fs.mkdirSync(userDir, { recursive: true });
+    fs.mkdirSync(agentsDir, { recursive: true });
+  });
+
+  afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
+
+  function runMigration3(prefs) {
+    const p = prefs.getPreferences();
+    p._dataVersion = 2;
+    prefs.savePreferences(p);
+    runMigrations({
+      hanakoHome: tmpDir,
+      agentsDir,
+      prefs,
+      providerRegistry: makeRegistry([]),
+      log: () => {},
+    });
+  }
+
+  it("migrates home_folder to primary agent config.yaml", () => {
+    writeAgentConfig(agentsDir, "hana", { api: { provider: "" } });
+    const prefs = makePrefs(userDir);
+    prefs.savePreferences({
+      primaryAgent: "hana",
+      home_folder: "/Users/test/Desktop",
+      _dataVersion: 2,
+    });
+
+    runMigration3(prefs);
+
+    const config = readAgentConfig(agentsDir, "hana");
+    expect(config.desk.home_folder).toBe("/Users/test/Desktop");
+
+    const p = prefs.getPreferences();
+    expect(p.home_folder).toBeUndefined();
+    expect(p._dataVersion).toBe(3);
+  });
+
+  it("skips when home_folder is empty", () => {
+    writeAgentConfig(agentsDir, "hana", { api: { provider: "" } });
+    const prefs = makePrefs(userDir);
+    prefs.savePreferences({ primaryAgent: "hana", _dataVersion: 2 });
+
+    runMigration3(prefs);
+
+    const config = readAgentConfig(agentsDir, "hana");
+    expect(config.desk).toBeUndefined();
+    expect(prefs.getPreferences()._dataVersion).toBe(3);
+  });
+
+  it("falls back to first agent when primaryAgent not found", () => {
+    writeAgentConfig(agentsDir, "alpha", { api: { provider: "" } });
+    const prefs = makePrefs(userDir);
+    prefs.savePreferences({
+      primaryAgent: "deleted-agent",
+      home_folder: "/workspace",
+      _dataVersion: 2,
+    });
+
+    runMigration3(prefs);
+
+    const config = readAgentConfig(agentsDir, "alpha");
+    expect(config.desk.home_folder).toBe("/workspace");
+    expect(prefs.getPreferences().home_folder).toBeUndefined();
+  });
+
+  it("does not write to non-primary agents", () => {
+    writeAgentConfig(agentsDir, "hana", { api: { provider: "" } });
+    writeAgentConfig(agentsDir, "assistant", { api: { provider: "" } });
+    const prefs = makePrefs(userDir);
+    prefs.savePreferences({
+      primaryAgent: "hana",
+      home_folder: "/workspace",
+      _dataVersion: 2,
+    });
+
+    runMigration3(prefs);
+
+    const hanaConfig = readAgentConfig(agentsDir, "hana");
+    const assistantConfig = readAgentConfig(agentsDir, "assistant");
+    expect(hanaConfig.desk.home_folder).toBe("/workspace");
+    expect(assistantConfig.desk).toBeUndefined();
+  });
+
+  it("preserves data when no agent config.yaml exists (version stays at 2)", () => {
+    fs.mkdirSync(path.join(agentsDir, "hana"), { recursive: true });
+    const prefs = makePrefs(userDir);
+    prefs.savePreferences({
+      primaryAgent: "hana",
+      home_folder: "/workspace",
+      _dataVersion: 2,
+    });
+
+    // migration #3 throws internally; runner catches it and breaks without bumping version
+    runMigration3(prefs);
+
+    const p = prefs.getPreferences();
+    expect(p.home_folder).toBe("/workspace");
+    expect(p._dataVersion).toBe(2);
+  });
+});
