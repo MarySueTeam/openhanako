@@ -76,8 +76,8 @@ export class SessionCoordinator {
 
   async createSession(sessionMgr, cwd, memoryEnabled = true, model = null, { restore = false } = {}) {
     const t0 = Date.now();
-    const effectiveCwd = cwd || this._d.getHomeCwd() || process.cwd();
     const agent = this._d.getAgent();
+    const effectiveCwd = cwd || this._d.getHomeCwd(agent.id) || process.cwd();
     const models = this._d.getModels();
     // restore 模式：不指定 model，让 PI SDK 从 JSONL 恢复（session model 单一数据源）
     const effectiveModel = restore ? null : (model || this._pendingModel || models.currentModel);
@@ -152,7 +152,7 @@ After dispatching subagent or other background tasks:
       },
     });
 
-    const { tools: sessionTools, customTools: sessionCustomTools } = this._d.buildTools(effectiveCwd, agent.tools, { workspace: this._d.getHomeCwd(), agentDir: agent.agentDir });
+    const { tools: sessionTools, customTools: sessionCustomTools } = this._d.buildTools(effectiveCwd, agent.tools, { workspace: this._d.getHomeCwd(agent.id), agentDir: agent.agentDir });
     const sessionOpts = {
       cwd: effectiveCwd,
       sessionManager: sessionMgr,
@@ -699,7 +699,7 @@ After dispatching subagent or other background tasks:
       const sessionDir = opts.persist || path.join(targetAgent.agentDir, '.ephemeral');
       fs.mkdirSync(sessionDir, { recursive: true });
 
-      const execCwd = opts.cwd || this._d.getHomeCwd() || process.cwd();
+      const execCwd = opts.cwd || this._d.getHomeCwd(targetAgent.id) || process.cwd();
       const models = this._d.getModels();
       const agentPreferredRef = targetAgent.config?.models?.chat;
       const modelId = opts.model ? null
@@ -725,7 +725,7 @@ After dispatching subagent or other background tasks:
       const execModel = models.resolveExecutionModel(resolvedModel);
       tempSessionMgr = SessionManager.create(execCwd, sessionDir);
       const { tools: allBuiltinTools, customTools: allCustomTools } = this._d.buildTools(
-        execCwd, targetAgent.tools, { agentDir: targetAgent.agentDir, workspace: this._d.getHomeCwd() }
+        execCwd, targetAgent.tools, { agentDir: targetAgent.agentDir, workspace: this._d.getHomeCwd(targetAgent.id) }
       );
 
       const patrolAllowed = opts.toolFilter

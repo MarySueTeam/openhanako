@@ -350,7 +350,7 @@ export class ConfigCoordinator {
           if (partial.desk.heartbeat_enabled === false) {
             this._d.emitDevLog("[heartbeat] 巡检已关闭");
             await hb.stop();
-          } else {
+          } else if (this.getHeartbeatMaster() !== false) {
             this._d.emitDevLog("[heartbeat] 巡检已开启");
             hb.start();
           }

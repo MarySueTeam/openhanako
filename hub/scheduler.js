@@ -97,7 +97,8 @@ export class Scheduler {
 
     const engine = this._engine;
     const hbInterval = agent.config?.desk?.heartbeat_interval;
-    const hbEnabled = agent.config?.desk?.heartbeat_enabled !== false;
+    const masterEnabled = engine.getHeartbeatMaster() !== false;
+    const hbEnabled = masterEnabled && (agent.config?.desk?.heartbeat_enabled !== false);
     // per-agent workspace（fallback: 主 agent → ~/Desktop）
     const getWorkspace = () => engine.getHomeCwd(agentId);
     const hb = createHeartbeat({
