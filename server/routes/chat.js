@@ -370,7 +370,7 @@ export function createChatRoute(engine, hub, { upgradeWebSocket }) {
     } else if (event.type === "bridge_message") {
       broadcast({ type: "bridge_message", message: event.message });
     } else if (event.type === "bridge_status") {
-      broadcast({ type: "bridge_status", platform: event.platform, status: event.status, error: event.error });
+      broadcast({ type: "bridge_status", platform: event.platform, status: event.status, error: event.error, agentId: event.agentId || null });
     } else if (event.type === "plan_mode") {
       broadcast({ type: "plan_mode", enabled: event.enabled, sessionPath });
     } else if (event.type === "notification") {

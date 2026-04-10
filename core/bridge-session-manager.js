@@ -109,8 +109,12 @@ export class BridgeSessionManager {
    * @returns {Promise<string|null>} agent 的回复文本
    */
   async executeExternalMessage(prompt, sessionKey, meta, opts = {}) {
-    // 优先用调用方传入的 agentId，避免 debounce 窗口内切 agent 导致路由到错误 agent
-    const agent = (opts.agentId && this._deps.getAgentById?.(opts.agentId)) || this._deps.getAgent();
+    // 优先用调用方传入的 agentId；fallback 到 focus agent 仅作最后保底
+    let agent = opts.agentId ? this._deps.getAgentById?.(opts.agentId) : null;
+    if (!agent) {
+      if (opts.agentId) console.warn(`[bridge-session] executeExternalMessage: agentId "${opts.agentId}" not found, falling back to focus agent`);
+      agent = this._deps.getAgent();
+    }
     const mm = this._deps.getModelManager();
     const bridgeDir = path.join(agent.sessionDir, "bridge");
     const subDir = opts.guest ? "guests" : "owner";
@@ -308,8 +312,12 @@ export class BridgeSessionManager {
    */
   injectMessage(sessionKey, text, opts = {}) {
     try {
-      // 优先用指定 agentId 解析对应 agent 的 sessionDir，fallback 到 focus agent
-      const agent = (opts.agentId && this._deps.getAgentById?.(opts.agentId)) || this._deps.getAgent();
+      // 优先用指定 agentId；fallback 到 focus agent 仅作最后保底
+      let agent = opts.agentId ? this._deps.getAgentById?.(opts.agentId) : null;
+      if (!agent) {
+        if (opts.agentId) console.warn(`[bridge-session] injectMessage: agentId "${opts.agentId}" not found, falling back to focus agent`);
+        agent = this._deps.getAgent();
+      }
       const index = this.readIndex(agent);
       const raw = index[sessionKey];
       const existingFile = typeof raw === "string" ? raw : raw?.file || null;

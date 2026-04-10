@@ -62,13 +62,15 @@ export function useBridgeState() {
   const [qqAppId, setQqAppId] = useState('');
   const [qqAppSecret, setQqAppSecret] = useState('');
 
-  // Fetch public ishiki for selected agent
+  // Fetch public ishiki for selected agent (abort stale requests on agent switch)
   useEffect(() => {
     if (!selectedAgentId) return;
-    hanaFetch(`/api/agents/${selectedAgentId}/public-ishiki`)
+    const ac = new AbortController();
+    hanaFetch(`/api/agents/${selectedAgentId}/public-ishiki`, { signal: ac.signal })
       .then(r => r.json())
       .then(data => { setPublicIshiki(data.content || ''); setPublicIshikiOriginal(data.content || ''); })
-      .catch(err => console.warn('[bridge] fetch public-ishiki failed:', err));
+      .catch(err => { if (err?.name !== 'AbortError') console.warn('[bridge] fetch public-ishiki failed:', err); });
+    return () => ac.abort();
   }, [selectedAgentId]);
 
   const savePublicIshiki = async () => {
@@ -87,27 +89,30 @@ export function useBridgeState() {
     }
   };
 
-  const loadStatus = async () => {
+  const loadStatus = async (signal?: AbortSignal) => {
     try {
-      const query = selectedAgentId ? `?agentId=${selectedAgentId}` : '';
-      const res = await hanaFetch(`/api/bridge/status${query}`);
+      const query = selectedAgentId ? `?agentId=${encodeURIComponent(selectedAgentId)}` : '';
+      const res = await hanaFetch(`/api/bridge/status${query}`, signal ? { signal } : undefined);
       const data = await res.json();
+      if (signal?.aborted) return;
       setStatus(data);
-      // Only populate credential fields if platform is configured for this agent
-      setTgToken(data.telegram?.status !== 'unconfigured' ? (data.telegram?.token || '') : '');
-      setFsAppId(data.feishu?.status !== 'unconfigured' ? (data.feishu?.appId || '') : '');
-      setFsAppSecret(data.feishu?.status !== 'unconfigured' ? (data.feishu?.appSecret || '') : '');
-      setQqAppId(data.qq?.status !== 'unconfigured' ? (data.qq?.appID || '') : '');
-      setQqAppSecret(data.qq?.status !== 'unconfigured' ? (data.qq?.appSecret || '') : '');
+      setTgToken(data.telegram?.token || '');
+      setFsAppId(data.feishu?.appId || '');
+      setFsAppSecret(data.feishu?.appSecret || '');
+      setQqAppId(data.qq?.appID || '');
+      setQqAppSecret(data.qq?.appSecret || '');
     } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return;
       console.error('[bridge] load status failed:', err);
     }
   };
 
-  // Auto-fetch when selectedAgentId changes
+  // Auto-fetch when selectedAgentId changes (abort stale on switch)
   useEffect(() => {
     if (!selectedAgentId) return;
-    loadStatus();
+    const ac = new AbortController();
+    loadStatus(ac.signal);
+    return () => ac.abort();
   }, [selectedAgentId]);
 
   useEffect(() => {

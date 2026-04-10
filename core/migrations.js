@@ -214,8 +214,8 @@ function migrateBridgeToPerAgent(ctx) {
     // Determine target agent
     let targetAgentId = cfg.agentId || null;
     if (targetAgentId) {
-      const agentDir = path.join(agentsDir, targetAgentId);
-      if (!fs.existsSync(agentDir)) {
+      const agentCfg = path.join(agentsDir, targetAgentId, "config.yaml");
+      if (!fs.existsSync(agentCfg)) {
         log(`[migrations] bridge.${platform}.agentId "${targetAgentId}" not found, using fallback`);
         targetAgentId = null;
       }

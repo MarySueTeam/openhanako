@@ -12,7 +12,7 @@ import { getWechatQrcode, pollWechatQrcodeStatus } from "../../lib/bridge/wechat
 import { debugLog } from "../../lib/debug-log.js";
 import { parseSessionKey, collectKnownUsers, KNOWN_PLATFORMS } from "../../lib/bridge/session-key.js";
 import { t } from "../i18n.js";
-import { resolveAgent } from "../utils/resolve-agent.js";
+import { resolveAgent, resolveAgentStrict } from "../utils/resolve-agent.js";
 
 
 export function createBridgeRoute(engine, bridgeManager) {
@@ -74,7 +74,7 @@ export function createBridgeRoute(engine, bridgeManager) {
     if (!platform || !KNOWN_PLATFORMS.includes(platform)) {
       return c.json({ ok: false, error: "invalid platform" });
     }
-    const agent = resolveAgent(engine, c);
+    const agent = resolveAgentStrict(engine, c);
     agent.updateConfig({ bridge: { [platform]: { owner: userId || null } } });
     debugLog()?.log("api", `POST /api/bridge/owner agent=${agent.id} platform=${platform} owner=${userId ? "[set]" : "[cleared]"}`);
     return c.json({ ok: true });
@@ -88,7 +88,7 @@ export function createBridgeRoute(engine, bridgeManager) {
       return c.json({ error: "invalid platform" }, 400);
     }
 
-    const agent = resolveAgent(engine, c);
+    const agent = resolveAgentStrict(engine, c);
     const agentId = agent.id;
 
     const bridgeCfg = agent.config?.bridge?.[platform] || {};
@@ -114,7 +114,7 @@ export function createBridgeRoute(engine, bridgeManager) {
   route.post("/bridge/settings", async (c) => {
     const body = await safeJson(c);
     const { readOnly } = body;
-    const agent = resolveAgent(engine, c);
+    const agent = resolveAgentStrict(engine, c);
     if (typeof readOnly === "boolean") {
       agent.updateConfig({ bridge: { readOnly } });
     }
@@ -130,7 +130,7 @@ export function createBridgeRoute(engine, bridgeManager) {
       return c.json({ error: "platform required" }, 400);
     }
 
-    const agent = resolveAgent(engine, c);
+    const agent = resolveAgentStrict(engine, c);
     bridgeManager.stopPlatform(platform, agent.id);
     agent.updateConfig({ bridge: { [platform]: { enabled: false } } });
 
