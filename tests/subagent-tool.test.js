@@ -166,8 +166,8 @@ describe("subagent-tool (executeIsolated 原子模式)", () => {
     });
   });
 
-  // 6. per-session concurrent limit: rejects 6th task on the same session
-  it("rejects new work when the per-session limit (5) is reached", async () => {
+  // 6. per-session concurrent limit: rejects 9th task on the same session
+  it("rejects new work when the per-session limit (8) is reached", async () => {
     const pending = [];
     const blockingExecute = vi.fn().mockImplementation((_prompt, opts) => {
       opts?.onSessionReady?.("/test/child.jsonl");
@@ -178,18 +178,18 @@ describe("subagent-tool (executeIsolated 原子模式)", () => {
       getDeferredStore: () => mockStore,
     }));
 
-    // Dispatch 5 tasks on the same session (fire-and-forget)
+    // Dispatch 8 tasks on the same session (fire-and-forget)
     const results = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       results.push(await tool.execute(`call_${i}`, { task: `任务 ${i}` }, null, null, mockCtx()));
     }
     for (const r of results) {
       expect(r.details.streamStatus).toBe("running");
     }
 
-    // 6th task on the same session must be rejected
-    const blocked = await tool.execute("call_5", { task: "第六个任务" }, null, null, mockCtx());
-    expect(blocked.content[0].text).toMatch(/5|subagentMaxConcurrent/);
+    // 9th task on the same session must be rejected
+    const blocked = await tool.execute("call_8", { task: "第九个任务" }, null, null, mockCtx());
+    expect(blocked.content[0].text).toMatch(/8|subagentMaxConcurrent/);
     expect(blocked.details).toBeUndefined();
 
     // Cleanup
@@ -210,26 +210,26 @@ describe("subagent-tool (executeIsolated 原子模式)", () => {
       getDeferredStore: () => mockStore,
     }));
 
-    // Session A: dispatch 5 tasks
-    for (let i = 0; i < 5; i++) {
+    // Session A: dispatch 8 tasks
+    for (let i = 0; i < 8; i++) {
       const r = await tool.execute(`call_a${i}`, { task: `任务 A${i}` }, null, null, mockCtx("/session/a.jsonl"));
       expect(r.details.streamStatus).toBe("running");
     }
 
-    // Session B: should still be able to dispatch 5 tasks (independent quota)
-    for (let i = 0; i < 5; i++) {
+    // Session B: should still be able to dispatch 8 tasks (independent quota)
+    for (let i = 0; i < 8; i++) {
       const r = await tool.execute(`call_b${i}`, { task: `任务 B${i}` }, null, null, mockCtx("/session/b.jsonl"));
       expect(r.details.streamStatus).toBe("running");
     }
 
-    // Session A: 6th task should be rejected
-    const blockedA = await tool.execute("call_a5", { task: "第六个 A" }, null, null, mockCtx("/session/a.jsonl"));
-    expect(blockedA.content[0].text).toMatch(/5|subagentMaxConcurrent/);
+    // Session A: 9th task should be rejected
+    const blockedA = await tool.execute("call_a8", { task: "第九个 A" }, null, null, mockCtx("/session/a.jsonl"));
+    expect(blockedA.content[0].text).toMatch(/8|subagentMaxConcurrent/);
     expect(blockedA.details).toBeUndefined();
 
-    // Session B: 4th task should also be rejected
-    const blockedB = await tool.execute("call_b3", { task: "第四个 B" }, null, null, mockCtx("/session/b.jsonl"));
-    expect(blockedB.content[0].text).toMatch(/3|subagentMaxConcurrent/);
+    // Session B: 9th task should also be rejected
+    const blockedB = await tool.execute("call_b8", { task: "第九个 B" }, null, null, mockCtx("/session/b.jsonl"));
+    expect(blockedB.content[0].text).toMatch(/8|subagentMaxConcurrent/);
     expect(blockedB.details).toBeUndefined();
 
     // Cleanup
@@ -238,8 +238,8 @@ describe("subagent-tool (executeIsolated 原子模式)", () => {
     }
   });
 
-  // 6c. global limit (15) rejects when total across all sessions exceeds it
-  it("rejects when global limit (15) is reached across sessions", async () => {
+  // 6c. global limit (20) rejects when total across all sessions exceeds it
+  it("rejects when global limit (20) is reached across sessions", async () => {
     const pending = [];
     const blockingExecute = vi.fn().mockImplementation((_prompt, opts) => {
       opts?.onSessionReady?.("/test/child.jsonl");
@@ -250,17 +250,17 @@ describe("subagent-tool (executeIsolated 原子模式)", () => {
       getDeferredStore: () => mockStore,
     }));
 
-    // Fill up 15 tasks across 3 sessions (5 + 5 + 5)
-    for (let s = 0; s < 3; s++) {
+    // Fill up 20 tasks across 4 sessions (5 each, under per-session limit of 8)
+    for (let s = 0; s < 4; s++) {
       for (let i = 0; i < 5; i++) {
         const r = await tool.execute(`call_${s}_${i}`, { task: `任务` }, null, null, mockCtx(`/session/${s}.jsonl`));
         expect(r.details.streamStatus).toBe("running");
       }
     }
 
-    // 16th task from a new session (per-session is fine, but global is full)
-    const blocked = await tool.execute("call_3_0", { task: "第16个" }, null, null, mockCtx("/session/3.jsonl"));
-    expect(blocked.content[0].text).toMatch(/15|subagentMaxConcurrent/);
+    // 21st task from a new session (per-session is fine, but global is full)
+    const blocked = await tool.execute("call_4_0", { task: "第21个" }, null, null, mockCtx("/session/4.jsonl"));
+    expect(blocked.content[0].text).toMatch(/20|subagentMaxConcurrent/);
     expect(blocked.details).toBeUndefined();
 
     // Cleanup
