@@ -114,7 +114,7 @@ export class HanaEngine {
       buildTools: (cwd, ct, opts) => this.buildTools(cwd, ct, opts),
       emitEvent: (e, sp) => this._emitEvent(e, sp),
       emitDevLog: (t, l) => this.emitDevLog(t, l),
-      getHomeCwd: () => this.homeCwd,
+      getHomeCwd: (agentId) => this.getHomeCwd(agentId),
       agentIdFromSessionPath: (p) => this.agentIdFromSessionPath(p),
       switchAgentOnly: (id) => this._agentMgr.switchAgentOnly(id),
       getConfig: () => this.config,
@@ -154,7 +154,7 @@ export class HanaEngine {
       getResourceLoader: () => this._resourceLoader,
       getPreferences: () => this._readPreferences(),
       buildTools: (cwd, customTools, opts) => this.buildTools(cwd, customTools, opts),
-      getHomeCwd: () => this.homeCwd,
+      getHomeCwd: (agentId) => this.getHomeCwd(agentId),
     });
 
     // Checkpoint 备份存储
@@ -304,7 +304,11 @@ export class HanaEngine {
   get memoryEnabled() { return this.agent.memoryEnabled; }
   get memoryModelUnavailableReason() { return this.agent.memoryModelUnavailableReason; }
   get planMode() { return this._sessionCoord.getPlanMode(); }
-  get homeCwd() { return this._configCoord.getHomeFolder() || null; }
+  get homeCwd() { return this._configCoord.getHomeFolder(this._readPrimaryAgent()) || null; }
+
+  getHomeCwd(agentId) {
+    return this._configCoord.getHomeFolder(agentId) || null;
+  }
   get authStorage() { return this._models.authStorage; }
   get modelRegistry() { return this._models.modelRegistry; }
   get providerRegistry() { return this._models.providerRegistry; }
@@ -313,8 +317,10 @@ export class HanaEngine {
   /** 刷新可用模型列表（含 OAuth 自定义模型注入） */
   async refreshModels() { return this._models.refreshAvailable(); }
 
-  getHomeFolder() { return this._configCoord.getHomeFolder(); }
-  setHomeFolder(f) { return this._configCoord.setHomeFolder(f); }
+  getHomeFolder(agentId) { return this._configCoord.getHomeFolder(agentId); }
+  setHomeFolder(agentId, folder) { return this._configCoord.setHomeFolder(agentId, folder); }
+  getHeartbeatMaster() { return this._configCoord.getHeartbeatMaster(); }
+  setHeartbeatMaster(v) { return this._configCoord.setHeartbeatMaster(v); }
   getSharedModels() { return this._configCoord.getSharedModels(); }
   setSharedModels(p) { return this._configCoord.setSharedModels(p); }
   getSearchConfig() { return this._configCoord.getSearchConfig(); }

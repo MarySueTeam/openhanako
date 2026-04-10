@@ -50,7 +50,7 @@ export async function runAgentSession(agentId, rounds, { engine, signal, session
   tempResourceLoader.getSkills = () => ctx.getSkillsForAgent(agent);
 
   // 3. 临时 session
-  const cwd = engine.homeCwd || process.cwd();
+  const cwd = engine.getHomeCwd(agentId) || process.cwd();
   const sessionDir = ephemeralDir || path.join(agentDir, "sessions", sessionSuffix);
   fs.mkdirSync(sessionDir, { recursive: true });
   const tempSessionMgr = SessionManager.create(cwd, sessionDir);
@@ -61,7 +61,7 @@ export async function runAgentSession(agentId, rounds, { engine, signal, session
     tools = [];
     customTools = [];
   } else {
-    const built = ctx.buildTools(cwd, agent.tools, { agentDir, workspace: engine.homeCwd });
+    const built = ctx.buildTools(cwd, agent.tools, { agentDir, workspace: engine.getHomeCwd(agentId) });
     if (readOnly) {
       const READ_ONLY_CUSTOM = ["search_memory", "recall_experience", "web_search", "web_fetch"];
       tools = built.tools.filter(t => READ_ONLY_BUILTIN_TOOLS.includes(t.name));

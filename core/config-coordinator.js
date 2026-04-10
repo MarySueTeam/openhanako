@@ -51,22 +51,47 @@ export class ConfigCoordinator {
 
   // ── Home Folder ──
 
-  getHomeFolder() {
-    const configured = this._prefs().home_folder;
-    if (configured && fs.existsSync(configured)) return configured;
-    // 配置的文件夹已被删除 → fallback 到桌面
+  /**
+   * @param {string} [agentId] - 指定 agent；省略时查主 agent
+   * @returns {string} 工作目录（保证返回有效路径）
+   */
+  getHomeFolder(agentId) {
+    // 1. 指定 agent 自己的 config
+    if (agentId) {
+      const agent = this._d.getAgentById(agentId);
+      const folder = agent?.config?.desk?.home_folder;
+      if (folder && fs.existsSync(folder)) return folder;
+    }
+
+    // 2. 主 agent 的 config
+    const primaryId = this._getPrimaryAgentId();
+    if (primaryId && primaryId !== agentId) {
+      const primary = this._d.getAgentById(primaryId);
+      const folder = primary?.config?.desk?.home_folder;
+      if (folder && fs.existsSync(folder)) return folder;
+    }
+
+    // 3. 硬编码 fallback
     return path.join(os.homedir(), "Desktop");
   }
 
-  setHomeFolder(folder) {
-    const prefs = this._prefs();
-    if (folder) {
-      prefs.home_folder = folder;
-    } else {
-      delete prefs.home_folder;
+  /**
+   * @param {string} agentId
+   * @param {string|null} folder
+   */
+  setHomeFolder(agentId, folder) {
+    const agent = this._d.getAgentById(agentId);
+    if (!agent) {
+      log.warn(`setHomeFolder: agent ${agentId} not found`);
+      return;
     }
-    this._savePrefs(prefs);
-    log.log(`setHomeFolder: ${folder || "(cleared)"}`);
+    if (folder) {
+      agent.updateConfig({ desk: { home_folder: folder } });
+    } else {
+      // null 值触发 deepMerge 的 key 删除逻辑
+      agent.updateConfig({ desk: { home_folder: null } });
+    }
+    log.log(`setHomeFolder(${agentId}): ${folder || "(cleared)"}`);
   }
 
   // ── Shared Models ──
@@ -368,7 +393,29 @@ export class ConfigCoordinator {
     return true;
   }
 
+  // ── Heartbeat Master ──
+
+  getHeartbeatMaster() {
+    return this._prefs().heartbeat_master !== false;
+  }
+
+  setHeartbeatMaster(enabled) {
+    const prefs = this._prefs();
+    prefs.heartbeat_master = !!enabled;
+    this._savePrefs(prefs);
+    log.log(`setHeartbeatMaster: ${enabled}`);
+  }
+
   // ── helpers ──
+
+  _getPrimaryAgentId() {
+    const prefsManager = this._d.getPrefs();
+    if (typeof prefsManager.getPrimaryAgent === 'function') {
+      return prefsManager.getPrimaryAgent();
+    }
+    const prefs = this._prefs();
+    return prefs.primaryAgent || null;
+  }
 
   _prefs() { return this._d.getPrefs().getPreferences(); }
   _savePrefs(prefs) { return this._d.getPrefs().savePreferences(prefs); }

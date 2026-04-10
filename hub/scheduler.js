@@ -98,8 +98,8 @@ export class Scheduler {
     const engine = this._engine;
     const hbInterval = agent.config?.desk?.heartbeat_interval;
     const hbEnabled = agent.config?.desk?.heartbeat_enabled !== false;
-    // home_folder 是全局 prefs，不是 per-agent config，所有 agent 共享同一个工作目录
-    const getWorkspace = () => engine.homeCwd;
+    // per-agent workspace（fallback: 主 agent → ~/Desktop）
+    const getWorkspace = () => engine.getHomeCwd(agentId);
     const hb = createHeartbeat({
       getDeskFiles: () => {
         try {
