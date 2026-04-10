@@ -141,8 +141,8 @@ export function createBridgeRoute(engine, bridgeManager) {
   /** 获取最近消息日志（实时内存缓冲） */
   route.get("/bridge/messages", async (c) => {
     const limit = parseInt(c.req.query("limit"), 10) || 50;
-    const agentId = c.req.query("agentId") || null;
-    return c.json({ messages: bridgeManager.getMessages(limit, agentId) });
+    const agent = resolveAgent(engine, c);
+    return c.json({ messages: bridgeManager.getMessages(limit, agent.id) });
   });
 
   /** 获取 bridge session 列表 */
@@ -256,7 +256,7 @@ export function createBridgeRoute(engine, bridgeManager) {
   /** 重置 bridge session（清除上下文，下次消息新建 session） */
   route.post("/bridge/sessions/:sessionKey/reset", async (c) => {
     const sessionKey = c.req.param("sessionKey");
-    const agent = resolveAgent(engine, c);
+    const agent = resolveAgentStrict(engine, c);
     const agentId = agent.id;
     const index = engine.getBridgeIndex(agentId);
     const raw = index[sessionKey];
@@ -274,15 +274,17 @@ export function createBridgeRoute(engine, bridgeManager) {
   /** 发送媒体到 bridge 平台（桌面端推送文件） */
   route.post("/bridge/send-media", async (c) => {
     const body = await safeJson(c);
-    const { platform, chatId, filePath, agentId } = body;
+    const { platform, chatId, filePath } = body;
     if (!platform || !chatId || !filePath) {
       return c.json({ error: "platform, chatId, filePath required" }, 400);
     }
 
+    const agent = resolveAgentStrict(engine, c);
+
     // 路径安全检查（对齐 fs.js 的 getAllowedRoots 逻辑）
     const hanaHome = path.resolve(engine.hanakoHome);
     const allowedRoots = [hanaHome];
-    const deskHome = resolveAgent(engine, c)?.deskManager?.homePath;
+    const deskHome = agent.deskManager?.homePath;
     if (deskHome) allowedRoots.push(path.resolve(deskHome));
 
     // 先检查文件是否存在
@@ -313,7 +315,7 @@ export function createBridgeRoute(engine, bridgeManager) {
     } catch { return c.json({ error: "file not found" }, 404); }
 
     try {
-      await bridgeManager.sendMediaFile(platform, chatId, realPath, agentId);
+      await bridgeManager.sendMediaFile(platform, chatId, realPath, agent.id);
       return c.json({ ok: true });
     } catch (err) {
       return c.json({ error: err.message }, 500);

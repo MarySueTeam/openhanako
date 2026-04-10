@@ -23,9 +23,15 @@ export async function hanaFetch(
     headers['Authorization'] = `Bearer ${serverToken}`;
   }
 
-  const { timeout = DEFAULT_TIMEOUT, ...fetchOpts } = opts;
+  const { timeout = DEFAULT_TIMEOUT, signal: callerSignal, ...fetchOpts } = opts;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
+
+  // If caller provided a signal, forward its abort to our controller
+  if (callerSignal) {
+    if (callerSignal.aborted) { controller.abort(); }
+    else { callerSignal.addEventListener('abort', () => controller.abort(), { once: true }); }
+  }
 
   try {
     const res = await fetch(`http://127.0.0.1:${serverPort}${path}`, {

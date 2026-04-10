@@ -132,7 +132,8 @@ export function useBridgeState() {
         body: JSON.stringify({ platform: plat, credentials, enabled }),
       });
       showToast(t('settings.saved'), 'success');
-      await loadStatus();
+      // Only reload if user hasn't switched agent during the save
+      if (selectedAgentId === agentId) await loadStatus();
     } catch (err: unknown) {
       showToast(t('settings.saveFailed') + ': ' + (err instanceof Error ? err.message : String(err)), 'error');
     }

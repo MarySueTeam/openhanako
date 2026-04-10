@@ -45,28 +45,36 @@ export function BridgePanel() {
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentKeyRef = useRef(currentKey);
   currentKeyRef.current = currentKey;
+  const bridgeAgentIdRef = useRef(bridgeAgentId);
+  bridgeAgentIdRef.current = bridgeAgentId;
 
-  // 加载状态（按 agent 过滤）
+  // 加载状态（按 agent 过滤，stale-guard via ref）
   const loadStatus = useCallback(async () => {
+    const snapshotId = bridgeAgentId;
     try {
-      const query = bridgeAgentId ? `?agentId=${encodeURIComponent(bridgeAgentId)}` : '';
+      const query = snapshotId ? `?agentId=${encodeURIComponent(snapshotId)}` : '';
       const res = await hanaFetch(`/api/bridge/status${query}`);
+      if (bridgeAgentIdRef.current !== snapshotId) return; // stale
       const data = await res.json();
+      if (bridgeAgentIdRef.current !== snapshotId) return; // stale
       setStatusData(data);
       updateSidebarDot(data);
     } catch {}
   }, [bridgeAgentId]);
 
-  // 加载平台数据（按 agent 过滤）
+  // 加载平台数据（按 agent 过滤，stale-guard via ref）
   const loadPlatformData = useCallback(async (plat: string) => {
+    const snapshotId = bridgeAgentId;
     try {
-      const agentQuery = bridgeAgentId ? `&agentId=${encodeURIComponent(bridgeAgentId)}` : '';
+      const agentQuery = snapshotId ? `&agentId=${encodeURIComponent(snapshotId)}` : '';
       const [statusRes, sessionsRes] = await Promise.all([
-        hanaFetch(`/api/bridge/status${bridgeAgentId ? `?agentId=${encodeURIComponent(bridgeAgentId)}` : ''}`),
+        hanaFetch(`/api/bridge/status${snapshotId ? `?agentId=${encodeURIComponent(snapshotId)}` : ''}`),
         hanaFetch(`/api/bridge/sessions?platform=${plat}${agentQuery}`),
       ]);
+      if (bridgeAgentIdRef.current !== snapshotId) return; // stale
       const sData = await statusRes.json();
       const sessData = await sessionsRes.json();
+      if (bridgeAgentIdRef.current !== snapshotId) return; // stale
       setStatusData(sData);
       updateSidebarDot(sData);
       setShowOverlay(!sData[plat]?.configured);
