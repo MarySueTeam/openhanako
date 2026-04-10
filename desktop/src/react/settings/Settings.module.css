@@ -5301,8 +5301,7 @@ a.about-link:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
+  padding: 5px 0 5px 8px;
   flex-shrink: 0;
 }
 
