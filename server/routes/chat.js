@@ -682,6 +682,12 @@ export function createChatRoute(engine, hub, { upgradeWebSocket }) {
                 wsSend(ws, { type: "error", message: t("error.stillStreaming", { name: engine.agentName }), sessionPath: promptSessionPath });
                 return;
               }
+              // Reject prompt while model switch is in progress
+              const switchingEntry = engine._sessionCoord?.sessions?.get(promptSessionPath);
+              if (switchingEntry?._switching) {
+                wsSend(ws, { type: "error", message: "正在切换模型，请稍候", sessionPath: promptSessionPath });
+                return;
+              }
               const ss = getState(promptSessionPath);
               try {
                 ss.thinkTagParser.reset();
