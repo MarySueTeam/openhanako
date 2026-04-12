@@ -263,7 +263,9 @@ After dispatching subagent or other background tasks:
         if (oldSp) {
           const oldEntry = this._sessions.get(oldSp);
           const oldAgent = oldEntry ? this._d.getAgentById(oldEntry.agentId) : this._d.getAgent();
-          await oldAgent?._memoryTicker?.notifySessionEnd(oldSp).catch(() => {});
+          await oldAgent?._memoryTicker?.notifySessionEnd(oldSp).catch((err) =>
+            log.warn(`switchSession ${path.basename(oldSp)}: notifySessionEnd failed: ${err.message}`),
+          );
         }
       }
       this._session = existing.session;
@@ -279,7 +281,9 @@ After dispatching subagent or other background tasks:
       if (oldSp) {
         const oldEntry = this._sessions.get(oldSp);
         const oldAgent = oldEntry ? this._d.getAgentById(oldEntry.agentId) : this._d.getAgent();
-        await oldAgent?._memoryTicker?.notifySessionEnd(oldSp).catch(() => {});
+        await oldAgent?._memoryTicker?.notifySessionEnd(oldSp).catch((err) =>
+          log.warn(`switchSession ${path.basename(oldSp)}: notifySessionEnd failed: ${err.message}`),
+        );
       }
     }
     // 冷启动恢复：model 由 PI SDK 从 session JSONL 恢复（单一数据源），不从 session-meta.json 读
@@ -642,7 +646,11 @@ After dispatching subagent or other background tasks:
     const tasks = [];
     for (const [sp, entry] of this._sessions) {
       if (entry.session.isStreaming) {
-        tasks.push(entry.session.abort().catch(() => {}));
+        tasks.push(
+          entry.session.abort().catch((err) =>
+            log.warn(`abortAllStreaming ${path.basename(sp)}: abort failed: ${err.message}`),
+          ),
+        );
       }
     }
     await Promise.all(tasks);
