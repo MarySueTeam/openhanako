@@ -141,7 +141,21 @@ describe("session-coordinator tool snapshot (createSession)", () => {
 
   // ── Case C tests ─────────────────────────────────────────────
 
-  it("Case C: new session with empty disabled includes all tools in snapshot", async () => {
+  it("Case C: new session with NO tools config applies DEFAULT_DISABLED (update_settings + dm off)", async () => {
+    currentAgentConfig = {}; // fresh agent or upgrade, tools field absent
+    await coord.createSession(null, tmpDir, true);
+
+    const appliedList = activeToolsSpy.mock.calls[0][0];
+    expect(appliedList).not.toContain("update_settings");
+    expect(appliedList).not.toContain("dm");
+    // everything else still on
+    expect(appliedList).toContain("browser");
+    expect(appliedList).toContain("cron");
+    expect(appliedList).toContain("install_skill");
+    expect(appliedList).toContain("read"); // SDK built-in preserved
+  });
+
+  it("Case C: new session with EXPLICIT empty disabled includes all tools in snapshot", async () => {
     currentAgentConfig = { tools: { disabled: [] } };
     const { sessionPath } = await coord.createSession(null, tmpDir, true);
 

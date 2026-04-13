@@ -15,7 +15,7 @@ import { BrowserManager } from "../lib/browser/browser-manager.js";
 import { t, getLocale } from "../server/i18n.js";
 import { READ_ONLY_BUILTIN_TOOLS } from "./config-coordinator.js";
 import { findModel } from "../shared/model-ref.js";
-import { computeToolSnapshot } from "../shared/tool-categories.js";
+import { computeToolSnapshot, DEFAULT_DISABLED_TOOL_NAMES } from "../shared/tool-categories.js";
 
 const log = createModuleLogger("session");
 
@@ -233,14 +233,17 @@ After dispatching subagent or other background tasks:
           // (which would re-enable every disabled tool). Cannot perfectly
           // preserve the historical snapshot, but honors the user's current
           // disabled-tool intent.
-          const disabled = agent.config?.tools?.disabled || [];
+          const disabled = agent.config?.tools?.disabled ?? DEFAULT_DISABLED_TOOL_NAMES;
           snapshotToolNames = computeToolSnapshot(allToolNames, disabled);
         }
         // else Case B (meta absent via ENOENT): snapshotToolNames stays null
       }
     } else {
-      // Case C
-      const disabled = agent.config?.tools?.disabled || [];
+      // Case C. Fresh agents (and agents upgrading from a pre-feature version)
+      // have no tools.disabled field — apply DEFAULT_DISABLED_TOOL_NAMES so
+      // update_settings and dm are off by default. Explicit `[]` means "all on"
+      // and is preserved via nullish-coalescing rather than `||`.
+      const disabled = agent.config?.tools?.disabled ?? DEFAULT_DISABLED_TOOL_NAMES;
       snapshotToolNames = computeToolSnapshot(allToolNames, disabled);
     }
 

@@ -47,6 +47,23 @@ export const OPTIONAL_TOOL_NAMES = [
 const OPTIONAL_TOOL_NAMES_SET = new Set(OPTIONAL_TOOL_NAMES);
 
 /**
+ * Default-off subset of OPTIONAL_TOOL_NAMES. Applied when agent config has no
+ * `tools.disabled` field (i.e., user has never touched tool settings). Both
+ * fresh agents and agents upgrading from a pre-feature version hit this path.
+ *
+ * Must be a subset of OPTIONAL_TOOL_NAMES. The frontend AgentTab keeps a local
+ * copy for display defaults; tests/optional-tool-names-drift.test.js guards the
+ * two from drifting.
+ *
+ * Rationale:
+ *   update_settings — lets the agent modify app configuration; off by default
+ *                     because silent config drift is surprising.
+ *   dm              — direct-messages between agents; off by default because
+ *                     single-agent setups have no peers and it adds context.
+ */
+export const DEFAULT_DISABLED_TOOL_NAMES = ["update_settings", "dm"];
+
+/**
  * Startup-time invariant: every built-in tool the engine composes MUST be
  * explicitly categorized. Throwing here always means a developer added a tool
  * without categorizing it. The fix is always: open this file and categorize it.

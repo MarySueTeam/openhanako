@@ -276,9 +276,10 @@ export function AgentTab() {
         )}
       </section>
 
+      {/* 默认关闭 update_settings 和 dm，与后端 DEFAULT_DISABLED_TOOL_NAMES 保持同步 */}
       <AgentToolsSection
         availableTools={settingsConfig?.availableTools || []}
-        disabled={settingsConfig?.tools?.disabled || []}
+        disabled={settingsConfig?.tools?.disabled ?? ["update_settings", "dm"]}
       />
 
     </div>
