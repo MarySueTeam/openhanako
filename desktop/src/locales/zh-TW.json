@@ -1444,8 +1444,8 @@
     },
     "browser": {
       "label": "瀏覽器",
-      "description": "控制瀏覽器瀏覽網頁。可以導覽、點擊、輸入、捲動、截圖。\n操作：\n- start：啟動瀏覽器（首次使用前必須呼叫）\n- stop：關閉瀏覽器\n- navigate(url)：導覽到指定 URL\n- snapshot：取得目前頁面的元素樹（推薦：文字格式，成本低）\n- screenshot：截取目前頁面截圖（僅在需要視覺資訊時使用）\n- click(ref)：點擊 snapshot 回傳的 [ref] 編號對應的元素\n- type(text, ref?)：在元素中輸入文字，可選先點擊 ref 取得焦點\n- scroll(direction, amount?)：捲動頁面，direction 為 up/down\n- select(ref, value)：選擇下拉選單選項\n- key(key)：按鍵，如 Enter、Escape、Tab、Control+a\n- wait(timeout?, state?)：等待頁面載入\n- evaluate(expression)：執行頁面 JavaScript\n- show：將瀏覽器視窗帶到前景\n\n重要：snapshot 回傳的 [ref] 編號在頁面變更後會失效，每次 navigate/click 後會自動回傳新的 snapshot。",
-      "actionDesc": "操作類型",
+      "description": "控制無頭瀏覽器（導航、點擊、輸入、捲動、截圖、執行 JS）。透過 action 參數選擇操作，每個 action 需要的參數見 action 欄位的說明。注意：snapshot 回傳的 [ref] 編號在 navigate/click/type 之後會失效，這些操作會自動回傳新的 snapshot，請始終使用最新 snapshot 中的 ref。",
+      "actionDesc": "要執行的操作。每個 action 的必填參數：navigate→url；click→ref；type→text（可選 ref、pressEnter）；scroll→direction（可選 amount）；select→ref+value；key→key；wait→（可選 timeout、state）；evaluate→expression。start、stop、snapshot、screenshot、show 不需額外參數。",
       "urlDesc": "URL（navigate 時必填）",
       "refDesc": "元素 ref 編號（click/type/select 時使用）",
       "textDesc": "輸入文字（type 時必填）",
