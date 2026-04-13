@@ -248,6 +248,25 @@ export function createAgentsRoute(engine) {
         config.providers = {};
       }
 
+      // Expose the agent's currently-registered tool name list so the settings
+      // UI can decide which optional-tool toggles to render. Uses the keyed
+      // engine.getAgent(id) lookup rather than the focus pointer — state
+      // ownership must be uniquely determined, not derived from focus.
+      const agent = engine.getAgent(id);
+      if (!agent) {
+        // agentExists(engine, id) already guarded above; reaching here means
+        // engine.getAgent diverged from agentExists. That's a bug, not a missing
+        // resource — log it but don't 500 the response.
+        console.warn(
+          `GET /agents/${id}/config: agent not found by keyed lookup despite passing agentExists check`
+        );
+        config.availableTools = [];
+      } else {
+        config.availableTools = (agent.tools || [])
+          .map((t) => t.name)
+          .filter(Boolean);
+      }
+
       return c.json(config);
     } catch (err) {
       return c.json({ error: err.message }, 500);
