@@ -836,13 +836,12 @@ export class HanaEngine {
     }
 
     // Startup assertion: every built-in tool must be categorized in
-    // shared/tool-categories.js. Covers all 3 tool-assembly call sites
-    // (createSession / executeIsolated / bridge-session-manager) because
-    // they all route through this function.
+    // shared/tool-categories.js. All session-creation paths route through
+    // this function, so a single check here catches the whole surface.
     assertAllToolsCategorized([
       ...result.tools.map((t) => t.name).filter(Boolean),
       ...ct
-        .filter((t) => t && !t._pluginId)
+        .filter((t) => !t._pluginId)
         .map((t) => t.name)
         .filter(Boolean),
     ]);
