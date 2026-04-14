@@ -19,6 +19,7 @@ import { migrateConfigScope } from "../shared/migrate-config-scope.js";
 import { migrateToProvidersYaml } from "./migrate-providers.js";
 import { runMigrations } from "./migrations.js";
 import { findModel } from "../shared/model-ref.js";
+import { resolveWorkspaceSkillPaths } from "../shared/workspace-skill-paths.js";
 import { PluginManager } from "./plugin-manager.js";
 import { DefaultResourceLoader, codingTools, grepTool, findTool, lsTool } from "../lib/pi-sdk/index.js";
 
@@ -128,6 +129,9 @@ export class HanaEngine {
       getConfirmStore: () => this._confirmStore,
       getDeferredResultStore: () => this._deferredResultStore,
       getTaskRegistry: () => this._taskRegistry,
+      onBeforeSessionCreate: async (cwd) => {
+        await this.syncWorkspaceSkillPaths(cwd, { reload: true, emitEvent: false });
+      },
     });
 
     // ── Config Coordinator ──
@@ -253,7 +257,11 @@ export class HanaEngine {
   async deleteAgent(agentId) { return this._agentMgr.deleteAgent(agentId); }
   setPrimaryAgent(agentId) { return this._agentMgr.setPrimaryAgent(agentId); }
   agentIdFromSessionPath(p) { return this._agentMgr.agentIdFromSessionPath(p); }
-  async createSessionForAgent(agentId, cwd, mem) { return this._agentMgr.createSessionForAgent(agentId, cwd, mem); }
+  async createSessionForAgent(agentId, cwd, mem) {
+    const result = await this._agentMgr.createSessionForAgent(agentId, cwd, mem);
+    await this.syncWorkspaceSkillPaths(cwd || this.cwd, { reload: true, emitEvent: false });
+    return result;
+  }
 
   // 向后兼容：agent 属性代理
   get agentName() { return this.agent.agentName; }
@@ -277,8 +285,16 @@ export class HanaEngine {
   get cwd() { return this._sessionCoord.session?.sessionManager?.getCwd?.() ?? process.cwd(); }
   get deskCwd() { return this._sessionCoord.session?.sessionManager?.getCwd?.() || this.homeCwd || null; }
 
-  async createSession(mgr, cwd, mem, model) { return this._sessionCoord.createSession(mgr, cwd, mem, model); }
-  async switchSession(p) { return this._sessionCoord.switchSession(p); }
+  async createSession(mgr, cwd, mem, model) {
+    const result = await this._sessionCoord.createSession(mgr, cwd, mem, model);
+    await this.syncWorkspaceSkillPaths(cwd || this.cwd, { reload: true, emitEvent: false });
+    return result;
+  }
+  async switchSession(p) {
+    const result = await this._sessionCoord.switchSession(p);
+    await this.syncWorkspaceSkillPaths(this.cwd, { reload: true, emitEvent: false });
+    return result;
+  }
   /** @deprecated Phase 2: 使用 promptSession(path, text, opts) */
   async prompt(text, opts) { return this._sessionCoord.prompt(text, opts); }
   /** @deprecated Phase 2: 使用 abortSession(path) */
@@ -426,6 +442,12 @@ export class HanaEngine {
     if (!ag) throw new Error(`agent not found: ${agentId}`);
     return this._skills.getAllSkills(ag);
   }
+  getRuntimeSkills(agentId) {
+    if (!agentId) throw new Error("getRuntimeSkills requires explicit agentId");
+    const ag = this._agentMgr.getAgent(agentId);
+    if (!ag) throw new Error(`agent not found: ${agentId}`);
+    return this._skills.getRuntimeSkillInfos(ag);
+  }
   _getSkillsForAgent(ag) { return this._skills.getSkillsForAgent(ag); }
   get skillsDir() { return this._skills?.skillsDir; }
   get userSkillsDir() { return this._skills?.skillsDir; }
@@ -451,10 +473,9 @@ export class HanaEngine {
     }
     // 运行期间有新目录出现：重新集成到 SkillManager（watcher + 扫描）
     if (newDirAppeared) {
-      const merged = this._mergeExternalPaths(this._prefs.getExternalSkillPaths());
-      this._skills.setExternalPaths(merged);
-      this.reloadSkills().then(() => {
-        this._emitEvent({ type: "skills-changed" }, null);
+      this.syncWorkspaceSkillPaths(this.currentSessionPath ? this.cwd : null, {
+        reload: true,
+        emitEvent: true,
       }).catch(() => {});
     }
     return {
@@ -466,17 +487,14 @@ export class HanaEngine {
   /** 更新外部技能路径 + 同步 ResourceLoader + 重载 */
   async setExternalSkillPaths(paths) {
     this._prefs.setExternalSkillPaths(paths);
-    const merged = this._mergeExternalPaths(paths);
-    // 1. 更新 SkillManager（数据 + watcher，不 reload）
-    this._skills.setExternalPaths(merged);
-    // 2. 统一 reload（外部技能由 SkillManager 扫描，不走 ResourceLoader）
-    await this.reloadSkills();
-    // 3. 通知前端
-    this._emitEvent({ type: "skills-changed" }, null);
+    await this.syncWorkspaceSkillPaths(this.currentSessionPath ? this.cwd : null, {
+      reload: true,
+      emitEvent: true,
+    });
   }
 
   /** 合并自动发现 + 用户配置的外部路径（去重） */
-  _mergeExternalPaths(userConfiguredPaths) {
+  _mergeExternalPaths(userConfiguredPaths, extraPaths = []) {
     // 每次合并时重新检测目录是否存在（不依赖初始化快照）
     for (const d of this._discoveredExternalPaths || []) {
       d.exists = fs.existsSync(d.dirPath);
@@ -490,13 +508,47 @@ export class HanaEngine {
     }));
     const merged = [...discovered];
     const seen = new Set(merged.map(m => m.dirPath));
-    for (const up of userParsed) {
-      if (!seen.has(up.dirPath)) {
-        merged.push(up);
-        seen.add(up.dirPath);
-      }
+    for (const up of [...userParsed, ...extraPaths]) {
+      if (seen.has(up.dirPath)) continue;
+      merged.push(up);
+      seen.add(up.dirPath);
     }
     return merged;
+  }
+
+  _getWorkspaceExternalSkillPaths(cwd) {
+    return resolveWorkspaceSkillPaths(cwd);
+  }
+
+  _getResolvedExternalSkillPaths(cwd) {
+    const pluginPaths = this._pluginManager?.getSkillPaths?.() || [];
+    const workspacePaths = this._getWorkspaceExternalSkillPaths(cwd);
+    return this._mergeExternalPaths(this._prefs.getExternalSkillPaths(), [
+      ...pluginPaths,
+      ...workspacePaths,
+    ]);
+  }
+
+  _sameExternalSkillPaths(a = [], b = []) {
+    if (a.length !== b.length) return false;
+    return a.every((entry, index) => {
+      const other = b[index];
+      return entry?.dirPath === other?.dirPath
+        && entry?.label === other?.label
+        && (entry?.scope || "") === (other?.scope || "");
+    });
+  }
+
+  async syncWorkspaceSkillPaths(cwd = null, { reload = true, emitEvent = false } = {}) {
+    if (!this._skills) return false;
+    const resolved = this._getResolvedExternalSkillPaths(cwd);
+    const changed = !this._sameExternalSkillPaths(this._skills._externalPaths || [], resolved);
+    if (!changed) return false;
+
+    this._skills.setExternalPaths(resolved);
+    if (reload) await this.reloadSkills();
+    if (emitEvent) this._emitEvent({ type: "skills-changed" }, null);
+    return true;
   }
 
   // ════════════════════════════
@@ -587,7 +639,7 @@ export class HanaEngine {
       label: w.label,
       exists: fs.existsSync(path.join(homeDir, w.suffix)),
     }));
-    const externalPaths = this._mergeExternalPaths(this._prefs.getExternalSkillPaths());
+    const externalPaths = this._getResolvedExternalSkillPaths(null);
 
     this._skills = new SkillManager({ skillsDir, externalPaths });
     this._resourceLoader = new DefaultResourceLoader({
@@ -746,12 +798,11 @@ export class HanaEngine {
     this._pluginManager.scan();
     await this._pluginManager.loadAll();
 
-    // Register plugin skill paths with SkillManager and re-sync agent skills
     if (this._skills) {
-      const existing = this._skills._externalPaths || [];
-      const pluginPaths = this._pluginManager.getSkillPaths();
-      this._skills.setExternalPaths([...existing, ...pluginPaths]);
-      this._syncAllAgentSkills();
+      await this.syncWorkspaceSkillPaths(this.currentSessionPath ? this.cwd : null, {
+        reload: true,
+        emitEvent: false,
+      });
     }
 
     // Inject plugin extension factories into ResourceLoader (same array reference)

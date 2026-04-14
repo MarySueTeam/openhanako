@@ -47,6 +47,7 @@ export class SessionCoordinator {
    * @param {(agentId) => object} deps.getActivityStore
    * @param {(agentId) => object|null} deps.getAgentById
    * @param {() => object} deps.listAgents - 列出所有 agent
+   * @param {(cwd: string) => Promise<void>} [deps.onBeforeSessionCreate]
    */
   constructor(deps) {
     this._d = deps;
@@ -85,6 +86,8 @@ export class SessionCoordinator {
     const effectiveModel = restore ? null : (model || this._pendingModel || models.currentModel);
     this._pendingModel = null;
     log.log(`createSession cwd=${effectiveCwd} restore=${restore} (传入: ${cwd || "未指定"})`);
+
+    await this._d.onBeforeSessionCreate?.(effectiveCwd);
 
     if (!restore && !effectiveModel) {
       throw new Error(t("error.noAvailableModel"));

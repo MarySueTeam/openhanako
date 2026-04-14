@@ -18,6 +18,7 @@ interface SkillInfo {
 export function useSkillSlashItems(): SlashItem[] {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const agentId = useStore(s => s.currentAgentId);
+  const currentSessionPath = useStore(s => s.currentSessionPath);
 
   useEffect(() => {
     if (!agentId) {
@@ -25,14 +26,14 @@ export function useSkillSlashItems(): SlashItem[] {
       return;
     }
     let cancelled = false;
-    hanaFetch(`/api/skills?agentId=${encodeURIComponent(agentId)}`)
+    hanaFetch(`/api/skills?agentId=${encodeURIComponent(agentId)}&runtime=1`)
       .then(r => r.json())
       .then(data => {
         if (!cancelled && data.skills) setSkills(data.skills);
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [agentId]);
+  }, [agentId, currentSessionPath]);
 
   return useMemo(() =>
     skills

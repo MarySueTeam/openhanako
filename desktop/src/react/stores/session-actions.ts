@@ -190,6 +190,9 @@ export async function switchSession(path: string): Promise<void> {
       ...agentPatch,
     });
 
+    const restoredDeskState = useStore.getState().getDeskStateForOwner?.(path);
+    useStore.getState().restoreDeskStateForOwner?.(path);
+
     // 同步浏览器状态到 keyed store（服务端返回当前 session 的 browser 状态）
     if (path) {
       updateKeyed('browserBySession', path, {
@@ -228,7 +231,7 @@ export async function switchSession(path: string): Promise<void> {
     }
 
     // 加载 desk files（显式传入切换后 session 的 cwd，覆盖 store 中旧的 deskBasePath）
-    loadDeskFiles('', data.cwd || undefined);
+    loadDeskFiles(restoredDeskState?.deskCurrentPath || '', data.cwd || undefined);
 
     // 切换会话后刷新 context ring
     useStore.setState({ contextTokens: null, contextWindow: null, contextPercent: null });
@@ -339,12 +342,16 @@ export async function ensureSession(): Promise<boolean> {
     }
 
     if (data.path) {
+      useStore.getState().cloneDeskStateToOwner?.(data.path);
       patch.currentSessionPath = data.path;
       // 初始化空 session，ChatArea 自动渲染
       useStore.getState().initSession(data.path, [], false);
     }
 
     useStore.setState(patch);
+    if (data.path) {
+      useStore.getState().restoreDeskStateForOwner?.(data.path);
+    }
 
     // New session defaults to plan mode OFF
     window.dispatchEvent(new CustomEvent('hana-plan-mode', { detail: { enabled: data.planMode ?? false } }));
@@ -365,7 +372,10 @@ export async function ensureSession(): Promise<boolean> {
       useStore.setState({ cwdHistory });
     }
 
-    loadDeskFiles('', data.cwd || undefined);
+    const restoredDeskState = data.path
+      ? useStore.getState().getDeskStateForOwner?.(data.path)
+      : null;
+    loadDeskFiles(restoredDeskState?.deskCurrentPath || '', data.cwd || undefined);
 
     return true;
   } catch (err) {

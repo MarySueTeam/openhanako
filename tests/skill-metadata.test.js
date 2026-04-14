@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SkillManager } from "../core/skill-manager.js";
 import { parseSkillMetadata } from "../lib/skills/skill-metadata.js";
 
@@ -112,5 +112,73 @@ describe("SkillManager metadata scanning", () => {
     expect(learnedSkills[0].name).toBe("learned-skill");
     expect(learnedSkills[0].description).toBe("Learned skill description.");
     expect(learnedSkills[0].disableModelInvocation).toBe(false);
+  });
+
+  it("workspace skills 参与 runtime skill 集，但不污染 agent 全局技能列表", () => {
+    const root = makeTmpRoot();
+    const globalExternalDir = path.join(root, "external");
+    const workspaceSkillsDir = path.join(root, "workspace", ".agents", "skills");
+    const globalSkillDir = path.join(globalExternalDir, "external-skill");
+    const workspaceSkillDir = path.join(workspaceSkillsDir, "workspace-skill");
+    const agentDir = path.join(root, "agents", "hana");
+
+    fs.mkdirSync(globalSkillDir, { recursive: true });
+    fs.mkdirSync(workspaceSkillDir, { recursive: true });
+    fs.mkdirSync(agentDir, { recursive: true });
+
+    fs.writeFileSync(path.join(globalSkillDir, "SKILL.md"), [
+      "---",
+      "name: external-skill",
+      "description: External skill description.",
+      "---",
+      "",
+    ].join("\n"), "utf-8");
+
+    fs.writeFileSync(path.join(workspaceSkillDir, "SKILL.md"), [
+      "---",
+      "name: workspace-skill",
+      "description: Workspace skill description.",
+      "---",
+      "",
+    ].join("\n"), "utf-8");
+
+    const manager = new SkillManager({
+      skillsDir: path.join(root, "skills"),
+      externalPaths: [
+        { dirPath: globalExternalDir, label: "Claude Code", scope: "global" },
+        { dirPath: workspaceSkillsDir, label: "Agents", scope: "workspace" },
+      ],
+    });
+    manager.init(
+      { getSkills: () => ({ skills: [], diagnostics: [] }) },
+      new Map(),
+      new Set(),
+    );
+
+    const agent = {
+      agentDir,
+      config: { skills: { enabled: ["external-skill"] } },
+      setEnabledSkills: vi.fn(),
+    };
+
+    expect(manager.getAllSkills(agent).map(s => s.name)).toEqual(["external-skill"]);
+
+    const runtimeInfo = manager.getRuntimeSkillInfos(agent);
+    expect(runtimeInfo.map(s => s.name)).toEqual(["external-skill", "workspace-skill"]);
+    expect(runtimeInfo.find(s => s.name === "workspace-skill")).toMatchObject({
+      enabled: true,
+      managedBy: "workspace",
+    });
+
+    const runtimeSkills = manager.getSkillsForAgent(agent);
+    expect(runtimeSkills.skills.map(s => s.name)).toEqual(["external-skill", "workspace-skill"]);
+
+    manager.syncAgentSkills(agent);
+    expect(agent.setEnabledSkills).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "external-skill" }),
+        expect.objectContaining({ name: "workspace-skill" }),
+      ]),
+    );
   });
 });

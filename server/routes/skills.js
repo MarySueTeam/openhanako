@@ -51,6 +51,7 @@ export function createSkillsRoute(engine) {
   route.get("/skills", async (c) => {
     try {
       const agentId = c.req.query("agentId");
+      const runtime = c.req.query("runtime") === "1";
       // 必须显式指定 agentId — 不允许从全局焦点指针推导，避免前后端 agent 错位
       // 后用户在 desk 上 toggle skill 时把错位 agent 的列表写入当前 agent (#397)
       if (!agentId) {
@@ -59,7 +60,9 @@ export function createSkillsRoute(engine) {
       if (!validateId(agentId) || !agentExists(engine, agentId)) {
         return c.json({ error: "agent not found" }, 404);
       }
-      return c.json({ skills: engine.getAllSkills(agentId) });
+      return c.json({
+        skills: runtime ? engine.getRuntimeSkills(agentId) : engine.getAllSkills(agentId),
+      });
     } catch (err) {
       return c.json({ error: err.message }, 500);
     }

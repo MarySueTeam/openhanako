@@ -49,39 +49,53 @@ export class SkillManager {
 
   /** 将 agent 启用的 skill 同步到 agent 的 system prompt */
   syncAgentSkills(agent) {
-    const enabled = agent?.config?.skills?.enabled || [];
-    // Plugin skills 跟着插件走，不需要手动启用
-    const skills = this._allSkills.filter(s => s._pluginSkill || enabled.includes(s.name));
+    const enabled = new Set(agent?.config?.skills?.enabled || []);
+    const skills = this._allSkills.filter(s => this._isRuntimeEnabledForAgent(s, enabled));
     agent.setEnabledSkills(skills);
   }
 
   /** 返回全量 skill 列表（供 API 使用），附带指定 agent 的 enabled 状态。Plugin skill 不返回（UI 不显示） */
   getAllSkills(agent) {
-    const enabled = agent?.config?.skills?.enabled || [];
-    return this._allSkills.filter(s => !s._pluginSkill).map(s => ({
+    const enabled = new Set(agent?.config?.skills?.enabled || []);
+    return this._allSkills.filter(s => !s._pluginSkill && !s._workspaceSkill).map(s => ({
       name: s.name,
       description: s.description,
       filePath: s.filePath,
       baseDir: s.baseDir,
       source: s.source,
       hidden: !!s._hidden,
-      enabled: enabled.includes(s.name),
+      enabled: enabled.has(s.name),
       externalLabel: s._externalLabel || null,
       externalPath: s._externalPath || null,
       readonly: !!s._readonly,
     }));
   }
 
+  /** 返回运行时 skill 列表（含 workspace skill），供 desk / slash 等 session 视图使用 */
+  getRuntimeSkillInfos(agent) {
+    const enabled = new Set(agent?.config?.skills?.enabled || []);
+    return this._allSkills.filter(s => !s._pluginSkill).map(s => ({
+      name: s.name,
+      description: s.description,
+      filePath: s.filePath,
+      baseDir: s.baseDir,
+      source: s._workspaceSkill ? "workspace" : s.source,
+      hidden: !!s._hidden,
+      enabled: this._isRuntimeEnabledForAgent(s, enabled),
+      externalLabel: s._externalLabel || null,
+      externalPath: s._externalPath || null,
+      readonly: !!s._readonly,
+      managedBy: s._managedBy || null,
+    }));
+  }
+
   /** 按 agent 过滤可用 skills（learned skills 有 per-agent 隔离） */
   getSkillsForAgent(targetAgent) {
-    const enabled = targetAgent?.config?.skills?.enabled;
-    if (!enabled || enabled.length === 0) {
-      return { skills: [], diagnostics: [] };
-    }
+    const enabled = new Set(targetAgent?.config?.skills?.enabled || []);
     const agentId = targetAgent ? path.basename(targetAgent.agentDir) : null;
     return {
       skills: this._allSkills.filter(s =>
-        enabled.includes(s.name)
+        this._isRuntimeEnabledForAgent(s, enabled)
         && (!s._agentId || s._agentId === agentId)
       ),
       diagnostics: [],
@@ -157,7 +171,7 @@ export class SkillManager {
 
   /**
    * 更新外部路径，重新扫描外部 skill，重建 watcher
-   * @param {Array<{ dirPath: string, label: string }>} paths
+   * @param {Array<{ dirPath: string, label: string, scope?: string }>} paths
    */
   setExternalPaths(paths) {
     this._externalPaths = paths;
@@ -176,7 +190,7 @@ export class SkillManager {
    */
   scanExternalSkills() {
     const results = [];
-    for (const { dirPath, label } of this._externalPaths) {
+    for (const { dirPath, label, scope } of this._externalPaths) {
       if (!fs.existsSync(dirPath)) continue;
       try {
         for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
@@ -199,6 +213,8 @@ export class SkillManager {
               _externalPath: dirPath,
               _readonly: true,
               _pluginSkill: label.startsWith("plugin:"),
+              _workspaceSkill: scope === "workspace",
+              _managedBy: scope === "workspace" ? "workspace" : null,
             });
           } catch {}
         }
@@ -250,6 +266,14 @@ export class SkillManager {
       try { w.close(); } catch {}
     }
     this._externalWatchers.clear();
+  }
+
+  _isRuntimeEnabledForAgent(skill, enabledSet) {
+    return !!(
+      skill?._pluginSkill
+      || skill?._workspaceSkill
+      || enabledSet?.has(skill.name)
+    );
   }
 
   // ── 自学技能扫描 ──

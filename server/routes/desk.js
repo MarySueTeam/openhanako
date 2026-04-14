@@ -13,6 +13,7 @@ import { execSync, execFileSync } from "child_process";
 import { Hono } from "hono";
 import { safeJson } from "../hono-helpers.js";
 import { parseSkillMetadata } from "../../lib/skills/skill-metadata.js";
+import { WORKSPACE_SKILL_DIRS } from "../../shared/workspace-skill-paths.js";
 import { t } from "../i18n.js";
 import { resolveAgent } from "../utils/resolve-agent.js";
 import { realPath, isSensitivePath } from "../utils/path-security.js";
@@ -282,16 +283,8 @@ export function createDeskRoute(engine, hub) {
     if (!dir) return c.json({ skills: [] });
     if (c.req.query("dir") && !isApprovedDir(dir, engine)) return c.json({ skills: [] });
 
-    const CWD_SKILL_DIRS = [
-      { sub: ".claude/skills",   label: "Claude Code" },
-      { sub: ".codex/skills",    label: "Codex" },
-      { sub: ".openclaw/skills", label: "OpenClaw" },
-      { sub: ".agents/skills",   label: "Agents" },
-      { sub: ".pi/skills",       label: "Pi" },
-    ];
-
     const results = [];
-    for (const { sub, label } of CWD_SKILL_DIRS) {
+    for (const { sub, label } of WORKSPACE_SKILL_DIRS) {
       const skillsDir = path.join(dir, sub);
       if (!fs.existsSync(skillsDir)) continue;
       try {
@@ -348,6 +341,9 @@ export function createDeskRoute(engine, hub) {
         const destName = path.basename(filePath);
         const dest = path.join(skillsDir, destName);
         fs.cpSync(filePath, dest, { recursive: true });
+        if (realPath(cwd) === realPath(engine.deskCwd)) {
+          await engine.syncWorkspaceSkillPaths(cwd, { reload: true, emitEvent: true });
+        }
         return c.json({ ok: true, name: destName });
       }
 
@@ -376,6 +372,9 @@ export function createDeskRoute(engine, hub) {
           if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true });
           fs.renameSync(tmpDir, dest);
         }
+        if (realPath(cwd) === realPath(engine.deskCwd)) {
+          await engine.syncWorkspaceSkillPaths(cwd, { reload: true, emitEvent: true });
+        }
         return c.json({ ok: true, name: skillName });
       }
 
@@ -397,10 +396,7 @@ export function createDeskRoute(engine, hub) {
     if (!cwd) {
       return c.json({ error: "No active workspace" }, 400);
     }
-    const ALLOWED_SKILL_SUBS = [
-      ".claude/skills", ".codex/skills", ".openclaw/skills",
-      ".agents/skills", ".pi/skills",
-    ];
+    const ALLOWED_SKILL_SUBS = WORKSPACE_SKILL_DIRS.map(({ sub }) => sub);
     const allowed = ALLOWED_SKILL_SUBS.some(sub =>
       isInsidePath(skillDir, path.join(cwd, sub))
     );
@@ -409,6 +405,9 @@ export function createDeskRoute(engine, hub) {
     }
     try {
       fs.rmSync(skillDir, { recursive: true, force: true });
+      if (realPath(cwd) === realPath(engine.deskCwd)) {
+        await engine.syncWorkspaceSkillPaths(cwd, { reload: true, emitEvent: true });
+      }
       return c.json({ ok: true });
     } catch (err) {
       return c.json({ error: err.message }, 500);

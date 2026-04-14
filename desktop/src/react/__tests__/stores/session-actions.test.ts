@@ -136,12 +136,19 @@ function installStoreMethods() {
   s.clearQuotedSelection = vi.fn();
   s.setActivePanel = vi.fn((v: unknown) => { mockState.activePanel = v; });
   s.requestInputFocus = vi.fn();
+  s.getDeskStateForOwner = vi.fn((owner: string) => {
+    const states = (mockState.deskStateByOwner as Record<string, unknown>) || {};
+    return states[owner] || null;
+  });
+  s.restoreDeskStateForOwner = vi.fn();
 }
 
 import { hanaFetch } from '../../hooks/use-hana-fetch';
+import { loadDeskFiles } from '../../stores/desk-actions';
 import { loadMessages, switchSession } from '../../stores/session-actions';
 
 const mockFetch = vi.mocked(hanaFetch);
+const mockLoadDeskFiles = vi.mocked(loadDeskFiles);
 
 function jsonResponse(body: unknown, ok = true): Response {
   return { ok, json: async () => body } as unknown as Response;
@@ -151,8 +158,10 @@ describe('session-actions', () => {
   beforeEach(() => {
     Object.keys(mockState).forEach(k => delete mockState[k]);
     Object.assign(mockState, initialStateFactory());
+    Object.assign(mockState, { deskStateByOwner: {} as Record<string, unknown> });
     installStoreMethods();
     mockFetch.mockReset();
+    mockLoadDeskFiles.mockReset();
     dispatchedEvents.length = 0;
   });
 
@@ -244,6 +253,32 @@ describe('session-actions', () => {
       // 只应该有一次 /api/sessions/switch，不应该有 /api/sessions/messages
       const calls = mockFetch.mock.calls.map(c => String(c[0]));
       expect(calls.filter(u => u.startsWith('/api/sessions/messages'))).toHaveLength(0);
+    });
+
+    it('切回旧 session 时恢复该 session 自己的书桌子目录，而不是强制回 cwd 根目录', async () => {
+      (mockState.deskStateByOwner as Record<string, unknown>)['/a'] = {
+        deskBasePath: '/workspace-a',
+        deskCurrentPath: 'notes/daily',
+      };
+
+      mockFetch.mockResolvedValueOnce(jsonResponse({
+        agentId: null,
+        cwd: '/workspace-a',
+        currentModelId: null,
+        currentModelName: null,
+        currentModelProvider: null,
+      }));
+      mockFetch.mockResolvedValueOnce(jsonResponse({
+        messages: [{ text: 'history' }], blocks: [], todos: [], hasMore: false,
+      }));
+
+      await switchSession('/a');
+
+      const restoreDeskStateForOwnerMock = (mockState as unknown as {
+        restoreDeskStateForOwner: ReturnType<typeof vi.fn>;
+      }).restoreDeskStateForOwner;
+      expect(restoreDeskStateForOwnerMock).toHaveBeenCalledWith('/a');
+      expect(mockLoadDeskFiles).toHaveBeenCalledWith('notes/daily', '/workspace-a');
     });
   });
 });
