@@ -70,6 +70,13 @@ export function connectWebSocket(port?: string, token?: string): void {
         console.error('[ws] reconnect resume failed:', err);
       });
     }
+
+    // 重连后无条件刷新 ContextRing：覆盖 models-changed IPC 在 WS 关闭窗口
+    // 期内到达、服务端重启、长时间挂起后唤醒等所有可能造成 context 数据
+    // 与后端实际状态偏离的场景。不依赖 _pendingContextRefresh 队列。
+    if (s.currentSessionPath && _ws?.readyState === WebSocket.OPEN) {
+      _ws.send(JSON.stringify({ type: 'context_usage', sessionPath: s.currentSessionPath }));
+    }
   };
 
   _ws.onmessage = (event: MessageEvent) => {
