@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import type { SkillInfo } from '../../store';
 import { t, autoSaveConfig } from '../../helpers';
 import { Toggle } from '../../widgets/Toggle';
 import { loadSettingsConfig } from '../../actions';
-import { SkillRow } from './SkillRow';
 import styles from '../../Settings.module.css';
 
 interface LearnConfig {
@@ -14,15 +12,9 @@ interface LearnConfig {
 
 interface SkillCapabilitiesProps {
   learnCfg: LearnConfig;
-  learnedSkills: SkillInfo[];
-  nameHints: Record<string, string>;
-  onDelete: (name: string) => void;
-  onToggle: (name: string, enabled: boolean) => void;
 }
 
-export function SkillCapabilities({
-  learnCfg, learnedSkills, nameHints, onDelete, onToggle,
-}: SkillCapabilitiesProps) {
+export function SkillCapabilities({ learnCfg }: SkillCapabilitiesProps) {
   const learnEnabled = learnCfg.enabled === true;
   const githubEnabled = learnCfg.allow_github_fetch === true;
   const safetyReviewEnabled = learnCfg.safety_review !== false;
@@ -55,20 +47,6 @@ export function SkillCapabilities({
     <>
       <section className={styles['settings-section']}>
         <h2 className={styles['settings-section-title']}>{t('settings.toolCaps.title')}</h2>
-
-        {learnedSkills.length > 0 && (
-          <div className={`${styles['skills-list-block']} ${styles['skills-list-block-spaced']}`}>
-            {learnedSkills.map(skill => (
-              <SkillRow
-                key={skill.name}
-                skill={skill}
-                nameHint={nameHints[skill.name]}
-                onDelete={onDelete}
-                onToggle={onToggle}
-              />
-            ))}
-          </div>
-        )}
 
         <div className={styles['tool-caps-group']}>
           <div className={styles['tool-caps-item']}>

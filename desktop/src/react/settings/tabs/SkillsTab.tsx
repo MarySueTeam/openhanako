@@ -5,6 +5,8 @@ import { t } from '../helpers';
 import { SkillRow } from './skills/SkillRow';
 import { SkillCapabilities } from './skills/SkillCapabilities';
 import { CompatPathDrawer } from './skills/CompatPathDrawer';
+import { LearnedSkillsBlock } from './skills/LearnedSkillsBlock';
+import { AgentSelect } from './bridge/AgentSelect';
 import styles from '../Settings.module.css';
 
 const platform = window.platform;
@@ -30,7 +32,6 @@ export function SkillsTab() {
     if (currentAgentId) setSkillsViewAgentId(currentAgentId);
   }, [currentAgentId]);
 
-  const [reloading, setReloading] = useState(false);
   const [externalPathsData, setExternalPathsData] = useState<ExternalPathsData>({
     configured: [],
     discovered: [],
@@ -62,24 +63,6 @@ export function SkillsTab() {
       console.error('[skills] load external paths failed:', err);
     }
   }, []);
-
-  const reloadSkills = useCallback(async () => {
-    setReloading(true);
-    try {
-      const res = await hanaFetch('/api/skills/reload', { method: 'POST' });
-      const data = await res.json();
-      if (data.skills) {
-        setSkillsList(data.skills);
-      } else {
-        await loadSkills();
-      }
-      showToast(t('settings.skills.reloaded'), 'success');
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : String(err), 'error');
-    } finally {
-      setReloading(false);
-    }
-  }, [loadSkills, showToast]);
 
   useEffect(() => {
     loadSkills();
@@ -241,69 +224,82 @@ export function SkillsTab() {
 
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="skills">
-      {/* User skills + drag-and-drop install */}
-      <section className={styles['settings-section']}>
-        <div className={styles['settings-section-header']}>
-          <h2 className={styles['settings-section-title']}>{t('settings.skills.title')}</h2>
-          <button
-            className={styles['settings-icon-btn']}
-            title={t('settings.skills.reload')}
-            onClick={reloadSkills}
-            disabled={reloading}
+
+      {/* ═════════════════════════════════════════════ */}
+      {/* Section 1: 全局能力(跟 Selector 无关)        */}
+      {/* ═════════════════════════════════════════════ */}
+      <SkillCapabilities learnCfg={learnCfg} />
+
+      {/* ═════════════════════════════════════════════ */}
+      {/* Section 2: Agent Skill 配置(大块,跟随 Selector)*/}
+      {/* ═════════════════════════════════════════════ */}
+      <section className={`${styles['settings-section']} ${styles['agent-skill-config-block']}`}>
+        <h2 className={styles['settings-section-title']}>
+          {t('settings.skills.agentConfigTitle')}
+        </h2>
+
+        <div className={styles['agent-skill-config-header']}>
+          <span className={styles['agent-skill-config-label']}>
+            {t('settings.skills.configureFor')}
+          </span>
+          <AgentSelect
+            value={skillsViewAgentId}
+            onChange={setSkillsViewAgentId}
+          />
+        </div>
+
+        <div className={styles['agent-skill-config-divider']} />
+
+        {/* 子块 1: 用户级 Skill */}
+        <div className={styles['agent-skill-sub-block']}>
+          <h3 className={styles['agent-skill-sub-title']}>
+            {t('settings.skills.userSkillsTitle')}
+          </h3>
+
+          <div
+            className={styles['skills-dropzone']}
+            onClick={installSkill}
+            onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).classList.add(styles['drag-over']); }}
+            onDragLeave={(e) => (e.currentTarget as HTMLElement).classList.remove(styles['drag-over'])}
+            onDrop={handleDrop}
           >
-            <svg
-              width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-              className={reloading ? styles['spin'] : ''}
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-          </button>
-        </div>
-
-        <div
-          className={styles['skills-dropzone']}
-          onClick={installSkill}
-          onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).classList.add(styles['drag-over']); }}
-          onDragLeave={(e) => (e.currentTarget as HTMLElement).classList.remove(styles['drag-over'])}
-          onDrop={handleDrop}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <span>{t('settings.skills.dropzone')}</span>
-        </div>
-
-        {userSkills.length === 0 ? (
-          <p className={`${styles['settings-desc']} ${styles['skills-empty']}`}>{t('settings.skills.noUser')}</p>
-        ) : (
-          <div className={styles['skills-list-block']}>
-            {userSkills.map(skill => (
-              <SkillRow
-                key={skill.name}
-                skill={skill}
-                nameHint={nameHints[skill.name]}
-                onDelete={deleteSkill}
-                onToggle={toggleSkill}
-              />
-            ))}
+            <span>{t('settings.skills.dropzone')}</span>
           </div>
-        )}
+
+          {userSkills.length === 0 ? (
+            <p className={`${styles['settings-desc']} ${styles['skills-empty']}`}>{t('settings.skills.noUser')}</p>
+          ) : (
+            <div className={styles['skills-list-block']}>
+              {userSkills.map(skill => (
+                <SkillRow
+                  key={skill.name}
+                  skill={skill}
+                  nameHint={nameHints[skill.name]}
+                  onDelete={deleteSkill}
+                  onToggle={toggleSkill}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 子块 2: 自学 Skill */}
+        <LearnedSkillsBlock
+          learnedSkills={learnedSkills}
+          nameHints={nameHints}
+          onDelete={deleteSkill}
+          onToggle={toggleSkill}
+        />
       </section>
 
-      {/* Learn capabilities + learned skills */}
-      <SkillCapabilities
-        learnCfg={learnCfg}
-        learnedSkills={learnedSkills}
-        nameHints={nameHints}
-        onDelete={deleteSkill}
-        onToggle={toggleSkill}
-      />
-
-      {/* External / compat skills */}
+      {/* ═════════════════════════════════════════════ */}
+      {/* Section 3: 外部兼容(路径全局,skill 跟随 Selector)*/}
+      {/* ═════════════════════════════════════════════ */}
       <section className={styles['settings-section']}>
         <h2 className={styles['settings-section-title']}>{t('settings.skills.compatTitle')}</h2>
         <p className={styles['settings-desc']}>{t('settings.skills.compatDesc')}</p>
@@ -343,6 +339,7 @@ export function SkillsTab() {
           </button>
         </div>
       </section>
+
     </div>
   );
 }
