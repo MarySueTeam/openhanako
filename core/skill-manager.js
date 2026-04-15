@@ -103,6 +103,18 @@ export class SkillManager {
   }
 
   /**
+   * 计算新建 agent 的默认 enabled skill 集合:
+   * 所有 source 不是 learned 不是 external 的 skill 的 name。
+   * plugin/workspace 通过 _isRuntimeEnabledForAgent 的 bypass 自动启用,
+   * 不需要写入 enabled 数组。
+   */
+  computeDefaultEnabledForNewAgent() {
+    return this._allSkills
+      .filter(s => s.source !== "learned" && s.source !== "external")
+      .map(s => s.name);
+  }
+
+  /**
    * 重新加载 skills（安装/删除后调用）
    * @param {object} resourceLoader
    * @param {Map} agents
