@@ -3,6 +3,8 @@ import { useSettingsStore } from '../store';
 import { hanaFetch } from '../api';
 import { t } from '../helpers';
 import styles from '../Settings.module.css';
+import { SettingsSection } from '../components/SettingsSection';
+import { SettingsRow } from '../components/SettingsRow';
 
 const platform = window.platform;
 
@@ -31,9 +33,9 @@ function StatusBadge({ status }: { status: PluginInfo['status'] }) {
     status === 'loaded'
       ? { color: 'var(--success, #5a9)', background: 'rgba(90,170,153,0.1)' }
       : status === 'failed'
-      ? { color: 'var(--danger, #c55)', background: 'rgba(204,85,85,0.1)' }
+      ? { color: 'var(--danger, #b56b66)', background: 'rgba(var(--danger-rgb, 181, 107, 102), 0.1)' }
       : status === 'restricted'
-      ? { color: 'var(--warning, #c90)', background: 'rgba(204,153,0,0.1)' }
+      ? { color: 'var(--danger, #b56b66)', background: 'rgba(var(--danger-rgb, 181, 107, 102), 0.1)' }
       : { color: 'var(--text-muted)', background: 'var(--overlay-light, rgba(0,0,0,0.06))' };
 
   return (
@@ -195,33 +197,29 @@ export function PluginsTab() {
   const isEnabled = (p: PluginInfo) => p.status === 'loaded' || p.status === 'failed';
   const isDimmed = (p: PluginInfo) => p.status === 'disabled' || p.status === 'restricted';
 
+  const reloadButton = (
+    <button
+      className={styles['settings-icon-btn']}
+      title={t('settings.plugins.reload')}
+      onClick={reload}
+      disabled={loading}
+    >
+      <svg
+        width="14" height="14" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        className={loading ? styles['spin'] : ''}
+      >
+        <polyline points="23 4 23 10 17 10" />
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+      </svg>
+    </button>
+  );
+
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="plugins">
-      <section className={styles['settings-section']}>
-        {/* Header + reload */}
-        <div style={{ position: 'relative' }}>
-          <h2 className={styles['settings-section-title']}>{t('settings.plugins.title')}</h2>
-          <button
-            className={styles['settings-icon-btn']}
-            style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
-            title={t('settings.plugins.reload')}
-            onClick={reload}
-            disabled={loading}
-          >
-            <svg
-              width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-              className={loading ? styles['spin'] : ''}
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-          </button>
-        </div>
-
-        <p className={styles['settings-desc']}>{t('settings.plugins.desc')}</p>
-
-        {/* Drag-and-drop install */}
+      {/* 管理插件：dropzone + 列表 + 路径提示，同一 flush section；reload 按钮放 context */}
+      <SettingsSection title="管理插件" variant="flush" context={reloadButton}>
+        {/* 安装区：dropzone 自带虚线边框卡 */}
         <div
           className={`${styles['skills-dropzone']}${dragOver ? ' ' + styles['drag-over'] : ''}`}
           onClick={installByPicker}
@@ -237,21 +235,7 @@ export function PluginsTab() {
           <span>{t('settings.plugins.dropzone')}</span>
         </div>
 
-        {/* Full-access global toggle */}
-        <div className={styles['tool-caps-group']} style={{ marginBottom: 'var(--space-md)' }}>
-          <div className={styles['tool-caps-item']}>
-            <div className={styles['tool-caps-label']}>
-              <span className={styles['tool-caps-name']}>{t('settings.plugins.fullAccessToggle')}</span>
-              <span className={styles['tool-caps-desc']}>{t('settings.plugins.fullAccessDesc')}</span>
-            </div>
-            <button
-              className={`hana-toggle${pluginAllowFullAccess ? ' on' : ''}`}
-              onClick={toggleFullAccess}
-            />
-          </div>
-        </div>
-
-        {/* Plugin list */}
+        {/* 已安装列表 */}
         {!loading && plugins.length === 0 ? (
           <p className={`${styles['settings-desc']} ${styles['skills-empty']}`}>
             {t('settings.plugins.empty')}
@@ -287,7 +271,7 @@ export function PluginsTab() {
                       </span>
                     )}
                     {restricted && (
-                      <span className={styles['skills-list-desc']} style={{ color: 'var(--warning, #c90)' }}>
+                      <span className={styles['skills-list-desc']} style={{ color: 'var(--danger, #b56b66)' }}>
                         {t('settings.plugins.needsFullAccess')}
                       </span>
                     )}
@@ -319,13 +303,31 @@ export function PluginsTab() {
           </div>
         )}
 
-        {/* Bottom hint: plugin directory path */}
+        {/* 插件目录路径提示 */}
         {pluginUserDir && (
-          <p className={styles['settings-desc']} style={{ marginTop: '12px', fontSize: '11px', opacity: 0.6 }}>
+          <p style={{
+            fontSize: '0.7rem',
+            color: 'var(--text-muted)',
+            marginTop: 'var(--space-sm)',
+          }}>
             {t('settings.plugins.pluginsDir', { path: pluginUserDir })}
           </p>
         )}
-      </section>
+      </SettingsSection>
+
+      {/* 权限：标准白卡片 row */}
+      <SettingsSection title="权限">
+        <SettingsRow
+          label={t('settings.plugins.fullAccessToggle')}
+          hint={t('settings.plugins.fullAccessDesc')}
+          control={
+            <button
+              className={`hana-toggle${pluginAllowFullAccess ? ' on' : ''}`}
+              onClick={toggleFullAccess}
+            />
+          }
+        />
+      </SettingsSection>
     </div>
   );
 }

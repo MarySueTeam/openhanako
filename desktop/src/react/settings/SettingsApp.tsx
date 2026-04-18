@@ -49,6 +49,22 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   about: AboutTab,
 };
 
+/** Tab 顶部大标题（对应左栏导航 label），所有 tab 都会显示 */
+const TAB_TITLES: Record<string, string> = {
+  agent: '助手',
+  me: '我',
+  interface: '界面',
+  work: '工作空间',
+  skills: '技能',
+  bridge: '社交平台',
+  providers: '供应商',
+  media: '多媒体',
+  sharing: '分享',
+  plugins: '插件',
+  security: '安全',
+  about: '关于',
+};
+
 export function SettingsApp() {
   const { activeTab, set, ready } = useSettingsStore();
 
@@ -87,6 +103,7 @@ export function SettingsApp() {
         <div className={styles['settings-body']}>
           <SettingsNav />
           <div className={styles['settings-main']}>
+            <h1 className={styles['settings-tab-title']}>{TAB_TITLES[activeTab] || ''}</h1>
             <ErrorBoundary region={activeTab}>
               <ActiveTab />
             </ErrorBoundary>

@@ -37,8 +37,10 @@ export function AgentSelect({ value, onChange }: AgentSelectProps) {
 
   const renderOption = (option: SelectOption, isSelected: boolean) => {
     const agent = agents.find((a) => a.id === option.value);
+    /* 直接返回内容，不包内层 div —— 让外层 .sdw-option 作为唯一容器，
+     * selected 高亮自然贴到 popup 边，padding 只算一次 */
     return (
-      <div className={`${styles['bridge-agent-option']}${isSelected ? ' ' + styles['selected'] : ''}`}>
+      <>
         <img
           className={styles['bridge-agent-avatar']}
           src={agent?.hasAvatar ? hanaUrl(`/api/agents/${agent.id}/avatar?t=${ts}`) : yuanFallbackAvatar(agent?.yuan || 'hanako')}
@@ -50,7 +52,7 @@ export function AgentSelect({ value, onChange }: AgentSelectProps) {
             <polyline points="20 6 9 17 4 12" />
           </svg>
         )}
-      </div>
+      </>
     );
   };
 

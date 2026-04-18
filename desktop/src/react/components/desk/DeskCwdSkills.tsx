@@ -148,7 +148,6 @@ export function DeskCwdSkillsPanel() {
       }
     }
     if (installed) await loadCwdSkills();
-    window.__loadDeskSkills?.();
   }, []);
 
   if (!visible) return null;

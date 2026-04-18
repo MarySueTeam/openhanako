@@ -169,7 +169,6 @@ export async function initApp(): Promise<void> {
           agentId: data.agentId,
         });
         loadSessions();
-        window.__loadDeskSkills?.();
 
         // Reset channel state for new agent
         useStore.setState({
@@ -206,9 +205,6 @@ export async function initApp(): Promise<void> {
         useStore.setState({ activities: [] });
         break;
       }
-      case 'skills-changed':
-        window.__loadDeskSkills?.();
-        break;
       case 'locale-changed':
         i18n.load(data.locale).then(() => {
           i18n.defaultName = useStore.getState().agentName;

@@ -110,7 +110,7 @@ export function OtherModelsSection({ providers }: { providers: Record<string, { 
   const utilityLargeVal = toModelId(globalModelsConfig?.models?.utility_large);
 
   return (
-    <>
+    <div style={{ padding: 'var(--space-md)' }}>
       <div className={styles['settings-row']}>
         <div className={`${styles['settings-field']} ${styles['settings-field-half']}`}>
           <label className={styles['settings-field-label']}>{t('settings.api.utilityModel')}</label>
@@ -173,6 +173,6 @@ export function OtherModelsSection({ providers }: { providers: Record<string, { 
           <span className={styles['settings-field-hint']}>{t('settings.api.searchApiKeyHint')}</span>
         </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -147,6 +147,17 @@
     -webkit-app-region: no-drag;
 }
 
+/* Tab 顶部大标题（每个 tab 右侧面板第一行：工作空间、界面、助手…）
+ * 粗体衬线（宋体），所有 tab 统一 */
+.settings-tab-title {
+    font-family: "Songti SC", "STSong", serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 var(--space-xl) 0;
+    letter-spacing: 0.05em;
+}
+
 /* Section */
 .settings-section {
     margin-bottom: var(--space-xl);
@@ -890,16 +901,6 @@
     gap: var(--space-md);
 }
 
-.settings-row-2col {
-    display: flex;
-    gap: var(--space-lg);
-}
-
-.settings-row-2col > .settings-field {
-    flex: 1;
-    min-width: 0;
-}
-
 .settings-field-half {
     flex: 1;
     min-width: 0;
@@ -911,17 +912,16 @@
     font-size: 0.85rem;
     color: var(--text);
     background-color: var(--bg-card);
-    border: none;
-    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    border-radius: 4px;
     padding: 0.45rem 0.65rem;
     outline: none;
-    box-shadow: 0 1px 3px var(--shadow);
-    transition: box-shadow var(--duration) var(--ease-out);
+    transition: border-color var(--duration) var(--ease-out);
     width: 100%;
 }
 
 .settings-input:focus {
-    box-shadow: 0 1px 3px var(--shadow), 0 0 0 2px rgba(var(--accent-rgb), 0.12);
+    border-color: var(--accent);
 }
 
 .settings-input::placeholder {
@@ -1110,7 +1110,7 @@
 }
 
 .tool-caps-desc.warn {
-    color: var(--error, #e05c5c);
+    color: var(--danger, #b56b66);
 }
 
 /* Skills 列表块 */
@@ -1436,80 +1436,6 @@
     background: var(--overlay-light);
 }
 
-/* 书桌技能快捷区 */
-.desk-skills-section {
-    padding: 0.4rem 0.75rem 0.5rem;
-    border-bottom: 1px solid var(--overlay-light);
-}
-
-.desk-skills-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 500;
-}
-
-.desk-skills-header:hover {
-    color: var(--text);
-}
-
-.desk-skills-count {
-    font-size: 0.6rem;
-    color: var(--text-muted);
-    background: var(--overlay-light);
-    padding: 0 5px;
-    border-radius: 8px;
-    line-height: 1.5;
-}
-
-.desk-skills-chevron {
-    margin-left: auto;
-    transition: transform 0.2s;
-}
-
-.desk-skills-chevron.open {
-    transform: rotate(90deg);
-}
-
-.desk-skills-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    margin-top: 0.35rem;
-}
-
-.desk-skill-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 0;
-    font-size: 0.72rem;
-}
-
-.desk-skill-name {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text);
-}
-
-.desk-skill-source {
-    font-size: 0.58rem;
-    color: var(--text-muted);
-    opacity: 0.5;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
 /* 缩小版 toggle */
 :global(.hana-toggle.mini) {
     width: 28px;
@@ -1575,14 +1501,16 @@
     color: var(--danger, #e74c3c);
 }
 
-/* Textarea（ishiki 人格编辑等） */
+/* Textarea（ishiki 人格编辑等）
+ * 分层优先 border，不用 shadow（对齐 DESIGN.md 已校准规则）
+ * border + radius 与 .settings-input 对齐 */
 .settings-textarea {
     font-family: inherit;
-    font-size: 0.82rem;
+    font-size: 0.9rem;
     color: var(--text);
     background-color: var(--bg-card);
-    border: none;
-    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    border-radius: 4px;
     padding: 0.55rem 0.65rem;
     outline: none;
     resize: vertical;
@@ -1590,12 +1518,11 @@
     min-height: 120px;
     max-height: 400px;
     line-height: 1.65;
-    box-shadow: 0 1px 3px var(--shadow);
-    transition: box-shadow var(--duration) var(--ease-out);
+    transition: border-color var(--duration) var(--ease-out);
 }
 
 .settings-textarea:focus {
-    box-shadow: 0 1px 3px var(--shadow), 0 0 0 2px rgba(var(--accent-rgb), 0.12);
+    border-color: var(--accent);
 }
 
 .settings-textarea::placeholder {
@@ -1636,28 +1563,28 @@
 }
 
 /* Select */
+/* Native select：对齐 .settings-input 视觉语言（border + 4px radius，无 shadow）*/
 .settings-select {
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     color: var(--text);
     background-color: var(--bg-card);
-    border: none;
-    border-radius: var(--radius-md);
-    padding: 0.45rem 2rem 0.45rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 2rem 4px 8px;
     outline: none;
     cursor: pointer;
     appearance: none;
     background-image: var(--select-arrow);
     background-repeat: no-repeat;
-    background-position: right 0.65rem center;
-    box-shadow: 0 1px 3px var(--shadow);
-    transition: box-shadow var(--duration) var(--ease-out);
+    background-position: right 8px center;
+    transition: border-color var(--duration) var(--ease-out);
     width: 100%;
     max-width: 200px;
 }
 
 .settings-select:focus {
-    box-shadow: 0 1px 3px var(--shadow), 0 0 0 2px rgba(var(--accent-rgb), 0.12);
+    border-color: var(--accent);
 }
 
 /* Theme cards */
@@ -1892,8 +1819,10 @@
     display: none;
 }
 
+/* 实心 accent 保存按钮：用于 tab 底部的"整页表单保存"（MeTab / AgentTab 等） */
 .settings-save-btn-sm {
-    width: 25%;
+    width: auto;
+    white-space: nowrap;
     padding: 0.4rem var(--space-md);
     font-family: inherit;
     font-size: 0.82rem;
@@ -1926,6 +1855,33 @@
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+}
+
+/* Ghost 保存按钮：用于 inline 小操作保存（WorkTab 巡检间隔旁）
+ * 裸字，无边框无底色；hover 才显 accent-tint 底；字号对齐 NumberInput */
+.settings-save-btn-ghost {
+    width: auto;
+    white-space: nowrap;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--accent);
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s var(--ease-out);
+    letter-spacing: 0.02em;
+}
+
+.settings-save-btn-ghost:hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.settings-save-btn-ghost:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: transparent;
 }
 
 /* 思考强度选择条 */
@@ -2178,11 +2134,12 @@
 }
 
 a.about-link {
+    color: var(--accent);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    opacity: 0.8;
+    opacity: 0.85;
     transition: opacity 0.2s;
 }
 
@@ -2220,14 +2177,6 @@ a.about-link:hover {
     max-height: 260px;
     overflow-y: auto;
     font-family: var(--font-mono);
-}
-
-/* section hint（Embedding / Utility 的显式配置提示） */
-.settings-section-hint {
-    display: block;
-    margin-top: 6px;
-    margin-bottom: var(--space-md);
-    padding-left: var(--space-md);
 }
 
 /* ========================================
@@ -4311,24 +4260,22 @@ a.about-link:hover {
     font-size: 0.85rem;
     color: var(--text);
     background-color: var(--bg-card);
-    border: none;
-    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    border-radius: 4px;
     padding: 0.45rem 0.65rem;
     cursor: pointer;
     text-align: left;
-    box-shadow: 0 1px 3px var(--shadow);
-    transition: box-shadow var(--duration) var(--ease-out);
+    transition: border-color var(--duration) var(--ease-out);
 }
 
 .sdw-trigger:hover,
 .sdw-trigger:focus {
-    box-shadow: 0 1px 3px var(--shadow), 0 0 0 2px rgba(var(--accent-rgb), 0.12);
+    border-color: var(--accent);
 }
 
 .sdw-trigger:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    box-shadow: none;
 }
 
 .sdw-value {
@@ -4345,7 +4292,7 @@ a.about-link:hover {
 
 .sdw-arrow {
     flex-shrink: 0;
-    font-size: 0.7rem;
+    font-size: 0.9rem;
     color: var(--text-muted);
     margin-left: var(--space-sm);
     transition: transform var(--duration);
@@ -4364,9 +4311,8 @@ a.about-link:hover {
     min-width: 180px;
     max-height: 240px;
     background-color: var(--bg-card);
-    border: none;
-    border-radius: var(--radius-md);
-    box-shadow: 0 4px 16px var(--shadow);
+    border: 1px solid var(--border);
+    border-radius: 4px;
     z-index: 60;
     margin-top: 4px;
     overflow-y: auto;
@@ -4388,14 +4334,15 @@ a.about-link:hover {
     margin-top: 0;
 }
 
+/* 选项：padding 和字号对齐 .sdw-trigger，保证"展开的高度 = 收起的高度" */
 .sdw-option {
     display: flex;
     align-items: center;
     gap: 0.4rem;
     width: 100%;
-    padding: 0.3rem 0.65rem;
+    padding: 0.45rem 0.65rem;
     font-family: inherit;
-    font-size: 0.82rem;
+    font-size: 0.9rem;
     color: var(--text-light);
     background: none;
     border: none;
@@ -4405,12 +4352,13 @@ a.about-link:hover {
 }
 
 .sdw-option:hover {
-    background: var(--accent-light);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .sdw-option.selected {
     color: var(--accent);
     font-weight: 600;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .sdw-option.disabled {
@@ -4905,21 +4853,20 @@ a.about-link:hover {
     justify-content: space-between;
     width: 100%;
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     color: var(--text);
     background-color: var(--bg-card);
-    border: none;
-    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    border-radius: 4px;
     padding: 0.45rem 0.65rem;
     cursor: pointer;
     text-align: left;
-    box-shadow: 0 1px 3px var(--shadow);
-    transition: box-shadow var(--duration) var(--ease-out);
+    transition: border-color var(--duration) var(--ease-out);
 }
 
 .mdw-trigger:hover,
 .mdw-trigger:focus {
-    box-shadow: 0 1px 3px var(--shadow), 0 0 0 2px rgba(var(--accent-rgb), 0.12);
+    border-color: var(--accent);
 }
 
 .mdw-value {
@@ -4952,9 +4899,8 @@ a.about-link:hover {
     min-width: 200px;
     max-height: 320px;
     background-color: var(--bg-card);
-    border: none;
-    border-radius: var(--radius-md);
-    box-shadow: 0 4px 16px var(--shadow);
+    border: 1px solid var(--border);
+    border-radius: 4px;
     z-index: 60;
     margin-top: 4px;
     overflow: hidden;
@@ -5178,21 +5124,11 @@ a.about-link:hover {
   text-decoration: underline;
 }
 
-/* 截图分享：说明文字 */
-
-.settings-section-desc {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: var(--space-md);
-  text-align: center;
-}
-
 /* 截图分享：宽度预览卡片 */
 
 .ss-layout-group {
   display: flex;
   gap: var(--space-md);
-  margin-top: var(--space-lg);
 }
 
 .ss-layout-card {
@@ -5306,64 +5242,10 @@ a.about-link:hover {
     text-overflow: ellipsis;
 }
 
-.bridge-agent-option {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    width: 100%;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.bridge-agent-option:hover {
-    background: rgba(0, 0, 0, 0.03);
-}
-
-.bridge-agent-option.selected {
-    background: rgba(180, 132, 108, 0.06);
-}
-
 .bridge-agent-check {
     flex-shrink: 0;
     width: 14px;
     height: 14px;
     color: var(--accent);
-}
-
-/* ═══ Work Tab — Agent Row ═══ */
-
-.work-agent-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.work-agent-select {
-  flex: 1;
-  min-width: 0;
-}
-
-.work-agent-select .bridge-agent-select {
-  margin-bottom: 0;
-}
-
-.work-agent-select .sdw {
-  max-width: none;
-}
-
-.work-agent-hb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 0 5px 8px;
-  flex-shrink: 0;
-}
-
-.work-agent-hb-label {
-  font-size: 11px;
-  color: var(--text-secondary);
-  white-space: nowrap;
 }
 

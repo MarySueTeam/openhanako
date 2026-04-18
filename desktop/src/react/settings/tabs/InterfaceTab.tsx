@@ -3,10 +3,36 @@ import { useSettingsStore } from '../store';
 import { t, VALID_THEMES, autoSaveConfig } from '../helpers';
 import { SelectWidget } from '../widgets/SelectWidget';
 import { Toggle } from '../widgets/Toggle';
+import { SettingsSection } from '../components/SettingsSection';
+import { SettingsRow } from '../components/SettingsRow';
 import styles from '../Settings.module.css';
 
 const platform = window.platform;
 const i18n = window.i18n;
+
+const THEME_NAME_KEYS: Record<string, string> = {
+  'warm-paper': 'settings.appearance.warmPaper',
+  'midnight': 'settings.appearance.midnight',
+  'high-contrast': 'settings.appearance.highContrast',
+  'grass-aroma': 'settings.appearance.grassAroma',
+  'contemplation': 'settings.appearance.contemplation',
+  'absolutely': 'settings.appearance.absolutely',
+  'delve': 'settings.appearance.delve',
+  'deep-think': 'settings.appearance.deepThink',
+  'auto': 'settings.appearance.auto',
+};
+
+const THEME_MODE_KEYS: Record<string, string> = {
+  'warm-paper': 'settings.appearance.warmPaperMode',
+  'midnight': 'settings.appearance.midnightMode',
+  'high-contrast': 'settings.appearance.highContrastMode',
+  'grass-aroma': 'settings.appearance.grassAromaMode',
+  'contemplation': 'settings.appearance.contemplationMode',
+  'absolutely': 'settings.appearance.absolutelyMode',
+  'delve': 'settings.appearance.delveMode',
+  'deep-think': 'settings.appearance.deepThinkMode',
+  'auto': 'settings.appearance.autoMode',
+};
 
 export function InterfaceTab() {
   const { settingsConfig } = useSettingsStore();
@@ -45,64 +71,32 @@ export function InterfaceTab() {
 
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="interface">
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>{t('settings.appearance.title')}</h2>
-
-        {/* 主题 */}
-        <div className={styles['settings-field']}>
-          <label className={styles['settings-field-label']}>{t('settings.appearance.theme')}</label>
-          <div className={styles['theme-options']}>
-            {VALID_THEMES.map(theme => {
-              const nameKeys: Record<string, string> = {
-                'warm-paper': 'settings.appearance.warmPaper',
-                'midnight': 'settings.appearance.midnight',
-                'high-contrast': 'settings.appearance.highContrast',
-                'grass-aroma': 'settings.appearance.grassAroma',
-                'contemplation': 'settings.appearance.contemplation',
-                'absolutely': 'settings.appearance.absolutely',
-                'delve': 'settings.appearance.delve',
-                'deep-think': 'settings.appearance.deepThink',
-                'auto': 'settings.appearance.auto',
-              };
-              const modeKeys: Record<string, string> = {
-                'warm-paper': 'settings.appearance.warmPaperMode',
-                'midnight': 'settings.appearance.midnightMode',
-                'high-contrast': 'settings.appearance.highContrastMode',
-                'grass-aroma': 'settings.appearance.grassAromaMode',
-                'contemplation': 'settings.appearance.contemplationMode',
-                'absolutely': 'settings.appearance.absolutelyMode',
-                'delve': 'settings.appearance.delveMode',
-                'deep-think': 'settings.appearance.deepThinkMode',
-                'auto': 'settings.appearance.autoMode',
-              };
-              return (
-                <button
-                  key={theme}
-                  className={`${styles['theme-card']}${currentTheme === theme  ? ' ' + styles['active'] : ''}`}
-                  data-theme={theme}
-                  onClick={() => {
-                    setTheme?.(theme);
-                    localStorage.setItem('hana-theme', theme);
-                    platform?.settingsChanged?.('theme-changed', { theme });
-                    // Force re-render for active state
-                    useSettingsStore.setState({});
-                  }}
-                >
-                  <div className={styles['theme-card-name']}>{t(nameKeys[theme])}</div>
-                  <div className={styles['theme-card-mode']}>{t(modeKeys[theme])}</div>
-                </button>
-              );
-            })}
-          </div>
+      <SettingsSection title={t('settings.appearance.theme')} variant="flush">
+        <div className={styles['theme-options']}>
+          {VALID_THEMES.map(theme => (
+            <button
+              key={theme}
+              className={`${styles['theme-card']}${currentTheme === theme ? ' ' + styles['active'] : ''}`}
+              data-theme={theme}
+              onClick={() => {
+                setTheme?.(theme);
+                localStorage.setItem('hana-theme', theme);
+                platform?.settingsChanged?.('theme-changed', { theme });
+                useSettingsStore.setState({});
+              }}
+            >
+              <div className={styles['theme-card-name']}>{t(THEME_NAME_KEYS[theme])}</div>
+              <div className={styles['theme-card-mode']}>{t(THEME_MODE_KEYS[theme])}</div>
+            </button>
+          ))}
         </div>
+      </SettingsSection>
 
-        {/* 衬线体 */}
-        <div className={styles['tool-caps-group']}>
-          <div className={styles['tool-caps-item']}>
-            <div className={styles['tool-caps-label']}>
-              <span className={styles['tool-caps-name']}>{t('settings.appearance.serifFont')}</span>
-              <span className={styles['tool-caps-desc']}>{t('settings.appearance.serifFontHint')}</span>
-            </div>
+      <SettingsSection title={t('settings.appearance.title')}>
+        <SettingsRow
+          label={t('settings.appearance.serifFont')}
+          hint={t('settings.appearance.serifFontHint')}
+          control={
             <Toggle
               on={serifEnabled}
               onChange={(next) => {
@@ -111,12 +105,12 @@ export function InterfaceTab() {
                 useSettingsStore.setState({});
               }}
             />
-          </div>
-          <div className={styles['tool-caps-item']}>
-            <div className={styles['tool-caps-label']}>
-              <span className={styles['tool-caps-name']}>{t('settings.appearance.paperTexture')}</span>
-              <span className={styles['tool-caps-desc']}>{t('settings.appearance.paperTextureHint')}</span>
-            </div>
+          }
+        />
+        <SettingsRow
+          label={t('settings.appearance.paperTexture')}
+          hint={t('settings.appearance.paperTextureHint')}
+          control={
             <Toggle
               on={paperTextureEnabled}
               onChange={(next) => {
@@ -125,12 +119,12 @@ export function InterfaceTab() {
                 useSettingsStore.setState({});
               }}
             />
-          </div>
-          <div className={styles['tool-caps-item']}>
-            <div className={styles['tool-caps-label']}>
-              <span className={styles['tool-caps-name']}>{t('settings.appearance.leavesOverlay')}</span>
-              <span className={styles['tool-caps-desc']}>{t('settings.appearance.leavesOverlayHint')}</span>
-            </div>
+          }
+        />
+        <SettingsRow
+          label={t('settings.appearance.leavesOverlay')}
+          hint={t('settings.appearance.leavesOverlayHint')}
+          control={
             <Toggle
               on={leavesOverlayEnabled}
               onChange={(next) => {
@@ -142,18 +136,15 @@ export function InterfaceTab() {
                 useSettingsStore.setState({});
               }}
             />
-          </div>
-        </div>
+          }
+        />
+      </SettingsSection>
 
-      </section>
-
-      {/* 语言和地区 */}
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>{t('settings.locale.title')}</h2>
-
-        <div className={styles['settings-row-2col']}>
-          <div className={styles['settings-field']}>
-            <label className={styles['settings-field-label']}>{t('settings.locale.language')}</label>
+      <SettingsSection title={t('settings.locale.title')}>
+        <SettingsRow
+          label={t('settings.locale.language')}
+          hint={t('settings.locale.languageHint')}
+          control={
             <SelectWidget
               options={[
                 { value: 'zh-CN', label: '简体中文' },
@@ -172,19 +163,20 @@ export function InterfaceTab() {
                 useSettingsStore.setState({});
               }}
             />
-            <span className={styles['settings-field-hint']}>{t('settings.locale.languageHint')}</span>
-          </div>
-          <div className={styles['settings-field']}>
-            <label className={styles['settings-field-label']}>{t('settings.locale.timezone')}</label>
+          }
+        />
+        <SettingsRow
+          label={t('settings.locale.timezone')}
+          hint={t('settings.locale.timezoneHint')}
+          control={
             <SelectWidget
               options={tzOptions}
               value={currentTz}
               onChange={(val) => autoSaveConfig({ timezone: val })}
             />
-            <span className={styles['settings-field-hint']}>{t('settings.locale.timezoneHint')}</span>
-          </div>
-        </div>
-      </section>
+          }
+        />
+      </SettingsSection>
     </div>
   );
 }

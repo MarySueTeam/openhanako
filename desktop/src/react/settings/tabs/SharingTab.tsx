@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { t } from '../helpers';
 import styles from '../Settings.module.css';
+import { SettingsSection } from '../components/SettingsSection';
 
 // 静态预览图（由 scripts/generate-screenshot-previews.cjs 生成）
 import lightMobile from '../../../assets/screenshot-previews/light-mobile.png';
@@ -27,14 +28,9 @@ export function SharingTab() {
     () => localStorage.getItem('hana-screenshot-width') || 'mobile'
   );
 
-
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="sharing">
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>{t('settings.screenshot.title')}</h2>
-        <p className={styles['settings-section-desc']}>{t('settings.screenshot.desc')}</p>
-
-        {/* 配色卡片 */}
+      <SettingsSection title={t('settings.screenshot.color')} variant="flush">
         <div className={styles['theme-options']}>
           {([
             { key: 'light' as const, bg: '#F8F5ED', color: '#3B3D3F', accent: '#537D96' },
@@ -52,8 +48,9 @@ export function SharingTab() {
             </button>
           ))}
         </div>
+      </SettingsSection>
 
-        {/* 宽度选择：预览卡片 */}
+      <SettingsSection title={t('settings.screenshot.width')} variant="flush">
         <div className={styles['ss-layout-group']}>
           {([
             { width: 'mobile' as const, title: t('settings.screenshot.mobileTitle'), desc: t('settings.screenshot.mobileDesc') },
@@ -80,7 +77,7 @@ export function SharingTab() {
             );
           })}
         </div>
-      </section>
+      </SettingsSection>
     </div>
   );
 }

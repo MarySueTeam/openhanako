@@ -8,6 +8,8 @@ import { KeyInput } from '../../widgets/KeyInput';
 import { Toggle } from '../../widgets/Toggle';
 import { BridgeStatusDot, BridgeStatusText, OwnerSelect } from './BridgeWidgets';
 import type { KnownUser } from './BridgeWidgets';
+import { SettingsSection } from '../../components/SettingsSection';
+import { SettingsRow } from '../../components/SettingsRow';
 import styles from '../../Settings.module.css';
 
 // ── Types ──
@@ -53,15 +55,17 @@ export function PlatformSection({
 }: PlatformSectionProps) {
   const lastFieldIndex = credentialFields.length - 1;
 
-  return (
-    <section className={styles['settings-section']}>
-      <h2 className={styles['settings-section-title']}>{title}</h2>
-      <div className="bridge-platform-header">
-        <BridgeStatusDot status={status?.status} />
-        <BridgeStatusText status={status?.status} error={status?.error} />
-        <Toggle on={!!status?.enabled} onChange={onToggle} />
-      </div>
+  /** 状态点 + 文字 + Toggle 作为 section 右上角 context */
+  const statusContext = (
+    <div className="bridge-platform-header" style={{ margin: 0 }}>
+      <BridgeStatusDot status={status?.status} />
+      <BridgeStatusText status={status?.status} error={status?.error} />
+      <Toggle on={!!status?.enabled} onChange={onToggle} />
+    </div>
+  );
 
+  return (
+    <SettingsSection title={title} context={statusContext}>
       {credentialFields.map((field, idx) => {
         const isLast = idx === lastFieldIndex;
         const input = field.type === 'secret' ? (
@@ -93,32 +97,43 @@ export function PlatformSection({
         );
 
         return (
-          <div key={field.key} className={styles['settings-field']}>
-            <label className={styles['settings-field-label']}>{field.label}</label>
-            {input}
-            {isLast && hint && (
-              <span className={styles['settings-field-hint']}>{hint}</span>
-            )}
-          </div>
+          <SettingsRow
+            key={field.key}
+            label={field.label}
+            hint={isLast && hint ? hint : undefined}
+            layout="stacked"
+            control={input}
+          />
         );
       })}
 
+      {/* 无凭据（如 WhatsApp）：只显示 hint */}
       {credentialFields.length === 0 && hint && (
-        <div className={styles['settings-field']}>
-          <span className={styles['settings-field-hint']}>{hint}</span>
+        <div style={{
+          padding: 'var(--space-sm) var(--space-md)',
+          fontSize: '0.7rem',
+          color: 'var(--text-muted)',
+          lineHeight: 1.4,
+        }}>
+          {hint}
         </div>
       )}
 
       {children}
 
       {ownerUsers && onOwnerChange && (
-        <OwnerSelect
-          platform={platform}
-          users={ownerUsers}
-          currentOwner={currentOwner}
-          onChange={onOwnerChange}
-        />
+        <div style={{
+          padding: 'var(--space-sm) var(--space-md)',
+          borderTop: '1px solid var(--border)',
+        }}>
+          <OwnerSelect
+            platform={platform}
+            users={ownerUsers}
+            currentOwner={currentOwner}
+            onChange={onOwnerChange}
+          />
+        </div>
       )}
-    </section>
+    </SettingsSection>
   );
 }

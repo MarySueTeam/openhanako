@@ -8,6 +8,8 @@ import { AgentCardStack } from './agent/AgentCardStack';
 import { YuanSelector } from './agent/YuanSelector';
 import { MemorySection } from './agent/AgentMemory';
 import { AgentToolsSection } from './agent/AgentToolsSection';
+import { SettingsSection } from '../components/SettingsSection';
+import { SettingsRow } from '../components/SettingsRow';
 import styles from '../Settings.module.css';
 import {
   type ExpCategory, parseExperience,
@@ -130,7 +132,7 @@ export function AgentTab() {
 
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="agent">
-      {/* Agent 卡片堆叠 */}
+      {/* Agent 卡片堆叠（保持原样，不改） */}
       <section className={styles['settings-section']}>
         <h2 className={styles['settings-section-title']}>{t('settings.agent.title')}</h2>
         <AgentCardStack
@@ -187,7 +189,7 @@ export function AgentTab() {
         {/* 图片模型选择器暂时隐藏，后续重新设计 */}
       </section>
 
-      {/* 关于 Ta */}
+      {/* 关于 Ta（保持原样，不改） */}
       <section className={styles['settings-section']}>
         <h2 className={styles['settings-section-title']}>{t('settings.about.title')}</h2>
         <div className={`${styles['settings-field']} ${styles['settings-field-center']}`}>
@@ -241,6 +243,8 @@ export function AgentTab() {
         </div>
       </section>
 
+      {/* 以下是本 phase 需要改造的部分：Memory / Experience / Tools */}
+
       <MemorySection
         hasUtilityModel={hasUtilityModel}
         memoryEnabled={memoryEnabled}
@@ -249,32 +253,40 @@ export function AgentTab() {
       />
 
       {/* 经验 */}
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>{t('settings.experience.title')}</h2>
-        <p className={styles['settings-hint']}>{t('settings.experience.hint')}</p>
-        {expCategories.length === 0 ? (
-          <div className={styles['exp-empty']}>{t('settings.experience.empty')}</div>
-        ) : (
-          <div className={styles['exp-list']}>
-            {expCategories.map((cat) => (
-              <ExperienceBlock
-                key={cat.name}
-                category={cat}
-                onSave={(updated) => {
-                  const next = expCategories.map(c => c.name === cat.name ? updated : c);
-                  setExpCategories(next);
-                  putExperience(store, next);
-                }}
-                onDelete={() => {
-                  const next = expCategories.filter(c => c.name !== cat.name);
-                  setExpCategories(next);
-                  putExperience(store, next);
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      <SettingsSection title={t('settings.experience.title')}>
+        <div style={{ padding: 'var(--space-sm) var(--space-md)' }}>
+          <p style={{
+            fontSize: '0.7rem',
+            color: 'var(--text-muted)',
+            lineHeight: 1.4,
+            margin: '0 0 var(--space-md)',
+          }}>
+            {t('settings.experience.hint')}
+          </p>
+          {expCategories.length === 0 ? (
+            <div className={styles['exp-empty']}>{t('settings.experience.empty')}</div>
+          ) : (
+            <div className={styles['exp-list']}>
+              {expCategories.map((cat) => (
+                <ExperienceBlock
+                  key={cat.name}
+                  category={cat}
+                  onSave={(updated) => {
+                    const next = expCategories.map(c => c.name === cat.name ? updated : c);
+                    setExpCategories(next);
+                    putExperience(store, next);
+                  }}
+                  onDelete={() => {
+                    const next = expCategories.filter(c => c.name !== cat.name);
+                    setExpCategories(next);
+                    putExperience(store, next);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </SettingsSection>
 
       {/* 默认关闭 update_settings 和 dm，与后端 DEFAULT_DISABLED_TOOL_NAMES 保持同步 */}
       <AgentToolsSection

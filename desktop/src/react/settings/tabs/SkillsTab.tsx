@@ -7,6 +7,7 @@ import { SkillCapabilities } from './skills/SkillCapabilities';
 import { CompatPathDrawer } from './skills/CompatPathDrawer';
 import { LearnedSkillsBlock } from './skills/LearnedSkillsBlock';
 import { AgentSelect } from './bridge/AgentSelect';
+import { SettingsSection } from '../components/SettingsSection';
 import styles from '../Settings.module.css';
 
 const platform = window.platform;
@@ -230,14 +231,8 @@ export function SkillsTab() {
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="skills">
 
-      {/* ═════════════════════════════════════════════ */}
-      {/* Section 1: 技能管理(全局视角 — 装 / 列 / 删)   */}
-      {/* ═════════════════════════════════════════════ */}
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>
-          {t('settings.skills.manageTitle')}
-        </h2>
-
+      {/* Section 1: 管理技能 — Dropzone 虚线卡 + skill list 实线卡都自带视觉，flush 不再套白卡 */}
+      <SettingsSection title={t('settings.skills.manageTitle')} variant="flush">
         <div
           className={styles['skills-dropzone']}
           onClick={installSkill}
@@ -267,101 +262,98 @@ export function SkillsTab() {
             ))}
           </div>
         )}
-      </section>
+      </SettingsSection>
 
-      {/* ═════════════════════════════════════════════ */}
-      {/* Section 2: 全局能力(跟 Selector 无关)        */}
-      {/* ═════════════════════════════════════════════ */}
+      {/* Section 2: 全局能力（子组件，保持原样） */}
       <SkillCapabilities learnCfg={learnCfg} />
 
-      {/* ═════════════════════════════════════════════ */}
-      {/* Section 3: Agent 配置(per-Agent 开关)         */}
-      {/* ═════════════════════════════════════════════ */}
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>
-          {t('settings.skills.agentConfigTitle')}
-        </h2>
-
-        <div className={styles['agent-skill-selector-wrap']}>
+      {/* Section 3: Agent 配置（per-Agent 开关）
+       * AgentSelect 作为 section context（title 右上角，和 WorkTab "Agent 工作书桌设置" 同构） */}
+      <SettingsSection
+        title={t('settings.skills.agentConfigTitle')}
+        context={
           <AgentSelect
             value={skillsViewAgentId}
             onChange={setSkillsViewAgentId}
           />
+        }
+      >
+        <div style={{ padding: 'var(--space-sm) var(--space-md)' }}>
+          {/* 子块 1: 用户级 Skill — 只开关，不能删（删去 Section 1） */}
+          <SettingsSection.SubBlock title={t('settings.skills.userSkillsTitle')}>
+            {userSkills.length === 0 ? (
+              <p className={styles['agent-skill-empty']}>{t('settings.skills.noUser')}</p>
+            ) : (
+              <div className={styles['skills-list-block']}>
+                {userSkills.map(skill => (
+                  <SkillRow
+                    key={skill.name}
+                    skill={skill}
+                    nameHint={nameHints[skill.name]}
+                    onToggle={toggleSkill}
+                  />
+                ))}
+              </div>
+            )}
+          </SettingsSection.SubBlock>
+
+          {/* 子块 2: 自学 Skill — per-Agent 资产，保持 toggle + delete */}
+          <LearnedSkillsBlock
+            learnedSkills={learnedSkills}
+            nameHints={nameHints}
+            onDelete={deleteSkill}
+            onToggle={toggleSkill}
+          />
         </div>
+      </SettingsSection>
 
-        {/* 子块 1: 用户级 Skill — 只开关,不能删(删去 Section 1) */}
-        <div className={styles['agent-skill-sub-block']}>
-          <h3 className={styles['agent-skill-sub-title']}>
-            {t('settings.skills.userSkillsTitle')}
-          </h3>
-
-          {userSkills.length === 0 ? (
-            <p className={styles['agent-skill-empty']}>{t('settings.skills.noUser')}</p>
-          ) : (
-            <div className={styles['skills-list-block']}>
-              {userSkills.map(skill => (
-                <SkillRow
-                  key={skill.name}
-                  skill={skill}
-                  nameHint={nameHints[skill.name]}
-                  onToggle={toggleSkill}
-                />
-              ))}
-            </div>
-          )}
+      {/* Section 4: 外部兼容 */}
+      <SettingsSection title={t('settings.skills.compatTitle')}>
+        <div style={{ padding: 'var(--space-sm) var(--space-md)' }}>
+          <p style={{
+            fontSize: '0.7rem',
+            color: 'var(--text-muted)',
+            lineHeight: 1.4,
+            margin: '0 0 var(--space-md)',
+          }}>
+            {t('settings.skills.compatDesc')}
+          </p>
+          <div className={styles['compat-paths-group']}>
+            {discoveredPaths.map(d => (
+              <CompatPathDrawer
+                key={d.dirPath}
+                dirPath={d.dirPath}
+                label={d.label}
+                exists={d.exists}
+                isCustom={false}
+                skills={externalSkills.filter(s => s.externalPath === d.dirPath)}
+                nameHints={nameHints}
+                onToggle={toggleSkill}
+                onRemove={removeExternalPath}
+              />
+            ))}
+            {configuredOnlyPaths.map(p => (
+              <CompatPathDrawer
+                key={p}
+                dirPath={p}
+                label={null}
+                exists={true}
+                isCustom={true}
+                skills={externalSkills.filter(s => s.externalPath === p)}
+                nameHints={nameHints}
+                onToggle={toggleSkill}
+                onRemove={removeExternalPath}
+              />
+            ))}
+            <button className={styles['compat-add-path']} onClick={addExternalPath}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span>{t('settings.skills.compatAddPath')}</span>
+            </button>
+          </div>
         </div>
-
-        {/* 子块 2: 自学 Skill — per-Agent 资产,保持 toggle + delete */}
-        <LearnedSkillsBlock
-          learnedSkills={learnedSkills}
-          nameHints={nameHints}
-          onDelete={deleteSkill}
-          onToggle={toggleSkill}
-        />
-      </section>
-
-      {/* ═════════════════════════════════════════════ */}
-      {/* Section 4: 外部兼容(路径全局,skill 跟随 Selector)*/}
-      {/* ═════════════════════════════════════════════ */}
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>{t('settings.skills.compatTitle')}</h2>
-        <p className={styles['settings-desc']}>{t('settings.skills.compatDesc')}</p>
-
-        <div className={styles['compat-paths-group']}>
-          {discoveredPaths.map(d => (
-            <CompatPathDrawer
-              key={d.dirPath}
-              dirPath={d.dirPath}
-              label={d.label}
-              exists={d.exists}
-              isCustom={false}
-              skills={externalSkills.filter(s => s.externalPath === d.dirPath)}
-              nameHints={nameHints}
-              onToggle={toggleSkill}
-              onRemove={removeExternalPath}
-            />
-          ))}
-          {configuredOnlyPaths.map(p => (
-            <CompatPathDrawer
-              key={p}
-              dirPath={p}
-              label={null}
-              exists={true}
-              isCustom={true}
-              skills={externalSkills.filter(s => s.externalPath === p)}
-              nameHints={nameHints}
-              onToggle={toggleSkill}
-              onRemove={removeExternalPath}
-            />
-          ))}
-          <button className={styles['compat-add-path']} onClick={addExternalPath}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            <span>{t('settings.skills.compatAddPath')}</span>
-          </button>
-        </div>
-      </section>
+      </SettingsSection>
 
     </div>
   );

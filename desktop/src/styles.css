@@ -1071,18 +1071,116 @@ html[data-platform="linux"] .tb-toggle-right {
 .bridge-test-ok  { color: var(--green); border-color: var(--green); }
 .bridge-test-fail { color: var(--coral); border-color: var(--coral); }
 
-/* Owner 选择区域 */
+/* 设置页内 warning/error/danger 统一低饱和砖红
+ * --mood-text 是"plan-mode 操作电脑"专属色（每主题自定义），设置页 warning 不再借用它；
+ * 所有 warning 引用改为 var(--danger)，和 error/delete 共用同一色变量 */
+.settings-panel {
+    --danger: #b56b66;
+    --danger-rgb: 181, 107, 102;
+    --text-error: #b56b66;
+    --error: #b56b66;
+}
+
+/* Owner 选择区域：左对齐，字号/颜色对齐 stacked SettingsRow 的 label/hint */
 .bridge-owner-label {
-    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text);
+    font-weight: 500;
+    text-align: left;
     margin-bottom: var(--space-xs);
 }
 
 .bridge-owner-warning {
-    font-size: 0.72rem;
-    color: #a04040;
-    text-align: center;
+    font-size: 0.7rem;
+    color: var(--danger, #b56b66);
+    text-align: left;
     margin: 0 0 var(--space-sm);
     line-height: 1.5;
+}
+
+/* BridgeTab 顶部：水平平铺的 agent 选择器（代替下拉框）
+ * 两层结构：外 scroller 管 overflow-x，内 list 管 margin auto 居中
+ * → 未超宽时居中显示，超宽时横向滚动（居中失效后自然从左开始） */
+.bridge-agent-row-scroller {
+    overflow-x: auto;
+    overflow-y: visible;
+    margin-bottom: var(--space-xl);
+    padding: var(--space-sm) 0;
+}
+
+.bridge-agent-row-scroller::-webkit-scrollbar {
+    height: 4px;
+}
+
+.bridge-agent-row-scroller::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
+.bridge-agent-row-list {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: center;
+    min-width: min-content;  /* 防止内容被压缩；内容自然扩展后 overflow-x 生效 */
+    padding: 0 var(--space-md);
+}
+
+.bridge-agent-row-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+}
+
+/* 头像容器：≈ AgentCardStack avatar (62px) × 0.9 = 56px */
+.bridge-agent-row-avatar-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2.5px solid var(--bg-card);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
+    transition: border-color 0.2s var(--ease-out), transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+    background-color: var(--bg-card);
+}
+
+/* selected 高亮对齐 AgentCardStack（border-muted + scale 1.06） */
+.bridge-agent-row-item.selected .bridge-agent-row-avatar-wrap {
+    border-color: var(--text-muted, #999);
+    transform: scale(1.06);
+}
+
+.bridge-agent-row-item:hover .bridge-agent-row-avatar-wrap {
+    box-shadow: 0 4px 16px var(--shadow);
+    transform: scale(1.06);
+}
+
+.bridge-agent-row-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+}
+
+.bridge-agent-row-name {
+    font-size: 0.7rem;
+    line-height: 1.3;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-top: 4px;
+    transition: color 0.15s var(--ease-out);
+}
+
+.bridge-agent-row-item.selected .bridge-agent-row-name {
+    color: var(--text);
 }
 
 /* 如何接入 链接 */
@@ -2052,7 +2150,7 @@ body.resizing .jian-sidebar-inner {
     opacity: 1;
 }
 .hana-toast.warning {
-    border-left-color: var(--warning-color, #c59a28);
+    border-left-color: var(--danger, #b56b66);
 }
 .hana-toast-actions {
     display: flex;

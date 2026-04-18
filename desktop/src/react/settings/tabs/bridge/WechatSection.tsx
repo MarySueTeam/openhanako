@@ -6,7 +6,7 @@ import { t } from '../../helpers';
 import { hanaFetch } from '../../api';
 import { Toggle } from '../../widgets/Toggle';
 import { BridgeStatusDot, BridgeStatusText } from './BridgeWidgets';
-import styles from '../../Settings.module.css';
+import { SettingsSection } from '../../components/SettingsSection';
 import bridgeStyles from '../BridgeTab.module.css';
 
 interface WechatSectionProps {
@@ -40,21 +40,24 @@ export function WechatSection({ status, showToast, onSaveConfig, onReload, agent
     await onReload();
   };
 
+  /** 状态 + Toggle 作为 section 右上角 context */
+  const statusContext = (
+    <div className="bridge-platform-header" style={{ margin: 0 }}>
+      <BridgeStatusDot status={status.status} />
+      <BridgeStatusText status={status.status} error={status.error} />
+      <Toggle
+        on={!!status.enabled}
+        onChange={async (on) => {
+          if (on && !status.token) { showToast(t('settings.bridge.wechatNeedScan'), 'error'); return; }
+          await onSaveConfig(null, on);
+        }}
+      />
+    </div>
+  );
+
   return (
-    <section className={styles['settings-section']}>
-      <h2 className={styles['settings-section-title']}>{t('settings.bridge.wechat')}</h2>
-      <div className="bridge-platform-header">
-        <BridgeStatusDot status={status.status} />
-        <BridgeStatusText status={status.status} error={status.error} />
-        <Toggle
-          on={!!status.enabled}
-          onChange={async (on) => {
-            if (on && !status.token) { showToast(t('settings.bridge.wechatNeedScan'), 'error'); return; }
-            await onSaveConfig(null, on);
-          }}
-        />
-      </div>
-      <div className={styles['settings-field']}>
+    <SettingsSection title={t('settings.bridge.wechat')} context={statusContext}>
+      <div style={{ padding: 'var(--space-sm) var(--space-md)' }}>
         {status.token ? (
           <div className={bridgeStyles['wechat-logged-in']}>
             <span className={bridgeStyles['wechat-login-info']}>
@@ -76,9 +79,16 @@ export function WechatSection({ status, showToast, onSaveConfig, onReload, agent
             </button>
           </div>
         )}
-        <span className={styles['settings-field-hint']}>{t('settings.bridge.wechatHint')}</span>
-        <span className={styles['settings-field-hint']}>{t('settings.bridge.wechatExclusive')}</span>
+        <div style={{
+          marginTop: 'var(--space-sm)',
+          fontSize: '0.7rem',
+          color: 'var(--text-muted)',
+          lineHeight: 1.4,
+        }}>
+          <div>{t('settings.bridge.wechatHint')}</div>
+          <div>{t('settings.bridge.wechatExclusive')}</div>
+        </div>
       </div>
-    </section>
+    </SettingsSection>
   );
 }

@@ -4,6 +4,9 @@ import { autoSaveConfig, t } from '../helpers';
 import { hanaFetch } from '../api';
 import { loadSettingsConfig } from '../actions';
 import { Toggle } from '../widgets/Toggle';
+import { SettingsSection } from '../components/SettingsSection';
+import { SettingsRow } from '../components/SettingsRow';
+import { ExpandableRow } from '../components/ExpandableRow';
 import styles from '../Settings.module.css';
 
 interface Checkpoint {
@@ -32,7 +35,6 @@ export function SecurityTab() {
   const sandboxEnabled = settingsConfig?.sandbox !== false;
   const fileBackup = settingsConfig?.file_backup || { enabled: false, retention_days: 1, max_file_size_kb: 1024 };
 
-  const [backupsOpen, setBackupsOpen] = useState(false);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -88,12 +90,6 @@ export function SecurityTab() {
     }
   }, [showToast]);
 
-  const toggleBackups = useCallback(() => {
-    const next = !backupsOpen;
-    setBackupsOpen(next);
-    if (next) loadCheckpoints();
-  }, [backupsOpen, loadCheckpoints]);
-
   const formatTime = (ts: number) => {
     const d = new Date(ts);
     return d.toLocaleString();
@@ -107,41 +103,31 @@ export function SecurityTab() {
 
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="security">
-      {/* Sandbox Section */}
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>{t('settings.security.sandbox')}</h2>
-        <div className={styles['tool-caps-group']}>
-          <div className={styles['tool-caps-item']}>
-            <div className={styles['tool-caps-label']}>
-              <span className={styles['tool-caps-name']}>{t('settings.security.sandbox')}</span>
-              <span className={styles['tool-caps-desc']}>{t('settings.security.sandboxDesc')}</span>
-            </div>
-            <Toggle on={sandboxEnabled} onChange={handleSandboxToggle} />
-          </div>
-        </div>
+      <SettingsSection title={t('settings.security.sandbox')}>
+        <SettingsRow
+          label={t('settings.security.sandbox')}
+          hint={t('settings.security.sandboxDesc')}
+          control={<Toggle on={sandboxEnabled} onChange={handleSandboxToggle} />}
+        />
         {!sandboxEnabled && (
-          <p className={`${styles['tool-caps-desc']} ${styles['warn']} ${styles['settings-section-hint']}`}>
+          <SettingsSection.Warning>
             {t('settings.security.sandboxWarning')}
-          </p>
+          </SettingsSection.Warning>
         )}
-      </section>
+      </SettingsSection>
 
-      {/* File Backup Section */}
-      <section className={styles['settings-section']}>
-        <h2 className={styles['settings-section-title']}>{t('settings.security.fileBackup')}</h2>
-        <div className={styles['tool-caps-group']}>
-          <div className={styles['tool-caps-item']}>
-            <div className={styles['tool-caps-label']}>
-              <span className={styles['tool-caps-name']}>{t('settings.security.fileBackup')}</span>
-              <span className={styles['tool-caps-desc']}>{t('settings.security.fileBackupDesc')}</span>
-            </div>
-            <Toggle on={fileBackup.enabled} onChange={handleBackupToggle} />
-          </div>
+      <SettingsSection title={t('settings.security.fileBackup')}>
+        <SettingsRow
+          label={t('settings.security.fileBackup')}
+          hint={t('settings.security.fileBackupDesc')}
+          control={<Toggle on={fileBackup.enabled} onChange={handleBackupToggle} />}
+        />
 
-          {fileBackup.enabled && (
-            <>
-              <div className={styles['tool-caps-item']}>
-                <span className={styles['tool-caps-name']}>{t('settings.security.retention')}</span>
+        {fileBackup.enabled && (
+          <>
+            <SettingsRow
+              label={t('settings.security.retention')}
+              control={
                 <select
                   className={styles['settings-select']}
                   value={fileBackup.retention_days}
@@ -151,10 +137,12 @@ export function SecurityTab() {
                     <option key={opt.value} value={opt.value}>{t(opt.key)}</option>
                   ))}
                 </select>
-              </div>
+              }
+            />
 
-              <div className={styles['tool-caps-item']}>
-                <span className={styles['tool-caps-name']}>{t('settings.security.maxFileSize')}</span>
+            <SettingsRow
+              label={t('settings.security.maxFileSize')}
+              control={
                 <select
                   className={styles['settings-select']}
                   value={fileBackup.max_file_size_kb}
@@ -164,38 +152,38 @@ export function SecurityTab() {
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-              </div>
+              }
+            />
 
-              <button className={styles['settings-text-btn']} onClick={toggleBackups}>
-                {backupsOpen ? t('settings.security.hideBackups') : t('settings.security.viewBackups')}
-              </button>
-
-              {backupsOpen && (
-                <div className={styles['settings-backup-list']}>
-                  {loading ? (
-                    <span className={styles['tool-caps-desc']}>...</span>
-                  ) : checkpoints.length === 0 ? (
-                    <span className={styles['tool-caps-desc']}>{t('settings.security.noBackups')}</span>
-                  ) : (
-                    checkpoints.map(cp => (
-                      <div key={cp.id} className={styles['settings-backup-item']}>
-                        <span className={styles['settings-backup-time']}>{formatTime(cp.ts)}</span>
-                        <span className={styles['settings-backup-path']}>{formatPath(cp.path)}</span>
-                        <button
-                          className={styles['settings-backup-restore-btn']}
-                          onClick={() => handleRestore(cp.id)}
-                        >
-                          {t('settings.security.restoreBtn')}
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
+            <ExpandableRow
+              label={t('settings.security.viewBackups')}
+              count={checkpoints.length || undefined}
+              onToggle={(expanded) => {
+                if (expanded) loadCheckpoints();
+              }}
+            >
+              {loading ? (
+                <span className={styles['tool-caps-desc']}>...</span>
+              ) : checkpoints.length === 0 ? (
+                <span className={styles['tool-caps-desc']}>{t('settings.security.noBackups')}</span>
+              ) : (
+                checkpoints.map(cp => (
+                  <div key={cp.id} className={styles['settings-backup-item']}>
+                    <span className={styles['settings-backup-time']}>{formatTime(cp.ts)}</span>
+                    <span className={styles['settings-backup-path']}>{formatPath(cp.path)}</span>
+                    <button
+                      className={styles['settings-backup-restore-btn']}
+                      onClick={() => handleRestore(cp.id)}
+                    >
+                      {t('settings.security.restoreBtn')}
+                    </button>
+                  </div>
+                ))
               )}
-            </>
-          )}
-        </div>
-      </section>
+            </ExpandableRow>
+          </>
+        )}
+      </SettingsSection>
     </div>
   );
 }

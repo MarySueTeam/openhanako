@@ -6,6 +6,7 @@ import { loadSettingsConfig } from '../actions';
 import { ProviderDetail } from './providers/ProviderDetail';
 import { AddCustomButton } from './providers/ProviderList';
 import { OtherModelsSection } from './providers/OtherModelsSection';
+import { SettingsSection } from '../components/SettingsSection';
 import styles from '../Settings.module.css';
 
 export function ProvidersTab() {
@@ -73,76 +74,78 @@ export function ProvidersTab() {
 
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="providers">
-      <div className={styles['pv-layout']}>
-        {/* ── 左栏 ── */}
-        <div className={styles['pv-list']}>
-          {oauthProviders.length > 0 && (
-            <>
-              <div className={styles['pv-list-section-title']}>OAuth</div>
-              {oauthProviders.map(renderRegistered)}
-            </>
-          )}
+      {/* pv-layout：double-column 外壳（sectionBody 透明，pv-layout 保留原视觉） */}
+      <SettingsSection variant="double-column">
+        <div className={styles['pv-layout']}>
+          {/* ── 左栏 ── */}
+          <div className={styles['pv-list']}>
+            {oauthProviders.length > 0 && (
+              <>
+                <div className={styles['pv-list-section-title']}>OAuth</div>
+                {oauthProviders.map(renderRegistered)}
+              </>
+            )}
 
-          {codingPlanProviders.length > 0 && (
-            <>
-              <div className={styles['pv-list-section-title']}>Coding Plan</div>
-              {codingPlanProviders.map(renderRegistered)}
-            </>
-          )}
+            {codingPlanProviders.length > 0 && (
+              <>
+                <div className={styles['pv-list-section-title']}>Coding Plan</div>
+                {codingPlanProviders.map(renderRegistered)}
+              </>
+            )}
 
-          <div className={styles['pv-list-section-title']}>API</div>
-          {presetProviders.map(renderRegistered)}
-          {unregisteredPresets.map(renderUnregistered)}
-          {customProviders.map(renderRegistered)}
+            <div className={styles['pv-list-section-title']}>API</div>
+            {presetProviders.map(renderRegistered)}
+            {unregisteredPresets.map(renderUnregistered)}
+            {customProviders.map(renderRegistered)}
 
-          <AddCustomButton
-            adding={addingProvider}
-            onToggle={() => setAddingProvider(!addingProvider)}
-            onDone={() => { setAddingProvider(false); loadSummary(); }}
-            onCancel={() => setAddingProvider(false)}
-          />
+            <AddCustomButton
+              adding={addingProvider}
+              onToggle={() => setAddingProvider(!addingProvider)}
+              onDone={() => { setAddingProvider(false); loadSummary(); }}
+              onCancel={() => setAddingProvider(false)}
+            />
+          </div>
+
+          {/* ── 右栏：Provider 详情 ── */}
+          <div className={styles['pv-detail']}>
+            {selected ? (() => {
+              const existing = providersSummary[selected];
+              const preset = PROVIDER_PRESETS.find(p => p.value === selected);
+              const summary: ProviderSummary = existing || {
+                type: 'api-key' as const,
+                display_name: preset?.label || selected,
+                base_url: preset?.url || '',
+                api: preset?.api || '',
+                api_key: '',
+                models: [],
+                custom_models: [],
+                has_credentials: false,
+                supports_oauth: false,
+                can_delete: false,
+              };
+              return (
+                <ProviderDetail
+                  providerId={selected}
+                  summary={summary}
+                  providerConfig={providers[selected]}
+                  isPresetSetup={!existing && !!preset}
+                  presetInfo={preset}
+                  onRefresh={async () => { await loadSettingsConfig(); await loadSummary(); }}
+                />
+              );
+            })() : (
+              <div className={styles['pv-empty']}>
+                {t('settings.providers.selectHint')}
+              </div>
+            )}
+          </div>
         </div>
+      </SettingsSection>
 
-        {/* ── 右栏：Provider 详情 ── */}
-        <div className={styles['pv-detail']}>
-          {selected ? (() => {
-            const existing = providersSummary[selected];
-            const preset = PROVIDER_PRESETS.find(p => p.value === selected);
-            const summary: ProviderSummary = existing || {
-              type: 'api-key' as const,
-              display_name: preset?.label || selected,
-              base_url: preset?.url || '',
-              api: preset?.api || '',
-              api_key: '',
-              models: [],
-              custom_models: [],
-              has_credentials: false,
-              supports_oauth: false,
-              can_delete: false,
-            };
-            return (
-              <ProviderDetail
-                providerId={selected}
-                summary={summary}
-                providerConfig={providers[selected]}
-                isPresetSetup={!existing && !!preset}
-                presetInfo={preset}
-                onRefresh={async () => { await loadSettingsConfig(); await loadSummary(); }}
-              />
-            );
-          })() : (
-            <div className={styles['pv-empty']}>
-              {t('settings.providers.selectHint')}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── 底部：全局模型分配 ── */}
-      <section className={`${styles['settings-section']} ${styles['pv-other-section']}`}>
-        <h2 className={styles['settings-section-title']}>{t('settings.api.otherModelSection')}</h2>
+      {/* 全局模型分配：OtherModelsSection 内部结构保持不变，外壳标准化 */}
+      <SettingsSection title={t('settings.api.otherModelSection')}>
         <OtherModelsSection providers={providers} />
-      </section>
+      </SettingsSection>
     </div>
   );
 }

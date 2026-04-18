@@ -3,6 +3,8 @@ import { useSettingsStore } from '../store';
 import { hanaFetch } from '../api';
 import { t } from '../helpers';
 import { MediaProviderDetail } from './media/MediaProviderDetail';
+import { SettingsSection } from '../components/SettingsSection';
+import { SettingsRow } from '../components/SettingsRow';
 import styles from '../Settings.module.css';
 
 interface MediaProvider {
@@ -63,105 +65,98 @@ export function MediaTab() {
 
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="media">
-      <div className={styles['pv-layout']}>
-        {/* Left: Provider list */}
-        <div className={styles['pv-list']}>
-          <div className={styles['pv-list-section-title']}>{t('settings.media.imageGeneration')}</div>
-          {providerIds.map(pid => {
-            const p = providers[pid];
-            return (
-              <button
-                key={pid}
-                className={`${styles['pv-list-item']}${selected === pid ? ' ' + styles['selected'] : ''}${!p.hasCredentials ? ' ' + styles['dim'] : ''}`}
-                onClick={() => setSelected(pid)}
-              >
-                <span className={`${styles['pv-status-dot']}${p.hasCredentials ? ' ' + styles['on'] : ''}`} />
-                <span className={styles['pv-list-item-name']}>{p.displayName || pid}</span>
-                <span className={styles['pv-list-item-count']}>{p.models.length}</span>
-              </button>
-            );
-          })}
+      {/* pv-layout：double-column variant 做外壳，内部 DOM 保留原样 */}
+      <SettingsSection variant="double-column">
+        <div className={styles['pv-layout']}>
+          {/* Left: Provider list */}
+          <div className={styles['pv-list']}>
+            <div className={styles['pv-list-section-title']}>{t('settings.media.imageGeneration')}</div>
+            {providerIds.map(pid => {
+              const p = providers[pid];
+              return (
+                <button
+                  key={pid}
+                  className={`${styles['pv-list-item']}${selected === pid ? ' ' + styles['selected'] : ''}${!p.hasCredentials ? ' ' + styles['dim'] : ''}`}
+                  onClick={() => setSelected(pid)}
+                >
+                  <span className={`${styles['pv-status-dot']}${p.hasCredentials ? ' ' + styles['on'] : ''}`} />
+                  <span className={styles['pv-list-item-name']}>{p.displayName || pid}</span>
+                  <span className={styles['pv-list-item-count']}>{p.models.length}</span>
+                </button>
+              );
+            })}
 
-          {/* Placeholder sections for future capabilities */}
-          <div className={styles['pv-list-divider']} />
-          <div className={styles['pv-list-section-title']} style={{ color: 'var(--text-muted)' }}>
-            {t('settings.media.speechRecognition')}
-          </div>
-          <div className={styles['pv-list-item']} style={{ opacity: 0.3, pointerEvents: 'none' }}>
-            <span className={styles['pv-status-dot']} />
-            <span className={styles['pv-list-item-name']} style={{ fontStyle: 'italic', fontSize: '0.7rem' }}>
-              {t('settings.media.comingSoon')}
-            </span>
-          </div>
-
-          <div className={styles['pv-list-divider']} />
-          <div className={styles['pv-list-section-title']} style={{ color: 'var(--text-muted)' }}>
-            {t('settings.media.speechSynthesis')}
-          </div>
-          <div className={styles['pv-list-item']} style={{ opacity: 0.3, pointerEvents: 'none' }}>
-            <span className={styles['pv-status-dot']} />
-            <span className={styles['pv-list-item-name']} style={{ fontStyle: 'italic', fontSize: '0.7rem' }}>
-              {t('settings.media.comingSoon')}
-            </span>
-          </div>
-        </div>
-
-        {/* Right: Provider detail */}
-        <div className={styles['pv-detail']}>
-          {selected && providers[selected] ? (
-            <MediaProviderDetail
-              providerId={selected}
-              provider={providers[selected]}
-              config={config}
-              onSaveConfig={saveConfig}
-              onRefresh={load}
-            />
-          ) : (
-            <div className={styles['pv-empty']}>
-              {t('settings.media.noProvider')}
+            {/* Placeholder sections for future capabilities */}
+            <div className={styles['pv-list-divider']} />
+            <div className={styles['pv-list-section-title']} style={{ color: 'var(--text-muted)' }}>
+              {t('settings.media.speechRecognition')}
             </div>
-          )}
-        </div>
-      </div>
+            <div className={styles['pv-list-item']} style={{ opacity: 0.3, pointerEvents: 'none' }}>
+              <span className={styles['pv-status-dot']} />
+              <span className={styles['pv-list-item-name']} style={{ fontStyle: 'italic', fontSize: '0.7rem' }}>
+                {t('settings.media.comingSoon')}
+              </span>
+            </div>
 
-      {/* Bottom: Global default image model */}
-      <section className={`${styles['settings-section']} ${styles['pv-other-section']}`}>
-        <h2 className={styles['settings-section-title']}>{t('settings.media.globalDefault')}</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-            {t('settings.media.defaultModel')}
-          </span>
-          <select
-            style={{
-              fontFamily: 'inherit',
-              fontSize: '0.75rem',
-              padding: '6px 10px',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--bg)',
-              color: 'var(--text)',
-              flex: 1,
-            }}
-            value={config.defaultImageModel ? `${config.defaultImageModel.provider}/${config.defaultImageModel.id}` : ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!val) {
-                saveConfig({ defaultImageModel: undefined });
-                return;
-              }
-              const [provider, ...rest] = val.split('/');
-              saveConfig({ defaultImageModel: { id: rest.join('/'), provider } });
-            }}
-          >
-            <option value="">—</option>
-            {allImageModels.map(m => (
-              <option key={`${m.provider}/${m.id}`} value={`${m.provider}/${m.id}`}>
-                {m.provider} / {m.name || m.id}
-              </option>
-            ))}
-          </select>
+            <div className={styles['pv-list-divider']} />
+            <div className={styles['pv-list-section-title']} style={{ color: 'var(--text-muted)' }}>
+              {t('settings.media.speechSynthesis')}
+            </div>
+            <div className={styles['pv-list-item']} style={{ opacity: 0.3, pointerEvents: 'none' }}>
+              <span className={styles['pv-status-dot']} />
+              <span className={styles['pv-list-item-name']} style={{ fontStyle: 'italic', fontSize: '0.7rem' }}>
+                {t('settings.media.comingSoon')}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Provider detail */}
+          <div className={styles['pv-detail']}>
+            {selected && providers[selected] ? (
+              <MediaProviderDetail
+                providerId={selected}
+                provider={providers[selected]}
+                config={config}
+                onSaveConfig={saveConfig}
+                onRefresh={load}
+              />
+            ) : (
+              <div className={styles['pv-empty']}>
+                {t('settings.media.noProvider')}
+              </div>
+            )}
+          </div>
         </div>
-      </section>
+      </SettingsSection>
+
+      {/* 全局默认：标准 inline row */}
+      <SettingsSection title={t('settings.media.globalDefault')}>
+        <SettingsRow
+          label={t('settings.media.defaultModel')}
+          control={
+            <select
+              className={styles['settings-select']}
+              value={config.defaultImageModel ? `${config.defaultImageModel.provider}/${config.defaultImageModel.id}` : ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) {
+                  saveConfig({ defaultImageModel: undefined });
+                  return;
+                }
+                const [provider, ...rest] = val.split('/');
+                saveConfig({ defaultImageModel: { id: rest.join('/'), provider } });
+              }}
+            >
+              <option value="">—</option>
+              {allImageModels.map(m => (
+                <option key={`${m.provider}/${m.id}`} value={`${m.provider}/${m.id}`}>
+                  {m.provider} / {m.name || m.id}
+                </option>
+              ))}
+            </select>
+          }
+        />
+      </SettingsSection>
     </div>
   );
 }

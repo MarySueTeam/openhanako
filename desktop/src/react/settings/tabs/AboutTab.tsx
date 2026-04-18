@@ -3,6 +3,9 @@ import { useSettingsStore } from '../store';
 import { autoSaveConfig, t } from '../helpers';
 import { Toggle } from '../widgets/Toggle';
 import { loadSettingsConfig } from '../actions';
+import { SettingsSection } from '../components/SettingsSection';
+import { SettingsRow } from '../components/SettingsRow';
+import { ExpandableRow } from '../components/ExpandableRow';
 import iconUrl from '../../../assets/Hanako.png';
 import styles from '../Settings.module.css';
 import type { AutoUpdateState } from '../../types';
@@ -12,7 +15,6 @@ const hana = window.hana;
 export function AboutTab() {
   const { settingsConfig } = useSettingsStore();
   const [version, setVersion] = useState('');
-  const [licenseOpen, setLicenseOpen] = useState(false);
   const [autoUpdate, setAutoUpdate] = useState<AutoUpdateState | null>(null);
   const isBeta = settingsConfig?.update_channel === 'beta';
 
@@ -26,10 +28,6 @@ export function AboutTab() {
 
   const handleCheck = useCallback(() => {
     hana?.autoUpdateCheck?.();
-  }, []);
-
-  const handleDownload = useCallback(() => {
-    hana?.autoUpdateDownload?.();
   }, []);
 
   const handleInstall = useCallback(() => {
@@ -120,12 +118,9 @@ export function AboutTab() {
 
   return (
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="about">
+      {/* Hero：保留原 about-hero 独立视觉组件（icon + name + tagline + version + update + check 按钮） */}
       <div className={styles['about-hero']}>
-        <img
-          className={styles['about-icon']}
-          src={iconUrl}
-          alt="Hanako"
-        />
+        <img className={styles['about-icon']} src={iconUrl} alt="Hanako" />
         <div className={styles['about-name']}>Hanako</div>
         <div className={styles['about-tagline']}>{t('settings.about.tagline')}</div>
         {version && <div className={styles['about-version']}>v{version}</div>}
@@ -137,52 +132,46 @@ export function AboutTab() {
         )}
       </div>
 
-      <section className={styles['about-info']}>
-        <div className={styles['about-row']}>
-          <span className={styles['about-label']}>{t('settings.about.license')}</span>
-          <span className={styles['about-value']}>Apache License 2.0</span>
-        </div>
-        <div className={styles['about-row']}>
-          <span className={styles['about-label']}>{t('settings.about.copyright')}</span>
-          <span className={styles['about-value']}>&copy; 2026 liliMozi</span>
-        </div>
-        <div className={styles['about-row']}>
-          <span className={styles['about-label']}>GitHub</span>
-          <a
-            className={`${styles['about-value']} ${styles['about-link']}`}
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              hana?.openExternal?.('https://github.com/liliMozi');
-            }}
-          >
-            github.com/liliMozi
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              <polyline points="15 3 21 3 21 9" />
-              <line x1="10" y1="14" x2="21" y2="3" />
-            </svg>
-          </a>
-        </div>
-        <div className={styles['about-row']}>
-          <span className={styles['about-label']}>{t('settings.about.betaUpdates')}</span>
-          <Toggle on={isBeta} onChange={handleBetaToggle} />
-        </div>
-      </section>
+      {/* Info：4 个标准 row（license / copyright / github / beta toggle） */}
+      <SettingsSection>
+        <SettingsRow
+          label={t('settings.about.license')}
+          control={<span>Apache License 2.0</span>}
+        />
+        <SettingsRow
+          label={t('settings.about.copyright')}
+          control={<span>© 2026 liliMozi</span>}
+        />
+        <SettingsRow
+          label="GitHub"
+          control={
+            <a
+              className={styles['about-link']}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                hana?.openExternal?.('https://github.com/liliMozi');
+              }}
+            >
+              github.com/liliMozi
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          }
+        />
+        <SettingsRow
+          label={t('settings.about.betaUpdates')}
+          control={<Toggle on={isBeta} onChange={handleBetaToggle} />}
+        />
+      </SettingsSection>
 
-      <button
-        className={styles['about-license-toggle']}
-        onClick={() => setLicenseOpen(!licenseOpen)}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points={licenseOpen ? '18 15 12 9 6 15' : '6 9 12 15 18 9'} />
-        </svg>
-        {t('settings.about.licenseToggle')}
-      </button>
-
-      {licenseOpen && (
+      {/* License 全文：ExpandableRow 直接作为 tab 末尾元素 */}
+      <ExpandableRow label={t('settings.about.licenseToggle')}>
         <pre className={styles['about-license-text']}>{LICENSE_TEXT}</pre>
-      )}
+      </ExpandableRow>
     </div>
   );
 }

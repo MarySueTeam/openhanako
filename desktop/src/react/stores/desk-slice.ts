@@ -2,14 +2,6 @@ import type { DeskFile } from '../types';
 
 export const DESK_OWNER = 'desk';
 
-export interface DeskSkillInfo {
-  name: string;
-  enabled: boolean;
-  source?: string;
-  externalLabel?: string | null;
-  managedBy?: string | null;
-}
-
 export interface CwdSkillInfo {
   name: string;
   description: string;
@@ -23,7 +15,6 @@ export interface DeskOwnerState {
   deskBasePath: string;
   deskCurrentPath: string;
   deskJianContent: string | null;
-  deskSkills: DeskSkillInfo[];
   cwdSkills: CwdSkillInfo[];
   cwdSkillsOpen: boolean;
 }
@@ -33,7 +24,6 @@ const EMPTY_OWNER_STATE: DeskOwnerState = {
   deskBasePath: '',
   deskCurrentPath: '',
   deskJianContent: null,
-  deskSkills: [],
   cwdSkills: [],
   cwdSkillsOpen: false,
 };
@@ -44,7 +34,6 @@ function cloneOwnerState(state?: Partial<DeskOwnerState> | null): DeskOwnerState
     deskBasePath: state?.deskBasePath || '',
     deskCurrentPath: state?.deskCurrentPath || '',
     deskJianContent: state?.deskJianContent ?? null,
-    deskSkills: [...(state?.deskSkills || [])],
     cwdSkills: [...(state?.cwdSkills || [])],
     cwdSkillsOpen: state?.cwdSkillsOpen ?? false,
   };
@@ -59,7 +48,6 @@ export interface DeskSlice {
   deskBasePath: string;
   deskCurrentPath: string;
   deskJianContent: string | null;
-  deskSkills: DeskSkillInfo[];
   cwdSkills: CwdSkillInfo[];
   cwdSkillsOpen: boolean;
   deskStateByOwner: Record<string, DeskOwnerState>;
@@ -76,7 +64,6 @@ export interface DeskSlice {
   setDeskBasePath: (path: string) => void;
   setDeskCurrentPath: (path: string) => void;
   setDeskJianContent: (content: string | null) => void;
-  setDeskSkills: (skills: DeskSkillInfo[]) => void;
   setHomeFolder: (folder: string | null) => void;
   setSelectedFolder: (folder: string | null) => void;
   setCwdHistory: (history: string[]) => void;
@@ -130,7 +117,6 @@ export const createDeskSlice = (
         deskCurrentPath: state.deskCurrentPath,
         deskJianContent: state.deskJianContent,
         deskFiles: state.deskFiles,
-        deskSkills: state.deskSkills,
         cwdSkills: state.cwdSkills,
         cwdSkillsOpen: state.cwdSkillsOpen,
       });
@@ -151,7 +137,6 @@ export const createDeskSlice = (
     setDeskBasePath: (path) => patchCurrentOwner({ deskBasePath: path }),
     setDeskCurrentPath: (path) => patchCurrentOwner({ deskCurrentPath: path }),
     setDeskJianContent: (content) => patchCurrentOwner({ deskJianContent: content }),
-    setDeskSkills: (skills) => patchCurrentOwner({ deskSkills: skills }),
     setHomeFolder: (folder) => set({ homeFolder: folder }),
     setSelectedFolder: (folder) => set({ selectedFolder: folder }),
     setCwdHistory: (history) => set({ cwdHistory: history }),

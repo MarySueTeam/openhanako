@@ -21,9 +21,6 @@ declare global {
     // ── 主题 ──
     applyTheme?: (theme: string) => void;
 
-    // ── Desk skills reload callback ──
-    __loadDeskSkills?: () => void;
-
     // ── Notification bridge ──
     showNotification?: (title: string, body: string) => void;
     updateBrowserViewer?: (data: { url: string; thumbnail?: string }) => void;
