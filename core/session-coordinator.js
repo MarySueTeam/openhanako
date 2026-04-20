@@ -10,6 +10,7 @@ import fsp from "fs/promises";
 import path from "path";
 import { createAgentSession, SessionManager, estimateTokens, findCutPoint, generateSummary, emitSessionShutdown, refreshSessionModelFromRegistry } from "../lib/pi-sdk/index.js";
 import { createDefaultSettings } from "./session-defaults.js";
+import { computeHardTruncation } from "./compaction-utils.js";
 import { createModuleLogger } from "../lib/debug-log.js";
 import { BrowserManager } from "../lib/browser/browser-manager.js";
 import { t, getLocale } from "../server/i18n.js";
@@ -629,37 +630,15 @@ After dispatching subagent or other background tasks:
     const sm = session.sessionManager;
     const pathEntries = sm.getBranch();
 
-    // keepRecentTokens = effectiveWindow：保留尽可能多的近期上下文
-    const keepRecentTokens = effectiveWindow;
-
-    const messageEntries = pathEntries.filter(e => e.type === "message");
-    if (messageEntries.length < 2) {
-      throw new Error("Not enough messages to truncate");
+    const result = computeHardTruncation(pathEntries, effectiveWindow, {
+      summary: "[由于模型切换，早期对话历史已被截断]",
+      reason: "model-switch-truncation",
+    });
+    if (!result) {
+      throw new Error("Cannot hard-truncate: not enough messages or cut at beginning");
     }
 
-    const startIndex = 0;
-    const endIndex = pathEntries.length;
-    const cutResult = findCutPoint(pathEntries, startIndex, endIndex, keepRecentTokens);
-
-    const { firstKeptEntryIndex, turnStartIndex, isSplitTurn } = cutResult;
-    const effectiveCutIndex = isSplitTurn ? turnStartIndex : firstKeptEntryIndex;
-
-    if (effectiveCutIndex <= 0) {
-      throw new Error("Cut point at beginning — nothing to truncate");
-    }
-
-    // 计算截断前 token 数
-    let tokensBefore = 0;
-    for (let i = 0; i < effectiveCutIndex; i++) {
-      if (pathEntries[i].type === "message" && pathEntries[i].message) {
-        tokensBefore += estimateTokens(pathEntries[i].message);
-      }
-    }
-
-    const summary = "[由于模型切换，早期对话历史已被截断]";
-    const firstKeptEntryId = pathEntries[effectiveCutIndex].id;
-
-    sm.appendCompaction(summary, firstKeptEntryId, tokensBefore, {});
+    sm.appendCompaction(result.summary, result.firstKeptEntryId, result.tokensBefore, result.details);
 
     const ctx = sm.buildSessionContext();
     session.agent.replaceMessages(ctx.messages);

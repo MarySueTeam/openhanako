@@ -52,6 +52,7 @@ import { createCheckpointsRoute } from "./routes/checkpoints.js";
 import { ConfirmStore } from "../lib/confirm-store.js";
 import { DeferredResultStore } from "../lib/deferred-result-store.js";
 import { createDeferredResultExtension } from "../lib/extensions/deferred-result-ext.js";
+import { createCompactionGuardExtension } from "../lib/extensions/compaction-guard-ext.js";
 import { BridgeManager } from "../lib/bridge/bridge-manager.js";
 import { Hub } from "../hub/index.js";
 import { startCLI } from "./cli.js";
@@ -246,6 +247,8 @@ hub.eventBus.handle("session:get-titles", async ({ paths }) => {
 
 // Register Pi SDK extension factory
 engine.registerExtensionFactory(createDeferredResultExtension(deferredResultStore));
+// Compaction guard — 防 session 因上下文超限死锁（issue#437）
+engine.registerExtensionFactory(createCompactionGuardExtension());
 
 // ── 外部平台接入管理器 ──
 const bridgeManager = new BridgeManager({ engine, hub });
