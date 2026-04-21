@@ -1230,6 +1230,7 @@
     "skillInvalidName": "無效的技能名稱",
     "skillExternalCannotDelete": "外部相容技能無法從此處刪除",
     "skillNotExists": "技能不存在",
+    "channelsDisabled": "頻道系統已被使用者關閉",
     "channelReadNeedChannel": "錯誤：read 需要 channel 參數",
     "channelNotExists": "頻道 \"{channel}\" 不存在",
     "agentNotChannelMember": "你不是頻道 \"{channel}\" 的成員，無法發送訊息",

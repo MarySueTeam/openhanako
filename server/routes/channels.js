@@ -177,6 +177,9 @@ export function createChannelsRoute(engine, hub) {
   // ── 用户发送消息 ──
   route.post("/channels/:name/messages", async (c) => {
     try {
+      if (!engine.isChannelsEnabled?.()) {
+        return c.json({ error: "Channels are disabled" }, 503);
+      }
       const name = c.req.param("name");
       const filePath = safeChannelPath(name);
       if (!filePath) return c.json({ error: "Invalid channel id" }, 400);
@@ -264,12 +267,12 @@ export function createChannelsRoute(engine, hub) {
     }
   });
 
-  // ── 频道开关（启停 channelTicker + 持久化到 config.yaml）──
+  // ── 频道开关（唯一入口：engine.setChannelsEnabled）──
+  // 写 preferences + 联动 ChannelRouter start/stop 由 config-coordinator 统一处理。
   route.post("/channels/toggle", async (c) => {
     const body = await safeJson(c);
     const { enabled } = body;
-    await hub.toggleChannels(!!enabled);
-    await engine.updateConfig({ channels: { enabled: !!enabled } });
+    await engine.setChannelsEnabled(!!enabled);
     debugLog()?.log("api", `POST /channels/toggle enabled=${!!enabled}`);
     return c.json({ ok: true, enabled: !!enabled });
   });

@@ -1276,6 +1276,7 @@
     "skillInvalidName": "Invalid skill name",
     "skillExternalCannotDelete": "External skills cannot be deleted from here",
     "skillNotExists": "Skill does not exist",
+    "channelsDisabled": "Channel system is disabled by the user",
     "channelReadNeedChannel": "Error: read requires channel parameter",
     "channelNotExists": "Channel \"{channel}\" does not exist",
     "agentNotChannelMember": "You are not a member of channel \"{channel}\" and cannot send messages",

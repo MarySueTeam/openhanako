@@ -27,6 +27,7 @@ export const CONFIG_SCHEMA = {
   thinking_level:               { scope: 'global', setter: 'setThinkingLevel',  getter: 'getThinkingLevel' },
   'capabilities.learn_skills':  { scope: 'global', setter: 'setLearnSkills',    getter: 'getLearnSkills' },
   'desk.heartbeat_master':      { scope: 'global', setter: 'setHeartbeatMaster', getter: 'getHeartbeatMaster' },
+  'channels.enabled':           { scope: 'global', setter: 'setChannelsEnabled', getter: 'getChannelsEnabled' },
 };
 
 // 未声明的字段默认为 agent scope，不需要额外导出。

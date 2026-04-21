@@ -1230,6 +1230,7 @@
     "skillInvalidName": "無効なスキル名です",
     "skillExternalCannotDelete": "外部互換スキルはここからは削除できません",
     "skillNotExists": "スキルが存在しません",
+    "channelsDisabled": "チャンネル機能はユーザーによって無効化されています",
     "channelReadNeedChannel": "エラー：read には channel パラメータが必要です",
     "channelNotExists": "チャンネル \"{channel}\" は存在しません",
     "agentNotChannelMember": "チャンネル \"{channel}\" のメンバーではないため、メッセージを送信できません",

@@ -356,6 +356,7 @@ export class Agent {
         agentsDir: this.agentsDir,
         agentId,
         listAgents,
+        isEnabled: () => this._cb?.isChannelsEnabled?.() ?? false,
         onPost: (channelName, senderId) => {
           this._channelPostHandler?.(channelName, senderId);
         },

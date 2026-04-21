@@ -193,11 +193,11 @@ export class Hub {
     // Scheduler（heartbeat + cron）
     this._scheduler.start();
 
-    // ChannelRouter
-    this._channelRouter.start();
-
-    // 注入频道 post 回调
-    this._channelRouter.setupPostHandler();
+    // ChannelRouter：仅在频道总开关为开时启动
+    if (engine.isChannelsEnabled?.()) {
+      this._channelRouter.start();
+      this._channelRouter.setupPostHandler();
+    }
   }
 
   /**

@@ -1281,6 +1281,7 @@
     "skillInvalidName": "无效的技能名称",
     "skillExternalCannotDelete": "外部兼容技能无法从此处删除",
     "skillNotExists": "技能不存在",
+    "channelsDisabled": "频道系统已被用户关闭",
     "channelReadNeedChannel": "错误：read 需要 channel 参数",
     "channelNotExists": "频道 \"{channel}\" 不存在",
     "agentNotChannelMember": "你不是频道 \"{channel}\" 的成员，无法发送消息",

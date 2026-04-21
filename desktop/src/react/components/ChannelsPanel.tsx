@@ -22,7 +22,8 @@ export function ChannelsPanel() {
   useEffect(() => {
     if (!serverPort) return;
     fetchConfig().then(cfg => {
-      const enabled = cfg?.channels?.enabled !== false;
+      // 默认关：只有显式 true 才算启用
+      const enabled = cfg?.channels?.enabled === true;
       useStore.getState().setChannelsEnabled(enabled);
       if (enabled) loadChannels();
     }).catch(err => console.warn('[channels] init failed:', err));

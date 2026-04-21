@@ -355,6 +355,9 @@ export class HanaEngine {
   setHomeFolder(agentId, folder) { return this._configCoord.setHomeFolder(agentId, folder); }
   getHeartbeatMaster() { return this._configCoord.getHeartbeatMaster(); }
   setHeartbeatMaster(v) { return this._configCoord.setHeartbeatMaster(v); }
+  getChannelsEnabled() { return this._configCoord.getChannelsEnabled(); }
+  async setChannelsEnabled(v) { return this._configCoord.setChannelsEnabled(v); }
+  isChannelsEnabled() { return this._configCoord.getChannelsEnabled(); }
   getSharedModels() { return this._configCoord.getSharedModels(); }
   setSharedModels(p) { return this._configCoord.setSharedModels(p); }
   getSearchConfig() { return this._configCoord.getSearchConfig(); }

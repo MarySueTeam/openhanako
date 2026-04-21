@@ -1230,6 +1230,7 @@
     "skillInvalidName": "유효하지 않은 스킬 이름이에요",
     "skillExternalCannotDelete": "외부 호환 스킬은 여기서 삭제할 수 없어요",
     "skillNotExists": "스킬이 존재하지 않아요",
+    "channelsDisabled": "채널 기능이 사용자에 의해 비활성화되었어요",
     "channelReadNeedChannel": "오류: read에는 channel 파라미터가 필요해요",
     "channelNotExists": "채널 \"{channel}\"이(가) 존재하지 않아요",
     "agentNotChannelMember": "채널 \"{channel}\"의 멤버가 아니라서 메시지를 보낼 수 없어요",

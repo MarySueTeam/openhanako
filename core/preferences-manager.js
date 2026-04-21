@@ -83,6 +83,18 @@ export class PreferencesManager {
     this.savePreferences(prefs);
   }
 
+  /** 读取频道系统总开关（全局，默认关闭） */
+  getChannelsEnabled() {
+    return this._cache.channels_enabled === true;
+  }
+
+  /** 保存频道系统总开关 */
+  setChannelsEnabled(enabled) {
+    const prefs = this._mutableCopy();
+    prefs.channels_enabled = !!enabled;
+    this.savePreferences(prefs);
+  }
+
   /** 读取自学技能配置（全局，跨 agent） */
   getLearnSkills() {
     const cfg = this._cache.learn_skills;

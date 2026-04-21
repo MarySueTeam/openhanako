@@ -71,6 +71,7 @@ export class ChannelRouter {
     if (enabled) {
       if (this._ticker) return;
       this.start();
+      this.setupPostHandler();
     } else {
       await this.stop();
     }
@@ -217,6 +218,12 @@ export class ChannelRouter {
 
       if (!replyText) {
         console.log(`\x1b[90m[channel] ${agentId} 回复为空 (#${channelName})\x1b[0m`);
+        return { replied: false };
+      }
+
+      // 幽灵消息守卫：reply 生成期间若开关被关 / 任务被 abort，丢弃写入
+      if (signal?.aborted || !engine.isChannelsEnabled?.()) {
+        debugLog()?.log("channel", `${agentId}/#${channelName}: reply discarded (channels disabled or aborted)`);
         return { replied: false };
       }
 

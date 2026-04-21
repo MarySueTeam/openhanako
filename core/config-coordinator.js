@@ -384,6 +384,27 @@ export class ConfigCoordinator {
     return true;
   }
 
+  // ── Channels Master ──
+
+  getChannelsEnabled() {
+    return this._d.getPrefs().getChannelsEnabled();
+  }
+
+  async setChannelsEnabled(enabled) {
+    const next = !!enabled;
+    const prefs = this._d.getPrefs();
+    const prev = prefs.getChannelsEnabled();
+    prefs.setChannelsEnabled(next);
+    log.log(`setChannelsEnabled: ${next}`);
+
+    if (prev === next) return;
+
+    const hub = this._d.getHub();
+    if (hub && typeof hub.toggleChannels === "function") {
+      await hub.toggleChannels(next);
+    }
+  }
+
   // ── Heartbeat Master ──
 
   getHeartbeatMaster() {
