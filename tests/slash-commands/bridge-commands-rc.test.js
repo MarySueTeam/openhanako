@@ -149,3 +149,99 @@ describe("/exitrc command", () => {
     expect(engine.rcState.isPending("tg_dm_x@a1")).toBe(false);
   });
 });
+
+// ────────────────────────────────────────────────────────────
+// Phase 2-E: 接管态下的命令语义改写（守卫 + redirect）
+// ────────────────────────────────────────────────────────────
+
+function ctxWithAttachedAndOps({ desktopPath = "/attached/s.jsonl", sessionOpsOverrides = {} } = {}) {
+  const engine = makeEngine();
+  engine.rcState.attach("tg_dm_x@a1", desktopPath);
+  return {
+    engine,
+    desktopPath,
+    ctx: {
+      engine,
+      sessionRef: { kind: "bridge", agentId: "a1", sessionKey: "tg_dm_x@a1" },
+      reply: vi.fn(async () => {}),
+      sessionOps: {
+        isStreaming: vi.fn(() => false),
+        abort: vi.fn(async () => true),
+        rotate: vi.fn(async () => ({ status: "rotated" })),
+        delete: vi.fn(async () => ({ status: "deleted" })),
+        compact: vi.fn(async () => ({ tokensBefore: 9000, tokensAfter: 3200, contextWindow: 128000 })),
+        ...sessionOpsOverrides,
+      },
+    },
+  };
+}
+
+describe("/new /reset rejected during attachment", () => {
+  it("/new 接管态下拒绝并提示 /exitrc", async () => {
+    const { ctx } = ctxWithAttachedAndOps();
+    const r = await cmd("new").handler(ctx);
+    expect(r.reply).toMatch(/接管桌面会话期间禁止.*\/exitrc/);
+    expect(ctx.sessionOps.rotate).not.toHaveBeenCalled();
+  });
+
+  it("/reset 接管态下拒绝并提示 /exitrc", async () => {
+    const { ctx } = ctxWithAttachedAndOps();
+    const r = await cmd("reset").handler(ctx);
+    expect(r.reply).toMatch(/接管桌面会话期间禁止.*\/exitrc/);
+    expect(ctx.sessionOps.delete).not.toHaveBeenCalled();
+  });
+
+  it("/new 未接管时正常执行", async () => {
+    // 回归 sanity：没有 attachment 时语义未变
+    const engine = makeEngine();
+    const ctx = {
+      engine,
+      sessionRef: { kind: "bridge", agentId: "a1", sessionKey: "tg_dm_x@a1" },
+      sessionOps: { rotate: vi.fn(async () => ({ status: "rotated" })) },
+    };
+    const r = await cmd("new").handler(ctx);
+    expect(r.reply).toMatch(/已开启新会话/);
+    expect(ctx.sessionOps.rotate).toHaveBeenCalledOnce();
+  });
+});
+
+describe("/stop redirects to attached desktop session", () => {
+  it("接管态下 /stop 调 abort({kind:'desktop', sessionPath})，不是 bridge", async () => {
+    const { ctx, desktopPath } = ctxWithAttachedAndOps();
+    await cmd("stop").handler(ctx);
+    expect(ctx.sessionOps.abort).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "desktop",
+      agentId: "a1",
+      sessionPath: desktopPath,
+    }));
+  });
+
+  it("未接管时 /stop 保持原 bridge ref", async () => {
+    const engine = makeEngine();
+    const ctx = {
+      engine,
+      sessionRef: { kind: "bridge", agentId: "a1", sessionKey: "tg_dm_x@a1" },
+      sessionOps: { abort: vi.fn(async () => true) },
+    };
+    await cmd("stop").handler(ctx);
+    expect(ctx.sessionOps.abort).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "bridge",
+      sessionKey: "tg_dm_x@a1",
+    }));
+  });
+});
+
+describe("/compact redirects to attached desktop session", () => {
+  it("接管态下 /compact 调 compact({kind:'desktop'})", async () => {
+    const { ctx, desktopPath } = ctxWithAttachedAndOps();
+    await cmd("compact").handler(ctx);
+    expect(ctx.sessionOps.compact).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "desktop",
+      sessionPath: desktopPath,
+    }));
+    expect(ctx.reply).toHaveBeenCalledTimes(2);
+    expect(ctx.reply.mock.calls[0][0]).toMatch(/正在压缩/);
+    expect(ctx.reply.mock.calls[1][0]).toMatch(/9000.*3200/);
+  });
+});
+

@@ -454,6 +454,23 @@ export class HanaEngine {
   injectBridgeMessage(sk, t) { return this._bridge.injectMessage(sk, t); }
   /** 对指定 bridge session 执行真正的上下文压缩；返回 { tokensBefore, tokensAfter, contextWindow } */
   async compactBridgeSession(sessionKey, opts) { return this._bridge.compactSession(sessionKey, opts); }
+  /**
+   * 对桌面 session 做上下文压缩；返回 { tokensBefore, tokensAfter, contextWindow }
+   * 供 /compact 在 /rc 接管态下给出 token delta 反馈（Phase 2-E）
+   */
+  async compactDesktopSession(sessionPath) {
+    const session = this.getSessionByPath(sessionPath);
+    if (!session) throw new Error("compactDesktopSession: session not found");
+    if (session.isCompacting) throw new Error("compactDesktopSession: already compacting");
+    const before = session.getContextUsage?.() ?? null;
+    await session.compact();
+    const after = session.getContextUsage?.() ?? null;
+    return {
+      tokensBefore: before?.tokens ?? null,
+      tokensAfter: after?.tokens ?? null,
+      contextWindow: after?.contextWindow ?? before?.contextWindow ?? null,
+    };
+  }
 
   // ════════════════════════════
   //  Skills（→ SkillManager）

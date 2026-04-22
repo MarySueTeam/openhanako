@@ -14,7 +14,9 @@ export const bridgeCommands = [
     handler: async (ctx) => {
       // abort 返回值即权威答案：true = 成功中断流，false = 无活动流可中断
       // 之前版本同时读 isStreaming 再判 && ok 是 TOCTOU + 冗余，已移除
-      const ok = await ctx.sessionOps.abort(ctx.sessionRef);
+      // Phase 2-E：接管态下改中止桌面 session 的 stream 而非 bridge session
+      const ref = _redirectRefIfAttached(ctx);
+      const ok = await ctx.sessionOps.abort(ref);
       if (ok) return { silent: true };
       return { reply: "已停止（当前无活动回复）" };
     },
@@ -26,6 +28,10 @@ export const bridgeCommands = [
     permission: "owner",
     source: "core",
     handler: async (ctx) => {
+      // Phase 2-E：接管态下拒绝执行（/new 对桌面 session 语义模糊，可能误删桌面会话）
+      if (_isAttached(ctx)) {
+        return { reply: "接管桌面会话期间禁止使用 /new，请先 /exitrc 退出接管" };
+      }
       // rotate 合约保证返回 {status}，不做防御性 ?. 以便契约破坏时立刻暴露
       const res = await ctx.sessionOps.rotate(ctx.sessionRef);
       if (res.status === "not-found") return { reply: "未找到当前会话" };
@@ -40,6 +46,10 @@ export const bridgeCommands = [
     permission: "owner",
     source: "core",
     handler: async (ctx) => {
+      // Phase 2-E：接管态下拒绝（/reset 破坏性强，接管态下手滑会删掉桌面会话历史）
+      if (_isAttached(ctx)) {
+        return { reply: "接管桌面会话期间禁止使用 /reset，请先 /exitrc 退出接管" };
+      }
       // delete 合约同上，直接 res.status
       const res = await ctx.sessionOps.delete(ctx.sessionRef);
       if (res.status === "not-found") return { reply: "未找到当前会话" };
@@ -119,9 +129,11 @@ export const bridgeCommands = [
       // Phase 7：bridge /compact 做真实压缩（session.compact()），并给用户发"进行中"+"完成/失败"两条消息
       // 让对方在社交平台看到"她在干活"的反馈，不用盯着一个沉默通道
       // 失败路径也要发一条给用户，否则压缩出错用户只会看到什么都没发生
+      // Phase 2-E：接管态下 compact 的目标是桌面 session 的 context，不是 bridge 的
+      const ref = _redirectRefIfAttached(ctx);
       try { await ctx.reply("（正在压缩上下文，请稍候...）"); } catch {}
       try {
-        const result = await ctx.sessionOps.compact(ctx.sessionRef);
+        const result = await ctx.sessionOps.compact(ref);
         const before = result?.tokensBefore;
         const after = result?.tokensAfter;
         const msg = (typeof before === "number" && typeof after === "number")
@@ -136,6 +148,36 @@ export const bridgeCommands = [
     },
   },
 ];
+
+/**
+ * 接管态检查：当前 bridge session 是否挂接了桌面 session。
+ * @private
+ */
+function _isAttached(ctx) {
+  const rcState = ctx.engine?.rcState;
+  const sessionKey = ctx.sessionRef?.sessionKey;
+  if (!rcState || !sessionKey) return false;
+  return rcState.isAttached(sessionKey);
+}
+
+/**
+ * 若处于接管态，把 bridge sessionRef 改写为指向桌面 session 的 desktop ref，
+ * 让 sessionOps.{abort, compact} 的 desktop 分支执行在正确目标上。
+ * 否则返回原 ref。
+ * @private
+ */
+function _redirectRefIfAttached(ctx) {
+  const rcState = ctx.engine?.rcState;
+  const sessionKey = ctx.sessionRef?.sessionKey;
+  if (!rcState || !sessionKey) return ctx.sessionRef;
+  const att = rcState.getAttachment(sessionKey);
+  if (!att) return ctx.sessionRef;
+  return {
+    kind: "desktop",
+    agentId: ctx.sessionRef.agentId,
+    sessionPath: att.desktopSessionPath,
+  };
+}
 
 /** 列表显示用的短日期：今天则 HH:mm；否则 M/D HH:mm */
 function _formatShortDate(modified) {

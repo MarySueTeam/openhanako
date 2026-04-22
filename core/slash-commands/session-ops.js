@@ -49,11 +49,15 @@ export function createSessionOps({ engine }) {
         }
         return await engine.compactBridgeSession(ref.sessionKey, { agentId: ref.agentId });
       }
+      // Phase 2-E：desktop 分支改走 engine.compactDesktopSession，返回 usage 供 /rc 接管态下 /compact 用
+      if (typeof engine.compactDesktopSession === "function") {
+        return await engine.compactDesktopSession(ref.sessionPath);
+      }
+      // Legacy fallback（极老引擎版本无 compactDesktopSession）
       const session = engine.getSessionByPath?.(ref.sessionPath);
       if (!session) throw new Error("session not found");
       if (session.isCompacting) throw new Error("Already compacting");
       await session.compact();
-      // desktop 路径不返回 usage（桌面端 slash 菜单已撤，调用方一期没有消费者）
       return null;
     },
   };
