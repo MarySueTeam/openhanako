@@ -82,10 +82,6 @@ vi.mock('../../stores/desk-actions', () => ({
   loadDeskFiles: vi.fn(),
 }));
 
-vi.mock('../../stores/artifact-actions', () => ({
-  syncPreviewPanelForOwner: vi.fn(),
-}));
-
 vi.mock('../../stores/create-keyed-slice', () => ({
   updateKeyed: vi.fn(),
 }));
@@ -313,11 +309,10 @@ describe('session-actions', () => {
       expect(calls.filter(u => u.startsWith('/api/sessions/messages'))).toHaveLength(0);
     });
 
-    it('切回旧 session 时恢复该 session 自己的书桌子目录，而不是强制回 cwd 根目录', async () => {
-      (mockState.deskStateByOwner as Record<string, unknown>)['/a'] = {
-        deskBasePath: '/workspace-a',
-        deskCurrentPath: 'notes/daily',
-      };
+    it('切回旧 session 时用 flat deskCurrentPath 加载书桌文件，不再调用 restoreDeskStateForOwner', async () => {
+      // desk 状态是 user-level flat state，切 session 不再从 per-owner keyed store 恢复
+      // deskCurrentPath 已经是 flat store 的值，直接读
+      (mockState as Record<string, unknown>).deskCurrentPath = 'notes/daily';
 
       mockFetch.mockResolvedValueOnce(jsonResponse({
         agentId: null,
@@ -335,7 +330,8 @@ describe('session-actions', () => {
       const restoreDeskStateForOwnerMock = (mockState as unknown as {
         restoreDeskStateForOwner: ReturnType<typeof vi.fn>;
       }).restoreDeskStateForOwner;
-      expect(restoreDeskStateForOwnerMock).toHaveBeenCalledWith('/a');
+      // Task 3 后不再调用 per-owner restore
+      expect(restoreDeskStateForOwnerMock).not.toHaveBeenCalled();
       expect(mockLoadDeskFiles).toHaveBeenCalledWith('notes/daily', '/workspace-a');
     });
   });

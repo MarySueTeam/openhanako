@@ -13,7 +13,6 @@ import { buildItemsFromHistory } from '../utils/history-builder';
 import { migrateLegacyTodos } from '../utils/todo-compat';
 import { loadAvatars as loadAvatarsAction, clearChat as clearChatAction } from './agent-actions';
 import { loadDeskFiles } from './desk-actions';
-import { syncPreviewPanelForOwner } from './artifact-actions';
 import { loadModels } from '../utils/ui-helpers';
 import { updateKeyed } from './create-keyed-slice';
 import { snapshotStreamBuffer, type StreamBufferSnapshot } from './stream-invalidator';
@@ -219,8 +218,7 @@ export async function switchSession(path: string): Promise<void> {
       ...agentPatch,
     });
 
-    const restoredDeskState = useStore.getState().getDeskStateForOwner?.(path);
-    useStore.getState().restoreDeskStateForOwner?.(path);
+    // desk / preview 状态是 user-level，切 session 不恢复
 
     // 同步浏览器状态到 keyed store（服务端返回当前 session 的 browser 状态）
     if (path) {
@@ -231,8 +229,6 @@ export async function switchSession(path: string): Promise<void> {
       });
     }
 
-    // 根据目标 session 的 tab 状态同步面板开关
-    syncPreviewPanelForOwner(path);
     useStore.getState().clearQuotedSelection();
 
     // Sync plan mode for the switched-to session
@@ -261,8 +257,8 @@ export async function switchSession(path: string): Promise<void> {
       await loadMessages(path);
     }
 
-    // 加载 desk files（显式传入切换后 session 的 cwd，覆盖 store 中旧的 deskBasePath）
-    loadDeskFiles(restoredDeskState?.deskCurrentPath || '', data.cwd || undefined);
+    // 加载 desk files（切到哪个 session 都按该 session 的 cwd 重新拉一次 flat state）
+    loadDeskFiles(useStore.getState().deskCurrentPath || '', data.cwd || undefined);
 
     // 切换会话后刷新 context ring
     useStore.setState({ contextTokens: null, contextWindow: null, contextPercent: null });
@@ -292,7 +288,8 @@ export async function createNewSession(): Promise<void> {
   useStore.setState({
     welcomeVisible: true,
     currentSessionPath: null,
-    selectedFolder: s.homeFolder || null,
+    // 用当前 desk 视图作为新 session 的 cwd 草稿（保持视觉连续）
+    selectedFolder: s.deskBasePath || s.homeFolder || null,
     selectedAgentId: null,
     pendingNewSession: true,
     attachedFiles: [],
@@ -303,12 +300,7 @@ export async function createNewSession(): Promise<void> {
   // 重置 context ring
   useStore.setState({ contextTokens: null, contextWindow: null, contextPercent: null });
 
-  // renderBrowserCard — no-op (browser card rendering handled by React)
-
-  // updateFolderButton — no-op (React-driven)
-
-  const currentState = useStore.getState();
-  loadDeskFiles('', currentState.selectedFolder || currentState.homeFolder || undefined);
+  // desk / preview 视图保持不变（user-level state，切 session 不清）
 
   // pending 状态下刷新 model 列表，让 ModelSelector 显示 agent Chat 默认 model
   loadModels();
@@ -373,16 +365,12 @@ export async function ensureSession(): Promise<boolean> {
     }
 
     if (data.path) {
-      useStore.getState().cloneDeskStateToOwner?.(data.path);
       patch.currentSessionPath = data.path;
       // 初始化空 session，ChatArea 自动渲染
       useStore.getState().initSession(data.path, [], false);
     }
 
     useStore.setState(patch);
-    if (data.path) {
-      useStore.getState().restoreDeskStateForOwner?.(data.path);
-    }
 
     // New session defaults to plan mode OFF
     window.dispatchEvent(new CustomEvent('hana-plan-mode', { detail: { enabled: data.planMode ?? false } }));
@@ -403,10 +391,7 @@ export async function ensureSession(): Promise<boolean> {
       useStore.setState({ cwdHistory });
     }
 
-    const restoredDeskState = data.path
-      ? useStore.getState().getDeskStateForOwner?.(data.path)
-      : null;
-    loadDeskFiles(restoredDeskState?.deskCurrentPath || '', data.cwd || undefined);
+    loadDeskFiles(useStore.getState().deskCurrentPath || '', data.cwd || undefined);
 
     return true;
   } catch (err) {
