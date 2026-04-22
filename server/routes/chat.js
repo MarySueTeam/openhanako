@@ -665,7 +665,7 @@ export function createChatRoute(engine, hub, { upgradeWebSocket }) {
                   }
                 }
               }
-              // 图片持久化 + [attached_image] 标记 + vision check 统一在 hub.send() 和下游 handler 处理
+              // 图片持久化 + [attached_image] 标记 + image 模态 check 统一在 hub.send() 和下游 handler 处理
               let promptText = msg.text || "";
               // Skill invocation tags
               if (msg.skills?.length) {

@@ -1,11 +1,11 @@
 {
-  "_comment": "模型参考词典。provider + model 为唯一键。model-sync.js 对表时查询。vision/reasoning 缺省为 false，quirks 缺省为 []。",
+  "_comment": "模型参考词典。provider + model 为唯一键。model-sync.js 对表时查询。image/reasoning 缺省为 false，quirks 缺省为 []。image 映射到 Pi SDK Model.input 数组。",
   "dashscope": {
     "qwen3.5-plus": {
       "name": "Qwen 3.5 Plus",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -15,7 +15,7 @@
       "name": "Qwen 3.5 Max",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -25,7 +25,7 @@
       "name": "Qwen 3.5 Flash",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -35,7 +35,7 @@
       "name": "Qwen 3 Plus",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -45,7 +45,7 @@
       "name": "Qwen 3 Max",
       "context": 262144,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -55,7 +55,7 @@
       "name": "Qwen 3 Mini",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -65,19 +65,19 @@
       "name": "Qwen Plus",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "qwen-turbo": {
       "name": "Qwen Turbo",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "qwen-max": {
       "name": "Qwen Max",
       "context": 32768,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "qwen-long": {
       "name": "Qwen Long",
@@ -98,14 +98,14 @@
       "name": "Kimi K2.5",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "kimi-k2": {
       "name": "Kimi K2",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "qwen-coder": {
       "name": "Qwen Coder",
@@ -130,35 +130,35 @@
       "context": 129024,
       "maxOutput": 8192,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "qwen-plus-2025-04-28": {
       "name": "Qwen Plus 2025.04.28",
       "context": 129024,
       "maxOutput": 16384,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "qwen-plus-2025-07-14": {
       "name": "Qwen Plus 2025.07.14",
       "context": 129024,
       "maxOutput": 16384,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "qwen-plus-2025-07-28": {
       "name": "Qwen Plus 2025.07.28",
       "context": 997952,
       "maxOutput": 32768,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "qwen-plus-2025-09-11": {
       "name": "Qwen Plus 2025.09.11",
       "context": 997952,
       "maxOutput": 32768,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "qwen-plus-latest": {
       "name": "Qwen Plus Latest",
@@ -171,14 +171,14 @@
       "context": 1000000,
       "maxOutput": 8192,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "qwen-turbo-2025-04-28": {
       "name": "Qwen Turbo 2025.04.28",
       "context": 1000000,
       "maxOutput": 16384,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "qwen-turbo-latest": {
       "name": "Qwen Turbo Latest",
@@ -227,7 +227,7 @@
       "context": 258048,
       "maxOutput": 65536,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "qwen3-next-80b-a3b-instruct": {
       "name": "Qwen3 Next 80b A3b Instruct",
@@ -244,68 +244,68 @@
       "name": "Qwen3 Vl 235b A22b Instruct",
       "context": 131072,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "qwen3-vl-235b-a22b-thinking": {
       "name": "Qwen3 Vl 235b A22b Thinking",
       "context": 131072,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen3-vl-32b-instruct": {
       "name": "Qwen3 Vl 32b Instruct",
       "context": 131072,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "qwen3-vl-32b-thinking": {
       "name": "Qwen3 Vl 32b Thinking",
       "context": 131072,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen3-vl-plus": {
       "name": "Qwen3 Vl Plus",
       "context": 260096,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwq-plus": {
       "name": "Qwq Plus",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "qwen3.5-omni-plus": {
       "name": "Qwen3.5 Omni Plus",
       "context": 262144,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen3.5-omni-flash": {
       "name": "Qwen3.5 Omni Flash",
       "context": 262144,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen3.5-omni-light": {
       "name": "Qwen3.5 Omni Light",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen3.6-plus-preview": {
       "name": "Qwen3.6 Plus Preview",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": false,
+      "image": false,
       "reasoning": true
     }
   },
@@ -314,7 +314,7 @@
       "name": "Kimi K2.5",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -324,7 +324,7 @@
       "name": "Kimi K2",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true,
+      "image": true,
       "quirks": [
         "enable_thinking"
       ]
@@ -335,39 +335,39 @@
       "name": "DeepSeek Chat",
       "context": 128000,
       "maxOutput": 8192,
-      "vision": false
+      "image": false
     },
     "deepseek-reasoner": {
       "name": "DeepSeek Reasoner",
       "context": 128000,
       "maxOutput": 64000,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "deepseek-v3.2": {
       "name": "DeepSeek V3.2",
       "context": 163840,
       "maxOutput": 65536,
-      "vision": false
+      "image": false
     },
     "deepseek-coder": {
       "name": "Deepseek Coder",
       "context": 128000,
       "maxOutput": 4096,
-      "vision": false
+      "image": false
     },
     "deepseek-r1": {
       "name": "Deepseek R1",
       "context": 65536,
       "maxOutput": 8192,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "deepseek-v3": {
       "name": "Deepseek V3",
       "context": 65536,
       "maxOutput": 8192,
-      "vision": false
+      "image": false
     }
   },
   "openai": {
@@ -375,37 +375,37 @@
       "name": "GPT-4o",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4o-mini": {
       "name": "GPT-4o Mini",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4.1": {
       "name": "GPT-4.1",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "gpt-4.1-mini": {
       "name": "GPT-4.1 Mini",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "gpt-4.1-nano": {
       "name": "GPT-4.1 Nano",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "o3": {
       "name": "o3",
       "context": 200000,
       "maxOutput": 100000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "o3-mini": {
@@ -418,56 +418,56 @@
       "name": "o4 Mini",
       "context": 200000,
       "maxOutput": 100000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.1": {
       "name": "GPT-5.1",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.1-codex-mini": {
       "name": "GPT-5.1 Codex Mini",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.2": {
       "name": "GPT-5.2",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.2-codex": {
       "name": "GPT-5.2 Codex",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.3-codex": {
       "name": "GPT-5.3 Codex",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.3-codex-spark": {
       "name": "GPT-5.3 Codex Spark",
       "context": 128000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.4": {
       "name": "GPT-5.4",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "text-embedding-3-large": {
@@ -484,7 +484,7 @@
       "name": "Chatgpt 4o Latest",
       "context": 128000,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "ft:gpt-3.5-turbo": {
       "name": "Ft:Gpt 3.5 Turbo",
@@ -515,13 +515,13 @@
       "name": "Ft:Gpt 4o 2024.08.06",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "ft:gpt-4o-2024-11-20": {
       "name": "Ft:Gpt 4o 2024.11.20",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "ft:gpt-4o-mini-2024-07-18": {
       "name": "Ft:Gpt 4o Mini 2024.07.18",
@@ -598,13 +598,13 @@
       "name": "Gpt 4 Turbo",
       "context": 128000,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "gpt-4-turbo-2024-04-09": {
       "name": "Gpt 4 Turbo 2024.04.09",
       "context": 128000,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "gpt-4-turbo-preview": {
       "name": "Gpt 4 Turbo Preview",
@@ -615,37 +615,37 @@
       "name": "Gpt 4.1.2025.04.14",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "gpt-4.1-mini-2025-04-14": {
       "name": "Gpt 4.1 Mini 2025.04.14",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "gpt-4.1-nano-2025-04-14": {
       "name": "Gpt 4.1 Nano 2025.04.14",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "gpt-4o-2024-05-13": {
       "name": "Gpt 4o 2024.05.13",
       "context": 128000,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "gpt-4o-2024-08-06": {
       "name": "Gpt 4o 2024.08.06",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4o-2024-11-20": {
       "name": "Gpt 4o 2024.11.20",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4o-audio-preview": {
       "name": "Gpt 4o Audio Preview",
@@ -696,7 +696,7 @@
       "name": "Gpt 4o Mini 2024.07.18",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4o-mini-audio-preview": {
       "name": "Gpt 4o Mini Audio Preview",
@@ -722,13 +722,13 @@
       "name": "Gpt 4o Mini Search Preview",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4o-mini-search-preview-2025-03-11": {
       "name": "Gpt 4o Mini Search Preview 2025.03.11",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4o-realtime-preview": {
       "name": "Gpt 4o Realtime Preview",
@@ -749,124 +749,124 @@
       "name": "Gpt 4o Search Preview",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4o-search-preview-2025-03-11": {
       "name": "Gpt 4o Search Preview 2025.03.11",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-5": {
       "name": "Gpt 5",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.1-2025-11-13": {
       "name": "Gpt 5.1.2025.11.13",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.1-chat-latest": {
       "name": "Gpt 5.1 Chat Latest",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.2-2025-12-11": {
       "name": "Gpt 5.2.2025.12.11",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.2-chat-latest": {
       "name": "Gpt 5.2 Chat Latest",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.3-chat-latest": {
       "name": "Gpt 5.3 Chat Latest",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.4-2026-03-05": {
       "name": "Gpt 5.4.2026.03.05",
       "context": 1050000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.4-mini": {
       "name": "Gpt 5.4 Mini",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5.4-nano": {
       "name": "Gpt 5.4 Nano",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5-2025-08-07": {
       "name": "Gpt 5.2025.08.07",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5-chat": {
       "name": "Gpt 5 Chat",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5-chat-latest": {
       "name": "Gpt 5 Chat Latest",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5-mini": {
       "name": "Gpt 5 Mini",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5-mini-2025-08-07": {
       "name": "Gpt 5 Mini 2025.08.07",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5-nano": {
       "name": "Gpt 5 Nano",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-5-nano-2025-08-07": {
       "name": "Gpt 5 Nano 2025.08.07",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gpt-realtime": {
@@ -893,21 +893,21 @@
       "name": "O1",
       "context": 200000,
       "maxOutput": 100000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "o1-2024-12-17": {
       "name": "O1.2024.12.17",
       "context": 200000,
       "maxOutput": 100000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "o3-2025-04-16": {
       "name": "O3.2025.04.16",
       "context": 200000,
       "maxOutput": 100000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "o3-mini-2025-01-31": {
@@ -920,7 +920,7 @@
       "name": "O4 Mini 2025.04.16",
       "context": 200000,
       "maxOutput": 100000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "container": {
@@ -931,13 +931,13 @@
       "name": "Gpt 5 Search Api",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true
+      "image": true
     },
     "gpt-5-search-api-2025-10-14": {
       "name": "Gpt 5 Search Api 2025.10.14",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true
+      "image": true
     },
     "gpt-realtime-mini-2025-10-06": {
       "name": "Gpt Realtime Mini 2025.10.06",
@@ -971,143 +971,143 @@
       "name": "Claude Opus 4.6",
       "context": 200000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-sonnet-4-6": {
       "name": "Claude Sonnet 4.6",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-sonnet-4-5": {
       "name": "Claude Sonnet 4.5",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-opus-4-5": {
       "name": "Claude Opus 4.5",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-opus-4-1": {
       "name": "Claude Opus 4.1",
       "context": 200000,
       "maxOutput": 32000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-sonnet-4-20250514": {
       "name": "Claude Sonnet 4",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-opus-4-20250514": {
       "name": "Claude Opus 4",
       "context": 200000,
       "maxOutput": 32000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-3-7-sonnet": {
       "name": "Claude 3.7 Sonnet",
       "context": 200000,
       "maxOutput": 16000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-3-5-sonnet": {
       "name": "Claude 3.5 Sonnet",
       "context": 200000,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "claude-3-5-haiku": {
       "name": "Claude 3.5 Haiku",
       "context": 200000,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "claude-haiku-4-5": {
       "name": "Claude Haiku 4.5",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-haiku-4-5-20251001": {
       "name": "Claude Haiku 4.5 20251001",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-3-7-sonnet-20250219": {
       "name": "Claude 3.7 Sonnet 20250219",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-3-haiku-20240307": {
       "name": "Claude 3 Haiku 20240307",
       "context": 200000,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "claude-3-opus-20240229": {
       "name": "Claude 3 Opus 20240229",
       "context": 200000,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "claude-4-opus-20250514": {
       "name": "Claude 4 Opus 20250514",
       "context": 200000,
       "maxOutput": 32000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-4-sonnet-20250514": {
       "name": "Claude 4 Sonnet 20250514",
       "context": 1000000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-sonnet-4-5-20250929": {
       "name": "Claude Sonnet 4.5 20250929",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-opus-4-1-20250805": {
       "name": "Claude Opus 4.1 20250805",
       "context": 200000,
       "maxOutput": 32000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-opus-4-5-20251101": {
       "name": "Claude Opus 4.5 20251101",
       "context": 200000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "claude-opus-4-6-20260205": {
       "name": "Claude Opus 4.6 20260205",
       "context": 1000000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     }
   },
@@ -1116,171 +1116,171 @@
       "name": "Gemini 2.5 Pro",
       "context": 1048576,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-2.5-flash": {
       "name": "Gemini 2.5 Flash",
       "context": 1048576,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-2.0-flash": {
       "name": "Gemini 2.0 Flash",
       "context": 1048576,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemini-robotics-er-1.5-preview": {
       "name": "Gemini Robotics Er 1.5 Preview",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-2.0-flash-001": {
       "name": "Gemini 2.0 Flash 001",
       "context": 1048576,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemini-2.0-flash-lite": {
       "name": "Gemini 2.0 Flash Lite",
       "context": 1048576,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemini-2.5-flash-lite": {
       "name": "Gemini 2.5 Flash Lite",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-2.5-flash-lite-preview-09-2025": {
       "name": "Gemini 2.5 Flash Lite Preview 09.2025",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-2.5-flash-preview-09-2025": {
       "name": "Gemini 2.5 Flash Preview 09.2025",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-flash-latest": {
       "name": "Gemini Flash Latest",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-flash-lite-latest": {
       "name": "Gemini Flash Lite Latest",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-2.5-flash-lite-preview-06-17": {
       "name": "Gemini 2.5 Flash Lite Preview 06.17",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-2.5-computer-use-preview-10-2025": {
       "name": "Gemini 2.5 Computer Use Preview 10.2025",
       "context": 128000,
       "maxOutput": 64000,
-      "vision": true
+      "image": true
     },
     "gemini-3-pro-preview": {
       "name": "Gemini 3 Pro Preview",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-3.1-flash-lite-preview": {
       "name": "Gemini 3.1 Flash Lite Preview",
       "context": 1048576,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-3-flash-preview": {
       "name": "Gemini 3 Flash Preview",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-3.1-pro-preview": {
       "name": "Gemini 3.1 Pro Preview",
       "context": 1048576,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-3.1-pro-preview-customtools": {
       "name": "Gemini 3.1 Pro Preview Customtools",
       "context": 1048576,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gemini-2.5-pro-preview-tts": {
       "name": "Gemini 2.5 Pro Preview Tts",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true
+      "image": true
     },
     "gemini-exp-1114": {
       "name": "Gemini Exp 1114",
       "context": 1048576,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemini-exp-1206": {
       "name": "Gemini Exp 1206",
       "context": 2097152,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemini-gemma-2-27b-it": {
       "name": "Gemini Gemma 2.27b It",
       "context": 8192,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemini-gemma-2-9b-it": {
       "name": "Gemini Gemma 2.9b It",
       "context": 8192,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemma-3-27b-it": {
       "name": "Gemma 3.27b It",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "learnlm-1.5-pro-experimental": {
       "name": "Learnlm 1.5 Pro Experimental",
       "context": 32767,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemini-2.0-flash-lite-001": {
       "name": "Gemini 2.0 Flash Lite 001",
       "context": 1048576,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "gemini-2.5-flash-native-audio-latest": {
       "name": "Gemini 2.5 Flash Native Audio Latest",
@@ -1301,7 +1301,7 @@
       "name": "Gemini Pro Latest",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     }
   },
@@ -1310,21 +1310,21 @@
       "name": "Kimi K2.6",
       "context": 262144,
       "maxOutput": 98304,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "kimi-k2.5": {
       "name": "Kimi K2.5",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "kimi-k2": {
       "name": "Kimi K2",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     }
   },
   "moonshot": {
@@ -1332,21 +1332,21 @@
       "name": "Kimi K2.6",
       "context": 262144,
       "maxOutput": 98304,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "kimi-k2.5": {
       "name": "Kimi K2.5",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "kimi-k2": {
       "name": "Kimi K2",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "moonshot-v1-128k": {
       "name": "Moonshot V1 128K",
@@ -1382,31 +1382,31 @@
       "name": "Kimi Latest",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "kimi-latest-128k": {
       "name": "Kimi Latest 128k",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "kimi-latest-32k": {
       "name": "Kimi Latest 32k",
       "context": 32768,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "kimi-latest-8k": {
       "name": "Kimi Latest 8k",
       "context": 8192,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "kimi-thinking-preview": {
       "name": "Kimi Thinking Preview",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "kimi-k2-thinking": {
       "name": "Kimi K2 Thinking",
@@ -1429,7 +1429,7 @@
       "name": "Moonshot V1.128k Vision Preview",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "moonshot-v1-32k-0430": {
       "name": "Moonshot V1.32k 0430",
@@ -1440,7 +1440,7 @@
       "name": "Moonshot V1.32k Vision Preview",
       "context": 32768,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "moonshot-v1-8k-0430": {
       "name": "Moonshot V1.8k 0430",
@@ -1451,7 +1451,7 @@
       "name": "Moonshot V1.8k Vision Preview",
       "context": 8192,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "moonshot-v1-auto": {
       "name": "Moonshot V1 Auto",
@@ -1464,20 +1464,20 @@
       "name": "Doubao Seed 1.6 Flash",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "doubao-seed-2-0-pro-260215": {
       "name": "Doubao Seed 2.0 Pro",
       "context": 262144,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "doubao-seed-2-0-mini-260215": {
       "name": "Doubao Seed 2.0 Mini",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "doubao-pro-256k": {
       "name": "Doubao Pro 256K",
@@ -1518,19 +1518,19 @@
       "name": "Doubao Vision Pro 32K",
       "context": 32768,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "doubao-vision-lite-32k": {
       "name": "Doubao Vision Lite 32K",
       "context": 32768,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "deepseek-v3-2-251201": {
       "name": "Deepseek V3.2",
       "context": 98304,
       "maxOutput": 32768,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "glm-4-7-251222": {
@@ -1549,14 +1549,14 @@
       "name": "Doubao Seed 2.0 Lite",
       "context": 256000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "doubao-seed-2-0-code-preview-260215": {
       "name": "Doubao Seed 2.0 Code Preview",
       "context": 256000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "doubao-seedream-3-0-t2i": {
@@ -1581,56 +1581,56 @@
       "name": "MiniMax M2",
       "context": 196608,
       "maxOutput": 128000,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "MiniMax-M2.1": {
       "name": "MiniMax M2.1",
       "context": 204800,
       "maxOutput": 131072,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "MiniMax-M2.5": {
       "name": "MiniMax M2.5",
       "context": 204800,
       "maxOutput": 131072,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "MiniMax-M2.5-highspeed": {
       "name": "MiniMax M2.5 Highspeed",
       "context": 204800,
       "maxOutput": 131072,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "MiniMax-M2.7": {
       "name": "MiniMax M2.7",
       "context": 204800,
       "maxOutput": 131072,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "MiniMax-M2.7-highspeed": {
       "name": "MiniMax M2.7 Highspeed",
       "context": 204800,
       "maxOutput": 131072,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "MiniMax-M2.1-lightning": {
       "name": "MiniMax M2.1 Lightning",
       "context": 1000000,
       "maxOutput": 8192,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "MiniMax-M2.5-lightning": {
       "name": "MiniMax M2.5 Lightning",
       "context": 1000000,
       "maxOutput": 8192,
-      "vision": false,
+      "image": false,
       "reasoning": true
     }
   },
@@ -1639,14 +1639,14 @@
       "name": "MiMo V2 Pro",
       "context": 1048576,
       "maxOutput": 131072,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "mimo-v2-omni": {
       "name": "MiMo V2 Omni",
       "context": 262144,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "mimo-v2-flash": {
       "name": "MiMo V2 Flash (309B MoE)",
@@ -1665,27 +1665,27 @@
       "name": "GLM-5",
       "context": 200000,
       "maxOutput": 128000,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "glm-5-turbo": {
       "name": "GLM-5 Turbo",
       "context": 205000,
       "maxOutput": 131072,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "glm-4-plus": {
       "name": "GLM-4 Plus",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "glm-4-flash": {
       "name": "GLM-4 Flash",
       "context": 131072,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     }
   },
   "ollama": {
@@ -1718,7 +1718,7 @@
       "name": "Gemma 3",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "mistral": {
       "name": "Mistral",
@@ -1730,7 +1730,7 @@
       "context": 131072,
       "maxOutput": 8192,
       "reasoning": true,
-      "vision": false
+      "image": false
     },
     "phi3": {
       "name": "Phi 3",
@@ -1873,13 +1873,13 @@
       "name": "Meta Llama/Llama 4 Maverick 17b 128e Instruct",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "meta-llama/llama-4-scout-17b-16e-instruct": {
       "name": "Meta Llama/Llama 4 Scout 17b 16e Instruct",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "moonshotai/kimi-k2-instruct-0905": {
       "name": "Moonshotai/Kimi K2 Instruct 0905",
@@ -1964,7 +1964,7 @@
       "name": "Deepseek Ai/DeepSeek R1",
       "context": 128000,
       "maxOutput": 20480,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "deepseek-ai/DeepSeek-R1-0528-tput": {
@@ -1975,7 +1975,7 @@
       "name": "Deepseek Ai/DeepSeek V3",
       "context": 65536,
       "maxOutput": 8192,
-      "vision": false
+      "image": false
     },
     "deepseek-ai/DeepSeek-V3.1": {
       "name": "Deepseek Ai/DeepSeek V3.1",
@@ -2001,7 +2001,7 @@
     "meta-llama/Llama-4-Scout-17B-16E-Instruct": {
       "name": "Meta Llama/Llama 4 Scout 17B 16E Instruct",
       "context": 128000,
-      "vision": true
+      "image": true
     },
     "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo": {
       "name": "Meta Llama/Meta Llama 3.1.405B Instruct Turbo",
@@ -2030,7 +2030,7 @@
     "moonshotai/Kimi-K2-Instruct": {
       "name": "Moonshotai/Kimi K2 Instruct",
       "context": 128000,
-      "vision": true
+      "image": true
     },
     "openai/gpt-oss-120b": {
       "name": "Openai/Gpt Oss 120b",
@@ -2064,7 +2064,7 @@
       "name": "Moonshotai/Kimi K2.5",
       "context": 256000,
       "maxOutput": 256000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "moonshotai/Kimi-K2-Instruct-0905": {
@@ -2082,7 +2082,7 @@
     "Qwen/Qwen3.5-397B-A17B": {
       "name": "Qwen/Qwen3.5.397B A17B",
       "context": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true
     }
   },
@@ -2096,7 +2096,7 @@
       "name": "Deepseek R1",
       "context": 128000,
       "maxOutput": 20480,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "deepseek-r1-0528": {
@@ -2108,14 +2108,14 @@
       "name": "Deepseek R1 Basic",
       "context": 128000,
       "maxOutput": 20480,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "deepseek-v3": {
       "name": "Deepseek V3",
       "context": 128000,
       "maxOutput": 8192,
-      "vision": false
+      "image": false
     },
     "deepseek-v3-0324": {
       "name": "Deepseek V3.0324",
@@ -2139,7 +2139,7 @@
       "context": 163840,
       "maxOutput": 163840,
       "reasoning": true,
-      "vision": false
+      "image": false
     },
     "firefunction-v2": {
       "name": "Firefunction V2",
@@ -2186,7 +2186,7 @@
       "name": "Kimi K2 Instruct",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "kimi-k2-instruct-0905": {
       "name": "Kimi K2 Instruct 0905",
@@ -2202,7 +2202,7 @@
       "name": "Kimi K2.5",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "llama-v3p1-405b-instruct": {
@@ -2219,7 +2219,7 @@
       "name": "Llama V3p2.11b Vision Instruct",
       "context": 16384,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "llama-v3p2-1b-instruct": {
       "name": "Llama V3p2.1b Instruct",
@@ -2235,7 +2235,7 @@
       "name": "Llama V3p2.90b Vision Instruct",
       "context": 16384,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "llama4-maverick-instruct-basic": {
       "name": "Llama4 Maverick Instruct Basic",
@@ -2251,7 +2251,7 @@
       "name": "Minimax M2p1",
       "context": 204800,
       "maxOutput": 204800,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "mixtral-8x22b-instruct-hf": {
@@ -2559,7 +2559,7 @@
       "name": "Gemma 3.27b It",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "gemma-7b": {
       "name": "Gemma 7b",
@@ -2746,7 +2746,7 @@
       "name": "Minimax M2",
       "context": 4096,
       "maxOutput": 4096,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "ministral-3-14b-instruct-2512": {
@@ -2793,7 +2793,7 @@
       "name": "Mistral Large 3 Fp8",
       "context": 256000,
       "maxOutput": 256000,
-      "vision": true
+      "image": true
     },
     "mistral-nemo-base-2407": {
       "name": "Mistral Nemo Base 2407",
@@ -3221,13 +3221,13 @@
       "name": "Qwen3 Vl 235b A22b Instruct",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "qwen3-vl-235b-a22b-thinking": {
       "name": "Qwen3 Vl 235b A22b Thinking",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen3-vl-30b-a3b-instruct": {
@@ -3244,7 +3244,7 @@
       "name": "Qwen3 Vl 32b Instruct",
       "context": 4096,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "qwen3-vl-8b-instruct": {
       "name": "Qwen3 Vl 8b Instruct",
@@ -3449,19 +3449,19 @@
       "name": "Mistral Large Latest",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "mistral-large-3": {
       "name": "Mistral Large 3",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "mistral-large-2512": {
       "name": "Mistral Large 2512",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "mistral-medium": {
       "name": "Mistral Medium",
@@ -3482,13 +3482,13 @@
       "name": "Mistral Medium Latest",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "mistral-medium-3-1-2508": {
       "name": "Mistral Medium 3.1 2508",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "mistral-small": {
       "name": "Mistral Small",
@@ -3499,31 +3499,31 @@
       "name": "Mistral Small Latest",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "mistral-small-3-2-2506": {
       "name": "Mistral Small 3.2 2506",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "ministral-3-3b-2512": {
       "name": "Ministral 3.3b 2512",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "ministral-3-8b-2512": {
       "name": "Ministral 3.8b 2512",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "ministral-3-14b-2512": {
       "name": "Ministral 3.14b 2512",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "mistral-tiny": {
       "name": "Mistral Tiny",
@@ -3564,19 +3564,19 @@
       "name": "Pixtral 12b 2409",
       "context": 128000,
       "maxOutput": 128000,
-      "vision": true
+      "image": true
     },
     "pixtral-large-2411": {
       "name": "Pixtral Large 2411",
       "context": 128000,
       "maxOutput": 128000,
-      "vision": true
+      "image": true
     },
     "pixtral-large-latest": {
       "name": "Pixtral Large Latest",
       "context": 128000,
       "maxOutput": 128000,
-      "vision": true
+      "image": true
     }
   },
   "perplexity": {
@@ -3700,19 +3700,19 @@
       "name": "Grok 2 Vision",
       "context": 32768,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "grok-2-vision-1212": {
       "name": "Grok 2 Vision 1212",
       "context": 32768,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "grok-2-vision-latest": {
       "name": "Grok 2 Vision Latest",
       "context": 32768,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "grok-3": {
       "name": "Grok 3",
@@ -3779,94 +3779,94 @@
       "name": "Grok 4",
       "context": 256000,
       "maxOutput": 256000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4-fast-reasoning": {
       "name": "Grok 4 Fast Reasoning",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4-fast-non-reasoning": {
       "name": "Grok 4 Fast Non Reasoning",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true
+      "image": true
     },
     "grok-4-0709": {
       "name": "Grok 4.0709",
       "context": 256000,
       "maxOutput": 256000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4-latest": {
       "name": "Grok 4 Latest",
       "context": 256000,
       "maxOutput": 256000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4-1-fast": {
       "name": "Grok 4.1 Fast",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4-1-fast-reasoning": {
       "name": "Grok 4.1 Fast Reasoning",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4-1-fast-reasoning-latest": {
       "name": "Grok 4.1 Fast Reasoning Latest",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4-1-fast-non-reasoning": {
       "name": "Grok 4.1 Fast Non Reasoning",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true
+      "image": true
     },
     "grok-4-1-fast-non-reasoning-latest": {
       "name": "Grok 4.1 Fast Non Reasoning Latest",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true
+      "image": true
     },
     "grok-4.20-multi-agent-beta-0309": {
       "name": "Grok 4.20 Multi Agent Beta 0309",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4.20-beta-0309-reasoning": {
       "name": "Grok 4.20 Beta 0309 Reasoning",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "grok-4.20-beta-0309-non-reasoning": {
       "name": "Grok 4.20 Beta 0309 Non Reasoning",
       "context": 2000000,
       "maxOutput": 2000000,
-      "vision": true
+      "image": true
     },
     "grok-beta": {
       "name": "Grok Beta",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "grok-code-fast": {
       "name": "Grok Code Fast",
@@ -3890,82 +3890,82 @@
       "name": "Grok Vision Beta",
       "context": 8192,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     }
   },
   "openrouter": {
     "anthropic/claude-3-haiku": {
       "name": "Anthropic/Claude 3 Haiku",
       "context": 200000,
-      "vision": true
+      "image": true
     },
     "anthropic/claude-3.5-sonnet": {
       "name": "Anthropic/Claude 3.5 Sonnet",
       "context": 200000,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "anthropic/claude-3.7-sonnet": {
       "name": "Anthropic/Claude 3.7 Sonnet",
       "context": 200000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "anthropic/claude-opus-4": {
       "name": "Anthropic/Claude Opus 4",
       "context": 200000,
       "maxOutput": 32000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "anthropic/claude-opus-4.1": {
       "name": "Anthropic/Claude Opus 4.1",
       "context": 200000,
       "maxOutput": 32000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "anthropic/claude-sonnet-4": {
       "name": "Anthropic/Claude Sonnet 4",
       "context": 1000000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "anthropic/claude-sonnet-4.6": {
       "name": "Anthropic/Claude Sonnet 4.6",
       "context": 1000000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "anthropic/claude-opus-4.5": {
       "name": "Anthropic/Claude Opus 4.5",
       "context": 200000,
       "maxOutput": 32000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "anthropic/claude-opus-4.6": {
       "name": "Anthropic/Claude Opus 4.6",
       "context": 1000000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "anthropic/claude-sonnet-4.5": {
       "name": "Anthropic/Claude Sonnet 4.5",
       "context": 1000000,
       "maxOutput": 1000000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "anthropic/claude-haiku-4.5": {
       "name": "Anthropic/Claude Haiku 4.5",
       "context": 200000,
       "maxOutput": 200000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "bytedance/ui-tars-1.5-7b": {
@@ -4016,39 +4016,39 @@
       "name": "Google/Gemini 2.0 Flash 001",
       "context": 1048576,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "google/gemini-2.5-flash": {
       "name": "Google/Gemini 2.5 Flash",
       "context": 1048576,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "google/gemini-2.5-pro": {
       "name": "Google/Gemini 2.5 Pro",
       "context": 1048576,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "google/gemini-3-pro-preview": {
       "name": "Google/Gemini 3 Pro Preview",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "google/gemini-3-flash-preview": {
       "name": "Google/Gemini 3 Flash Preview",
       "context": 1048576,
       "maxOutput": 65535,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "google/gemini-3.1-pro-preview": {
       "name": "Google/Gemini 3.1 Pro Preview",
       "context": 1048576,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "gryphe/mythomax-l2-13b": {
@@ -4078,25 +4078,25 @@
       "name": "Mistralai/Ministral 3b 2512",
       "context": 131072,
       "maxOutput": 131072,
-      "vision": true
+      "image": true
     },
     "mistralai/ministral-8b-2512": {
       "name": "Mistralai/Ministral 8b 2512",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "mistralai/ministral-14b-2512": {
       "name": "Mistralai/Ministral 14b 2512",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "mistralai/mistral-large-2512": {
       "name": "Mistralai/Mistral Large 2512",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true
+      "image": true
     },
     "mistralai/mistral-7b-instruct": {
       "name": "Mistralai/Mistral 7b Instruct",
@@ -4122,7 +4122,7 @@
       "name": "Moonshotai/Kimi K2.5",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "openai/gpt-3.5-turbo": {
@@ -4141,38 +4141,38 @@
       "name": "Openai/Gpt 4.1",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "openai/gpt-4.1-mini": {
       "name": "Openai/Gpt 4.1 Mini",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "openai/gpt-4.1-nano": {
       "name": "Openai/Gpt 4.1 Nano",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "openai/gpt-4o": {
       "name": "Openai/Gpt 4o",
       "context": 128000,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "openai/gpt-4o-2024-05-13": {
       "name": "Openai/Gpt 4o 2024.05.13",
       "context": 128000,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "openai/gpt-5-chat": {
       "name": "Openai/Gpt 5 Chat",
       "context": 128000,
       "maxOutput": 16384,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "openai/gpt-5-codex": {
       "name": "Openai/Gpt 5 Codex",
@@ -4185,54 +4185,54 @@
       "context": 272000,
       "maxOutput": 128000,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "openai/gpt-5": {
       "name": "Openai/Gpt 5",
       "context": 272000,
       "maxOutput": 128000,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "openai/gpt-5-mini": {
       "name": "Openai/Gpt 5 Mini",
       "context": 272000,
       "maxOutput": 128000,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "openai/gpt-5-nano": {
       "name": "Openai/Gpt 5 Nano",
       "context": 272000,
       "maxOutput": 128000,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "openai/gpt-5.1-codex-max": {
       "name": "Openai/Gpt 5.1 Codex Max",
       "context": 400000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "openai/gpt-5.2": {
       "name": "Openai/Gpt 5.2",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "openai/gpt-5.2-chat": {
       "name": "Openai/Gpt 5.2 Chat",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "openai/gpt-5.2-pro": {
       "name": "Openai/Gpt 5.2 Pro",
       "context": 272000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "openai/gpt-oss-120b": {
@@ -4251,7 +4251,7 @@
       "name": "Openai/O1",
       "context": 200000,
       "maxOutput": 100000,
-      "vision": true
+      "image": true
     },
     "openai/o3-mini": {
       "name": "Openai/O3 Mini",
@@ -4274,7 +4274,7 @@
       "name": "Qwen/Qwen Vl Plus",
       "context": 8192,
       "maxOutput": 2048,
-      "vision": true
+      "image": true
     },
     "qwen/qwen3-coder": {
       "name": "Qwen/Qwen3 Coder",
@@ -4302,42 +4302,42 @@
       "name": "Qwen/Qwen3.5.35b A3b",
       "context": 262144,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen/qwen3.5-27b": {
       "name": "Qwen/Qwen3.5.27b",
       "context": 262144,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen/qwen3.5-122b-a10b": {
       "name": "Qwen/Qwen3.5.122b A10b",
       "context": 262144,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen/qwen3.5-flash-02-23": {
       "name": "Qwen/Qwen3.5 Flash 02.23",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen/qwen3.5-plus-02-15": {
       "name": "Qwen/Qwen3.5 Plus 02.15",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "qwen/qwen3.5-397b-a17b": {
       "name": "Qwen/Qwen3.5.397b A17b",
       "context": 262144,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "switchpoint/router": {
@@ -4354,7 +4354,7 @@
       "context": 256000,
       "maxOutput": 256000,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "z-ai/glm-4.6": {
       "name": "Z Ai/Glm 4.6",
@@ -4378,14 +4378,14 @@
       "name": "Z Ai/Glm 4.7",
       "context": 202752,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "z-ai/glm-4.7-flash": {
       "name": "Z Ai/Glm 4.7 Flash",
       "context": 200000,
       "maxOutput": 32000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "z-ai/glm-5": {
@@ -4393,13 +4393,13 @@
       "context": 202752,
       "maxOutput": 128000,
       "reasoning": true,
-      "vision": true
+      "image": true
     },
     "minimax/minimax-m2.1": {
       "name": "Minimax/Minimax M2.1",
       "context": 204000,
       "maxOutput": 64000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "minimax/minimax-m2.5": {
@@ -4411,13 +4411,13 @@
     "openrouter/auto": {
       "name": "Openrouter/Auto",
       "context": 2000000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "openrouter/free": {
       "name": "Openrouter/Free",
       "context": 200000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "openrouter/bodybuilder": {
@@ -4430,26 +4430,26 @@
       "name": "DeepSeek Chat",
       "context": 128000,
       "maxOutput": 8192,
-      "vision": false
+      "image": false
     },
     "deepseek-reasoner": {
       "name": "DeepSeek Reasoner",
       "context": 128000,
       "maxOutput": 64000,
       "reasoning": true,
-      "vision": false
+      "image": false
     },
     "deepseek-v3.2": {
       "name": "DeepSeek V3.2",
       "context": 163840,
       "maxOutput": 65536,
-      "vision": false
+      "image": false
     },
     "qwen3-max": {
       "name": "Qwen 3 Max",
       "context": 262144,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4459,7 +4459,7 @@
       "name": "Qwen 3 Plus",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4469,7 +4469,7 @@
       "name": "Qwen 3 Mini",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4479,7 +4479,7 @@
       "name": "Qwen 3.5 Plus",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4489,7 +4489,7 @@
       "name": "Qwen 3.5 Max",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4499,7 +4499,7 @@
       "name": "Qwen 3.5 Flash",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4509,47 +4509,47 @@
       "name": "Kimi K2.5",
       "context": 262144,
       "maxOutput": 262144,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "kimi-k2": {
       "name": "Kimi K2",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "glm-5": {
       "name": "GLM-5",
       "context": 200000,
       "maxOutput": 128000,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "glm-5-turbo": {
       "name": "GLM-5 Turbo",
       "context": 205000,
       "maxOutput": 131072,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "glm-4-plus": {
       "name": "GLM-4 Plus",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "glm-4-flash": {
       "name": "GLM-4 Flash",
       "context": 131072,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "deepseek-r1": {
       "name": "Deepseek R1",
       "context": 65536,
       "maxOutput": 8192,
       "reasoning": true,
-      "vision": false
+      "image": false
     }
   },
   "modelscope": {
@@ -4557,7 +4557,7 @@
       "name": "Qwen 3.5 Plus",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4567,7 +4567,7 @@
       "name": "Qwen 3.5 Max",
       "context": 1000000,
       "maxOutput": 65536,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4577,7 +4577,7 @@
       "name": "Qwen 3.5 Flash",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4587,7 +4587,7 @@
       "name": "Qwen 3 Max",
       "context": 262144,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4597,7 +4597,7 @@
       "name": "Qwen 3 Plus",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4607,7 +4607,7 @@
       "name": "Qwen 3 Mini",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4617,32 +4617,32 @@
       "name": "Qwen Plus",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "qwen-turbo": {
       "name": "Qwen Turbo",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "qwen-max": {
       "name": "Qwen Max",
       "context": 32768,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "deepseek-chat": {
       "name": "DeepSeek Chat",
       "context": 128000,
       "maxOutput": 8192,
-      "vision": false
+      "image": false
     },
     "deepseek-reasoner": {
       "name": "DeepSeek Reasoner",
       "context": 128000,
       "maxOutput": 64000,
       "reasoning": true,
-      "vision": false
+      "image": false
     }
   },
   "baidu-cloud": {
@@ -4650,25 +4650,25 @@
       "name": "ERNIE 4.5 8K",
       "context": 8192,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "ernie-4.5-128k": {
       "name": "ERNIE 4.5 128K",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "ernie-4.0-8k": {
       "name": "ERNIE 4.0 8K",
       "context": 8192,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "ernie-4.0-turbo-8k": {
       "name": "ERNIE 4.0 Turbo 8K",
       "context": 8192,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "ernie-3.5-8k": {
       "name": "ERNIE 3.5 8K",
@@ -4696,26 +4696,26 @@
       "name": "Hunyuan T1",
       "context": 262144,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "hunyuan-turbos-latest": {
       "name": "Hunyuan TurboS",
       "context": 131072,
       "maxOutput": 8192,
-      "vision": true
+      "image": true
     },
     "hunyuan-turbo-latest": {
       "name": "Hunyuan Turbo",
       "context": 131072,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "hunyuan-pro-latest": {
       "name": "Hunyuan Pro",
       "context": 32768,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "hunyuan-standard-latest": {
       "name": "Hunyuan Standard",
@@ -4731,7 +4731,7 @@
       "name": "Hunyuan Vision",
       "context": 8192,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     }
   },
   "baichuan": {
@@ -4756,26 +4756,26 @@
       "name": "DeepSeek Chat",
       "context": 128000,
       "maxOutput": 8192,
-      "vision": false
+      "image": false
     },
     "deepseek-reasoner": {
       "name": "DeepSeek Reasoner",
       "context": 128000,
       "maxOutput": 64000,
       "reasoning": true,
-      "vision": false
+      "image": false
     },
     "deepseek-v3.2": {
       "name": "DeepSeek V3.2",
       "context": 163840,
       "maxOutput": 65536,
-      "vision": false
+      "image": false
     },
     "qwen3-max": {
       "name": "Qwen 3 Max",
       "context": 262144,
       "maxOutput": 32768,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4785,7 +4785,7 @@
       "name": "Qwen 3 Plus",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true,
       "quirks": [
         "enable_thinking"
@@ -4797,7 +4797,7 @@
       "name": "Step 2 16K",
       "context": 16384,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "step-2-mini": {
       "name": "Step 2 Mini",
@@ -4818,13 +4818,13 @@
       "name": "Step 1V 8K",
       "context": 8192,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "step-1v-32k": {
       "name": "Step 1V 32K",
       "context": 32768,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     }
   },
   "openai-codex-oauth": {
@@ -4832,13 +4832,13 @@
       "name": "GPT-4o",
       "context": 128000,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "gpt-4.1": {
       "name": "GPT-4.1",
       "context": 1047576,
       "maxOutput": 32768,
-      "vision": true
+      "image": true
     },
     "o3-mini": {
       "name": "o3 Mini",
@@ -4850,7 +4850,7 @@
       "name": "o4 Mini",
       "context": 200000,
       "maxOutput": 100000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     }
   },
@@ -4859,14 +4859,14 @@
       "name": "Doubao Seed 2.0 Pro",
       "context": 262144,
       "maxOutput": 16384,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "doubao-seed-2-0-mini-260215": {
       "name": "Doubao Seed 2.0 Mini",
       "context": 131072,
       "maxOutput": 16384,
-      "vision": true
+      "image": true
     },
     "doubao-pro-256k": {
       "name": "Doubao Pro 256K",
@@ -4907,19 +4907,19 @@
       "name": "Doubao Vision Pro 32K",
       "context": 32768,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "doubao-vision-lite-32k": {
       "name": "Doubao Vision Lite 32K",
       "context": 32768,
       "maxOutput": 4096,
-      "vision": true
+      "image": true
     },
     "deepseek-v3-2-251201": {
       "name": "Deepseek V3.2",
       "context": 98304,
       "maxOutput": 32768,
-      "vision": false,
+      "image": false,
       "reasoning": true
     },
     "glm-4-7-251222": {
@@ -4938,14 +4938,14 @@
       "name": "Doubao Seed 2.0 Lite",
       "context": 256000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     },
     "doubao-seed-2-0-code-preview-260215": {
       "name": "Doubao Seed 2.0 Code Preview",
       "context": 256000,
       "maxOutput": 128000,
-      "vision": true,
+      "image": true,
       "reasoning": true
     }
   }

@@ -349,7 +349,7 @@ export function createSessionsRoute(engine) {
         currentModelId: activeModel?.id || null,
         currentModelProvider: activeModel?.provider || null,
         currentModelName: activeModel?.name || null,
-        currentModelVision: activeModel?.vision ?? null,
+        currentModelInput: Array.isArray(activeModel?.input) ? activeModel.input : null,
         currentModelReasoning: activeModel?.reasoning ?? null,
         currentModelContextWindow: activeModel?.contextWindow ?? null,
       });

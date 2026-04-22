@@ -36,6 +36,9 @@ const migrations = {
   // channels.enabled 从 agent scope 错位位置迁到 global preferences；
   // 尊重老用户显式意图：任一 agent 显式 true → 保留开，否则默认关
   6: migrateChannelsToGlobalDefaultOff,
+  // 模型能力字段 vision → image 全量重命名（added-models.yaml + agent config.yaml）
+  // 配合 core/model-sync.js 和 core/provider-registry.js 的读时兼容形成双保险
+  7: migrateVisionToImage,
 };
 
 // ── Runner ──────────────────────────────────────────────────────────────────
@@ -729,4 +732,93 @@ function migrateWorkspaceToPerAgent(ctx) {
   } catch (err) {
     log(`[migrations] #3: warning — failed to disable non-primary heartbeats: ${err.message}`);
   }
+}
+
+/**
+ * #7 — 模型能力字段 vision → image 全量重命名
+ *
+ * 历史包袱：项目早期在 Pi SDK Model 对象上挂了一份自定义的 vision:boolean 字段，
+ * 与 Pi SDK 标准字段 input:("text"|"image")[] 重复。本次统一到 Pi SDK 标准，
+ * 把用户意图层（added-models.yaml + agent config.yaml）的 vision 重命名为 image，
+ * 运行时层只保留 input 数组。
+ *
+ * 覆盖位置：
+ *   1. ~/.hanako/added-models.yaml 的 providers.*.models[] 数组（用户主战场）
+ *   2. ~/.hanako/agents/*\/config.yaml 的 models.overrides（历史残留兜底）
+ *
+ * 幂等：只在发现 vision 字段时改写；image 已存在时保留不覆盖。
+ * 配合读时兼容（model-sync.js、provider-registry.js）形成双保险。
+ */
+function migrateVisionToImage(ctx) {
+  const { hanakoHome, agentsDir, log } = ctx;
+  let ymlCount = 0;
+  let overrideCount = 0;
+
+  // ── 1. added-models.yaml ──
+  const ymlPath = path.join(hanakoHome, "added-models.yaml");
+  const raw = safeReadYAMLSync(ymlPath, null, YAML);
+  if (raw?.providers && typeof raw.providers === "object") {
+    let changed = false;
+    for (const prov of Object.values(raw.providers)) {
+      if (!prov || !Array.isArray(prov.models)) continue;
+      for (const m of prov.models) {
+        if (!m || typeof m !== "object") continue;
+        if (!Object.prototype.hasOwnProperty.call(m, "vision")) continue;
+        if (m.image === undefined) m.image = m.vision;
+        delete m.vision;
+        changed = true;
+        ymlCount++;
+      }
+    }
+    if (changed) {
+      const header =
+        "# Hanako 供应商配置（全局，跨 agent 共享）\n" +
+        "# 由设置页面管理\n\n";
+      const yamlStr = header + YAML.dump(raw, {
+        indent: 2,
+        lineWidth: -1,
+        sortKeys: false,
+        quotingType: "\"",
+        forceQuotes: false,
+      });
+      const tmp = ymlPath + ".tmp";
+      fs.writeFileSync(tmp, yamlStr, "utf-8");
+      fs.renameSync(tmp, ymlPath);
+    }
+  }
+
+  // ── 2. agent/*/config.yaml 的 models.overrides（兜底残留）──
+  let agentDirs;
+  try {
+    agentDirs = fs.readdirSync(agentsDir, { withFileTypes: true }).filter(d => d.isDirectory());
+  } catch {
+    agentDirs = [];
+  }
+
+  for (const dir of agentDirs) {
+    const cfgPath = path.join(agentsDir, dir.name, "config.yaml");
+    const cfg = safeReadYAMLSync(cfgPath, null, YAML);
+    if (!cfg?.models?.overrides || typeof cfg.models.overrides !== "object") continue;
+
+    let changed = false;
+    for (const ov of Object.values(cfg.models.overrides)) {
+      if (!ov || typeof ov !== "object") continue;
+      if (!Object.prototype.hasOwnProperty.call(ov, "vision")) continue;
+      if (ov.image === undefined) ov.image = ov.vision;
+      delete ov.vision;
+      changed = true;
+      overrideCount++;
+    }
+    if (changed) {
+      const tmp = cfgPath + ".tmp";
+      fs.writeFileSync(
+        tmp,
+        YAML.dump(cfg, { indent: 2, lineWidth: -1, sortKeys: false, quotingType: "\"" }),
+        "utf-8"
+      );
+      fs.renameSync(tmp, cfgPath);
+    }
+  }
+
+  log(`[migrations] #7: vision→image renamed (added-models.yaml=${ymlCount}, agent overrides=${overrideCount})`);
 }

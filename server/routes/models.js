@@ -30,7 +30,7 @@ export function createModelsRoute(engine) {
         name: resolveModelName(m.id, m.name, overrides, m.provider),
         provider: m.provider,
         isCurrent: modelRefEquals(m, cur),
-        vision: m.vision,
+        input: Array.isArray(m.input) ? m.input : ["text"],
         reasoning: m.reasoning,
         contextWindow: m.contextWindow,
         maxTokens: m.maxTokens,
@@ -135,7 +135,7 @@ export function createModelsRoute(engine) {
         id: sessionModel.id,
         name: resolveModelName(sessionModel.id, sessionModel.name, overrides, sessionModel.provider),
         provider: sessionModel.provider,
-        vision: sessionModel.vision,
+        input: Array.isArray(sessionModel.input) ? sessionModel.input : ["text"],
         reasoning: sessionModel.reasoning,
         contextWindow: sessionModel.contextWindow,
       } : null;

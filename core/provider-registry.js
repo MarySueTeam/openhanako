@@ -157,7 +157,8 @@ export class ProviderRegistry {
    * @param {Function} [log] - 日志函数
    */
   migrateOverridesToAddedModels(agentsDir, log = () => {}) {
-    const CAPABILITY_KEYS = ["context", "maxOutput", "vision", "reasoning"];
+    // 能力字段白名单：image 是新标准名；vision 是旧名，读到时转写为 image
+    const CAPABILITY_KEYS = ["context", "maxOutput", "image", "reasoning"];
     const userConfig = this._loadAddedModels();
     let changed = false;
 
@@ -177,6 +178,14 @@ export class ProviderRegistry {
       for (const [modelId, ov] of Object.entries(overrides)) {
         if (!ov || typeof ov !== "object") continue;
         const meta = {};
+        // 旧字段 vision 重命名为 image（兼容两个版本后可删）
+        if (ov.vision !== undefined && ov.image === undefined) {
+          ov.image = ov.vision;
+        }
+        if (ov.vision !== undefined) {
+          delete ov.vision;
+          cfgChanged = true;
+        }
         for (const key of CAPABILITY_KEYS) {
           if (ov[key] !== undefined) {
             meta[key] = ov[key];
@@ -554,7 +563,7 @@ export class ProviderRegistry {
    * 裸字符串条目会被升级为对象
    * @param {string} providerId
    * @param {string} modelId
-   * @param {{ name?: string, context?: number, maxOutput?: number, vision?: boolean, reasoning?: boolean }} meta
+   * @param {{ name?: string, context?: number, maxOutput?: number, image?: boolean, reasoning?: boolean }} meta
    */
   updateModelEntry(providerId, modelId, meta) {
     const userConfig = this._loadAddedModels();
@@ -564,8 +573,13 @@ export class ProviderRegistry {
     }
     const uc = userConfig[providerId];
 
-    // 白名单：只允许模型能力字段
-    const ALLOWED = ["name", "context", "maxOutput", "vision", "reasoning", "type"];
+    // 兼容前端仍可能发来 vision 字段（过渡期）：转写为 image
+    if (meta && typeof meta === "object" && meta.vision !== undefined && meta.image === undefined) {
+      meta = { ...meta, image: meta.vision };
+    }
+
+    // 白名单：只允许模型能力字段（image 是标准名，vision 为旧名不写入）
+    const ALLOWED = ["name", "context", "maxOutput", "image", "reasoning", "type"];
     const safe = {};
     for (const key of ALLOWED) {
       if (meta[key] !== undefined) safe[key] = meta[key];
@@ -577,6 +591,13 @@ export class ProviderRegistry {
       if (mid !== modelId) return m;
       found = true;
       const base = typeof m === "object" ? m : { id: mid };
+      // 删除旧字段 vision，避免残留
+      if (base.vision !== undefined) {
+        const { vision: _vision, ...cleaned } = base;
+        const merged = { ...cleaned, ...safe };
+        if (!merged.name) delete merged.name;
+        return merged;
+      }
       const merged = { ...base, ...safe };
       if (!merged.name) delete merged.name;
       return merged;

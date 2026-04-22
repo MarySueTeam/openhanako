@@ -324,7 +324,7 @@ export function createProvidersRoute(engine) {
   });
 
   /**
-   * 更新模型元数据（context/vision/reasoning/maxOutput/name）
+   * 更新模型元数据（context/image/reasoning/maxOutput/name）
    * 写回 added-models.yaml → 触发 model-sync → SDK 模型对象更新
    */
   route.put("/providers/:name/models/:modelId", async (c) => {

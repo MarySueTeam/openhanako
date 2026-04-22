@@ -250,8 +250,9 @@ export class BridgeSessionManager {
       });
 
       try {
-        // 非 vision 模型：静默剥离图片，只发文字
-        if (opts.images?.length && session.model?.vision === false) {
+        // 非 image 模型：剥离新贴的图片（历史由 engine context handler 净化）
+        const bridgeInput = session.model?.input;
+        if (opts.images?.length && Array.isArray(bridgeInput) && !bridgeInput.includes("image")) {
           opts.images = undefined;
         }
         const promptOpts = opts.images?.length ? { images: opts.images } : undefined;

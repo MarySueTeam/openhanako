@@ -20,7 +20,7 @@ const MODEL: SessionModel = {
   id: 'claude-opus-4-6',
   name: 'Claude Opus 4.6',
   provider: 'anthropic',
-  vision: true,
+  input: ['text', 'image'],
   reasoning: true,
   contextWindow: 1_000_000,
 };

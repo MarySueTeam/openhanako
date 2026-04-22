@@ -384,8 +384,11 @@ After dispatching subagent or other background tasks:
       const entry = this._sessions.get(sp);
       if (entry) entry.lastTouchedAt = Date.now();
     }
-    // 非 vision 模型：静默剥离图片（vision 未知则放行，让 API 决定）
-    if (opts?.images?.length && this._session.model?.vision === false) {
+    // 非 image 模型：剥离新贴的图片（历史里的 ImageContent 由 engine 的
+    // context extension handler 统一净化，见 core/message-sanitizer.js）。
+    // model.input 缺失/非数组时视为未知，放行让 API 决定。
+    const inputMods = this._session.model?.input;
+    if (opts?.images?.length && Array.isArray(inputMods) && !inputMods.includes("image")) {
       opts = { ...opts, images: undefined };
     }
     const promptOpts = opts?.images?.length ? { images: opts.images } : undefined;
@@ -421,8 +424,9 @@ After dispatching subagent or other background tasks:
     if (!entry) throw new Error(t("error.sessionNotInCache", { path: sessionPath }));
     entry.lastTouchedAt = Date.now();
     if (sessionPath === this.currentSessionPath) this._sessionStarted = true;
-    // 非 vision 模型：静默剥离图片（vision 未知则放行，让 API 决定）
-    if (opts?.images?.length && entry.session.model?.vision === false) {
+    // 非 image 模型：剥离新贴的图片（历史净化见 core/message-sanitizer.js）
+    const inputMods2 = entry.session.model?.input;
+    if (opts?.images?.length && Array.isArray(inputMods2) && !inputMods2.includes("image")) {
       opts = { ...opts, images: undefined };
     }
     const promptOpts = opts?.images?.length ? { images: opts.images } : undefined;

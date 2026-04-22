@@ -12,14 +12,18 @@ import path from "path";
 // mock known-models 词典查询：provider + model 二级结构
 const KNOWN_MODELS = {
   dashscope: {
-    "qwen3.5-flash": { name: "Qwen3.5 Flash", context: 131072, maxOutput: 8192, vision: true, reasoning: true, quirks: ["enable_thinking"] },
+    "qwen3.5-flash": { name: "Qwen3.5 Flash", context: 131072, maxOutput: 8192, image: true, reasoning: true, quirks: ["enable_thinking"] },
   },
   deepseek: {
     "deepseek-chat": { name: "DeepSeek Chat", context: 128000, maxOutput: 8192 },
   },
   openai: {
-    "gpt-4o": { name: "GPT-4o", context: 128000, maxOutput: 16384, vision: true },
+    "gpt-4o": { name: "GPT-4o", context: 128000, maxOutput: 16384, image: true },
     "gpt-image-1": { name: "GPT Image 1", type: "image" },
+  },
+  // 兼容读验证：legacy-vision 模型词典里用旧字段 vision，model-sync 应当识别并投影为 input
+  legacy: {
+    "legacy-vision-model": { name: "Legacy Vision Model", context: 32000, vision: true },
   },
 };
 
@@ -155,12 +159,13 @@ describe("syncModels", () => {
     expect(model.contextWindow).toBe(131072);
     expect(model.maxTokens).toBe(8192);
     expect(model.input).toEqual(["text", "image"]);
-    expect(model.vision).toBe(true);
+    // 运行时 Model 对象不再挂 vision 字段（Pi SDK 标准用 input 数组）
+    expect(model.vision).toBeUndefined();
     expect(model.reasoning).toBe(true);
     expect(model.quirks).toEqual(["enable_thinking"]);
   });
 
-  it("sets vision: false and input: ['text'] for models without vision", async () => {
+  it("sets input: ['text'] for models without image modality (no vision field on Model)", async () => {
     const syncModels = await loadSync();
 
     const providers = {
@@ -176,9 +181,43 @@ describe("syncModels", () => {
 
     const result = JSON.parse(fs.readFileSync(modelsJsonPath, "utf-8"));
     const model = result.providers.deepseek.models[0];
-    expect(model.vision).toBe(false);
+    expect(model.vision).toBeUndefined();
     expect(model.reasoning).toBe(false);
     expect(model.input).toEqual(["text"]);
+  });
+
+  it("accepts legacy 'vision' field in dictionary and projects to input array", async () => {
+    const syncModels = await loadSync();
+    const providers = {
+      legacy: {
+        base_url: "https://legacy.api.com/v1",
+        api: "openai-completions",
+        api_key: "sk-test",
+        models: ["legacy-vision-model"],
+      },
+    };
+    syncModels(providers, { modelsJsonPath });
+    const result = JSON.parse(fs.readFileSync(modelsJsonPath, "utf-8"));
+    const model = result.providers.legacy.models[0];
+    expect(model.input).toEqual(["text", "image"]);
+    expect(model.vision).toBeUndefined();
+  });
+
+  it("accepts legacy 'vision' field in user override and projects to input array", async () => {
+    const syncModels = await loadSync();
+    const providers = {
+      deepseek: {
+        base_url: "https://api.deepseek.com/v1",
+        api: "openai-completions",
+        api_key: "sk-test",
+        models: [{ id: "deepseek-chat", vision: true }],  // legacy user override
+      },
+    };
+    syncModels(providers, { modelsJsonPath });
+    const result = JSON.parse(fs.readFileSync(modelsJsonPath, "utf-8"));
+    const model = result.providers.deepseek.models[0];
+    expect(model.input).toEqual(["text", "image"]);
+    expect(model.vision).toBeUndefined();
   });
 
   it("handles model objects with user overrides (name, context, maxOutput)", async () => {
@@ -420,7 +459,8 @@ describe("syncModels", () => {
     // date suffix stripped, humanized
     expect(model.name).toBe("My Custom Model");
     expect(model.contextWindow).toBe(128000); // default
-    expect(model.vision).toBe(false); // unknown model defaults to false
+    expect(model.input).toEqual(["text"]); // unknown model defaults to text-only
+    expect(model.vision).toBeUndefined();
     expect(model.reasoning).toBe(false);
   });
 });

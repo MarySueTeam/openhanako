@@ -42,14 +42,16 @@ function buildModelEntry(modelEntry, provider, baseUrl = "") {
   const id = isObj ? modelEntry.id : modelEntry;
   const known = lookupKnown(provider, id);
 
-  // 优先级：用户设置（added-models.yaml 对象字段）> known-models 词典 > 默认值
-  const vision = (isObj && modelEntry.vision !== undefined) ? modelEntry.vision : (known?.vision === true);
+  // image modality 能力：用户设置 > known-models 词典 > 默认 false
+  // 兼容读：migration #7 之前的旧数据用 vision 字段；两个版本后移除 vision fallback
+  const userImage = isObj ? (modelEntry.image ?? modelEntry.vision) : undefined;
+  const knownImage = known?.image ?? known?.vision;
+  const image = userImage !== undefined ? userImage : (knownImage === true);
   const entry = {
     id,
     name: (isObj && modelEntry.name) || known?.name || humanizeName(id),
-    input: vision ? ["text", "image"] : ["text"],
+    input: image ? ["text", "image"] : ["text"],
     contextWindow: (isObj && modelEntry.context) || known?.context || DEFAULT_CONTEXT_WINDOW,
-    vision,
     reasoning: (isObj && modelEntry.reasoning !== undefined) ? modelEntry.reasoning : (known?.reasoning === true),
   };
 

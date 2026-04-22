@@ -49,7 +49,8 @@ export interface Model {
   isCurrent?: boolean;
   reasoning?: boolean;
   xhigh?: boolean;
-  vision?: boolean;
+  /** 输入模态数组（Pi SDK 标准字段）。包含 "image" 表示模型支持图像输入。 */
+  input?: ("text" | "image")[];
 }
 
 export interface Channel {

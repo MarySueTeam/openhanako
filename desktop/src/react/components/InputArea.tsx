@@ -69,7 +69,8 @@ function InputAreaInner() {
   const globalModelInfo = useMemo(() => models.find(m => m.isCurrent), [models]);
   const sessionModel = useStore(s => s.currentSessionPath ? s.sessionModelsByPath[s.currentSessionPath] : undefined);
   const currentModelInfo = sessionModel || globalModelInfo;
-  const supportsVision = currentModelInfo?.vision !== false;
+  // input 数组缺失视为未知，放行让 API 决定（与后端 session-coordinator 的策略对齐）
+  const supportsVision = !Array.isArray(currentModelInfo?.input) || currentModelInfo.input.includes("image");
   const modelSwitching = useStore(s => s.modelSwitching);
   const sessionHasMessages = useStore(s => !!(s.currentSessionPath && s.chatSessions[s.currentSessionPath]?.items?.length));
 
@@ -399,7 +400,7 @@ function InputAreaInner() {
         loadSessions();
       }
 
-      // 分离图片和非图片附件（模型不支持 vision 时，图片降级为普通附件路径）
+      // 分离图片和非图片附件（模型不支持 image 输入时，图片降级为普通附件路径）
       const imageFiles = hasFiles && supportsVision ? attachedFiles.filter(f => !f.isDirectory && isImageFile(f.name)) : [];
       const otherFiles = hasFiles ? attachedFiles.filter(f => f.isDirectory || !isImageFile(f.name) || !supportsVision) : [];
 

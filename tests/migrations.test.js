@@ -754,3 +754,124 @@ describe("migration #4 — migrateSubagentExecutorMetadata", () => {
     });
   });
 });
+
+// ── 迁移 #7：模型能力字段 vision → image 重命名 ─────────────────────────────
+
+describe("#7 migrateVisionToImage", () => {
+  let tmpDir, agentsDir, userDir;
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir();
+    agentsDir = path.join(tmpDir, "agents");
+    userDir = tmpDir; // hanakoHome 根目录，模拟 added-models.yaml 所在位置
+    fs.mkdirSync(agentsDir, { recursive: true });
+  });
+  afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
+
+  function runMigration7(prefs) {
+    prefs.savePreferences({ _dataVersion: 6 });  // 跳过 #1-#6，直接测 #7
+    runMigrations({
+      hanakoHome: tmpDir,
+      agentsDir,
+      prefs,
+      providerRegistry: makeRegistry([]),
+      log: () => {},
+    });
+  }
+
+  function writeAddedModelsYaml(providers) {
+    const data = { providers };
+    fs.writeFileSync(
+      path.join(tmpDir, "added-models.yaml"),
+      YAML.dump(data, { indent: 2, lineWidth: -1, sortKeys: false, quotingType: "\"" }),
+      "utf-8",
+    );
+  }
+  function readAddedModelsYaml() {
+    return YAML.load(fs.readFileSync(path.join(tmpDir, "added-models.yaml"), "utf-8"));
+  }
+
+  it("重命名 added-models.yaml 里 model 对象的 vision 字段为 image", () => {
+    const prefs = makePrefs(userDir);
+    writeAddedModelsYaml({
+      dashscope: {
+        base_url: "https://x.y/v1",
+        api_key: "sk-x",
+        models: [
+          { id: "qwen3-max", vision: true, reasoning: true },
+          { id: "qwen-plus", vision: false },
+          "qwen-turbo",  // 裸字符串条目，不应报错
+        ],
+      },
+    });
+
+    runMigration7(prefs);
+
+    const raw = readAddedModelsYaml();
+    const models = raw.providers.dashscope.models;
+    expect(models[0]).toEqual({ id: "qwen3-max", image: true, reasoning: true });
+    expect(models[0].vision).toBeUndefined();
+    expect(models[1]).toEqual({ id: "qwen-plus", image: false });
+    expect(models[2]).toBe("qwen-turbo");
+    expect(prefs.getPreferences()._dataVersion).toBe(7);
+  });
+
+  it("幂等：已迁移过的 added-models.yaml 重跑不改写", () => {
+    const prefs = makePrefs(userDir);
+    writeAddedModelsYaml({
+      dashscope: {
+        base_url: "https://x.y/v1",
+        api_key: "sk-x",
+        models: [{ id: "qwen3-max", image: true }],
+      },
+    });
+
+    runMigration7(prefs);
+
+    const raw = readAddedModelsYaml();
+    expect(raw.providers.dashscope.models[0]).toEqual({ id: "qwen3-max", image: true });
+  });
+
+  it("image 已存在时不覆盖，但仍删除残留 vision", () => {
+    const prefs = makePrefs(userDir);
+    writeAddedModelsYaml({
+      dashscope: {
+        base_url: "https://x.y/v1",
+        api_key: "sk-x",
+        models: [{ id: "qwen3-max", image: true, vision: false }],
+      },
+    });
+
+    runMigration7(prefs);
+
+    const raw = readAddedModelsYaml();
+    expect(raw.providers.dashscope.models[0]).toEqual({ id: "qwen3-max", image: true });
+  });
+
+  it("兜底处理 agent config.yaml 的 models.overrides 残留", () => {
+    const prefs = makePrefs(userDir);
+    writeAgentConfig(agentsDir, "hana", {
+      models: {
+        overrides: {
+          "qwen3-max": { vision: true, reasoning: false, displayName: "Qwen" },
+          "deepseek-chat": { vision: false },
+        },
+      },
+    });
+
+    runMigration7(prefs);
+
+    const cfg = readAgentConfig(agentsDir, "hana");
+    expect(cfg.models.overrides["qwen3-max"]).toEqual({ image: true, reasoning: false, displayName: "Qwen" });
+    expect(cfg.models.overrides["deepseek-chat"]).toEqual({ image: false });
+  });
+
+  it("added-models.yaml 不存在时不报错，_dataVersion 推进", () => {
+    const prefs = makePrefs(userDir);
+    // 不写 added-models.yaml 也不写任何 agent config
+
+    runMigration7(prefs);
+
+    expect(prefs.getPreferences()._dataVersion).toBe(7);
+  });
+});

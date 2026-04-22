@@ -20,7 +20,10 @@ export function ModelEditPanel({ modelId, providerId, anchorEl, onClose, onRefre
   const [displayName, setDisplayName] = useState(meta.displayName || meta.name || '');
   const [ctxVal, setCtxVal] = useState(String(meta.context || ''));
   const [outVal, setOutVal] = useState(String(meta.maxOutput || ''));
-  const [vision, setVision] = useState<boolean>(meta.vision === true);
+  // image 字段对应 Pi SDK Model.input 里是否包含 "image"。
+  // 兼容读旧 meta.vision（未迁移到新字段的历史配置）；迁移 #7 之后此 fallback 恒不命中。
+  const initialImage = meta.image === true || (meta.image === undefined && meta.vision === true);
+  const [image, setImage] = useState<boolean>(initialImage);
   const [reasoning, setReasoning] = useState<boolean>(meta.reasoning === true);
   const panelRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<React.CSSProperties>({});
@@ -44,7 +47,7 @@ export function ModelEditPanel({ modelId, providerId, anchorEl, onClose, onRefre
     if (name) entry.name = name;
     if (ctx) entry.context = parseInt(ctx);
     if (maxOut) entry.maxOutput = parseInt(maxOut);
-    entry.vision = vision;
+    entry.image = image;
     entry.reasoning = reasoning;
 
     try {
@@ -93,7 +96,7 @@ export function ModelEditPanel({ modelId, providerId, anchorEl, onClose, onRefre
       <div className={styles['pv-model-edit-row']}>
         <div className={styles['pv-model-edit-field']}>
           <label className={styles['pv-model-edit-label']}>{t('settings.api.vision')}</label>
-          <Toggle on={vision} onChange={setVision} />
+          <Toggle on={image} onChange={setImage} />
         </div>
         <div className={styles['pv-model-edit-field']}>
           <label className={styles['pv-model-edit-label']}>{t('settings.api.reasoning')}</label>

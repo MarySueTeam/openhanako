@@ -249,7 +249,7 @@ export async function switchSession(path: string): Promise<void> {
         id: data.currentModelId,
         name: data.currentModelName || data.currentModelId,
         provider: data.currentModelProvider,
-        vision: data.currentModelVision ?? undefined,
+        input: Array.isArray(data.currentModelInput) ? data.currentModelInput : undefined,
         reasoning: data.currentModelReasoning ?? undefined,
         contextWindow: data.currentModelContextWindow ?? undefined,
       });

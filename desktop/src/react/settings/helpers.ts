@@ -30,7 +30,7 @@ export function formatContext(n: number): string {
 }
 
 /**
- * 从 known-models 词典查模型参考元数据（contextWindow / vision 等）。
+ * 从 known-models 词典查模型参考元数据（contextWindow / image 等）。
  * provider 提供时严格在该 provider 下查；缺省时回退到遍历（仅用于展示降级，
  * 多 provider 同 id 时结果不确定）。
  */

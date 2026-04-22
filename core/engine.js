@@ -39,6 +39,7 @@ import { ModelManager } from "./model-manager.js";
 import { SkillManager } from "./skill-manager.js";
 import { BridgeSessionManager } from "./bridge-session-manager.js";
 import { AgentManager } from "./agent-manager.js";
+import { sanitizeMessagesForModel } from "./message-sanitizer.js";
 import { SessionCoordinator } from "./session-coordinator.js";
 import { ConfigCoordinator, SHARED_MODEL_KEYS } from "./config-coordinator.js";
 import { ChannelManager } from "./channel-manager.js";
@@ -193,6 +194,10 @@ export class HanaEngine {
     // 事件系统
     this._listeners = new Set();
     this._eventBus = null;
+
+    // 首次剥图通知去重：sessionPath → 已通知。由 context extension handler 维护，
+    // 避免每一轮对话都重复广播 image_stripped_notice 事件。
+    this._imageStripNotified = new Set();
 
     // DevTools 日志
     this._devLogs = [];
@@ -673,6 +678,31 @@ export class HanaEngine {
               if (matches.length > 0 && !hasAnthropic) delete p.thinking;
             }
             return p;
+          });
+        },
+        /**
+         * Capability-aware message adaptation：把历史里的 ImageContent block
+         * 替换为 TextContent 占位，避免不支持 image 的 provider 反序列化失败
+         * （如 issue #441：messages[N]: unknown variant `image_url`, expected `text`）。
+         * 非静默降级：每个 session 首次剥图时通过事件总线通知 UI。
+         */
+        (pi) => {
+          pi.on("context", (event, ctx) => {
+            const model = ctx?.model;
+            if (!model) return;
+            const { messages, stripped } = sanitizeMessagesForModel(event.messages, model);
+            if (stripped === 0) return;
+            const sessionPath = ctx?.sessionManager?.getSessionFile?.();
+            if (sessionPath && !this._imageStripNotified.has(sessionPath)) {
+              this._imageStripNotified.add(sessionPath);
+              this._emitEvent({
+                type: "image_stripped_notice",
+                modelId: model.id,
+                modelProvider: model.provider,
+                count: stripped,
+              }, sessionPath);
+            }
+            return { messages };
           });
         },
       ],
