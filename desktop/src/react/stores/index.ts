@@ -44,7 +44,7 @@ export type StoreState = ConnectionSlice &
 export const useStore = create<StoreState>()((set, _get, _api) => ({
   ...createConnectionSlice(set),
   ...createSessionSlice(set),
-  ...createStreamingSlice(set),
+  ...createStreamingSlice(set, _get),
   ...createUiSlice(set),
   ...createAgentSlice(set),
   ...createChannelSlice(set),

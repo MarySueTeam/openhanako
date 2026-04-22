@@ -302,7 +302,7 @@ export function handleServerMessage(msg: any): void {
     case 'error': {
       const sp = msg.sessionPath;
       if (!sp) { console.warn('[ws] event missing sessionPath:', msg.type); break; }
-      useStore.setState(s => ({ inlineErrors: { ...s.inlineErrors, [sp]: msg.message } }));
+      useStore.getState().setInlineError(sp, msg.message);
       break;
     }
 
@@ -347,8 +347,8 @@ export function handleServerMessage(msg: any): void {
         if (msg.isStreaming) {
           useStore.setState(s => ({
             streamingSessions: s.streamingSessions.includes(sp) ? s.streamingSessions : [...s.streamingSessions, sp],
-            inlineErrors: { ...s.inlineErrors, [sp]: null },
           }));
+          useStore.getState().clearInlineError(sp);
         } else {
           useStore.setState(s => ({
             streamingSessions: s.streamingSessions.filter((p: string) => p !== sp),

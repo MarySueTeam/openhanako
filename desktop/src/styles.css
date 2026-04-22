@@ -34,6 +34,9 @@
     --preview-panel-width: 580px;
     --jian-columns: 1;
 
+    /* titlebar 高度：toast / 主区域 padding 等所有需要避让 titlebar 的地方统一引用 */
+    --titlebar-h: 44px;
+
 }
 
 /* ========================================
@@ -148,7 +151,7 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 44px;
+    height: var(--titlebar-h);
     -webkit-app-region: drag;
     z-index: 100;
     pointer-events: none;
@@ -2113,7 +2116,7 @@ body.resizing .jian-sidebar-inner {
 /* Toast 通知 */
 .hana-toast {
     position: fixed;
-    top: 40px;
+    top: calc(var(--titlebar-h) + 12px);
     left: 50%;
     transform: translateX(-50%) translateY(-10px);
     display: flex;
