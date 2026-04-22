@@ -18,8 +18,14 @@ declare global {
     // ── 日志上报 ──
     __hanaLog: (level: string, module: string, message: string) => void;
 
-    // ── 主题 ──
-    applyTheme?: (theme: string) => void;
+    // ── 主题（由 lib/theme.js IIFE bundle 注入） ──
+    setTheme: (name: string) => void;
+    applyTheme: (name: string) => void;
+    loadSavedTheme: () => void;
+    setSerifFont: (enabled: boolean) => void;
+    loadSavedFont: () => void;
+    setPaperTexture: (enabled: boolean) => void;
+    loadSavedPaperTexture: () => void;
 
     // ── Notification bridge ──
     showNotification?: (title: string, body: string) => void;
@@ -37,7 +43,8 @@ declare global {
     };
   }
 
-  // theme helpers（theme.js 全局函数）
+  // theme helpers（window.* 属性，IIFE bundle 注入后可通过全局名调用）
+  // 保留 declare function 以兼容 bootstrap.ts 的 typeof loadSavedTheme === 'function' 检查
   function loadSavedTheme(): void;
   function loadSavedFont(): void;
   function setTheme(theme: string): void;
