@@ -9,11 +9,11 @@ function read(relPath: string) {
 }
 
 describe('chat bottom overlay layout', () => {
-  it('session panel cuts off at input area midline so truncation falls inside the input card', () => {
+  it('session panel cuts off at input card midline so floating context rows do not push messages upward', () => {
     const styleSource = read('components/chat/Chat.module.css');
 
     expect(styleSource).toMatch(
-      /\.sessionPanel\s*\{[\s\S]*bottom:\s*calc\(var\(--input-area-h,\s*0px\)\s*\/\s*2\);/,
+      /\.sessionPanel\s*\{[\s\S]*bottom:\s*calc\(var\(--input-card-h,\s*0px\)\s*\/\s*2\);/,
     );
   });
 
@@ -21,7 +21,16 @@ describe('chat bottom overlay layout', () => {
     const styleSource = read('components/chat/Chat.module.css');
 
     expect(styleSource).toMatch(
-      /\.sessionFooter\s*\{[\s\S]*height:\s*calc\(var\(--input-area-h,\s*0px\)\s*\/\s*2\s*\+\s*3\.5rem\);/,
+      /\.sessionFooter\s*\{[\s\S]*height:\s*calc\(var\(--input-card-h,\s*0px\)\s*\/\s*2\s*\+\s*3\.5rem\);/,
     );
+  });
+
+  it('measures the stable input card instead of the whole input area container', () => {
+    const appSource = read('App.tsx');
+    const inputSource = read('components/InputArea.tsx');
+
+    expect(appSource).toContain("parent.style.setProperty('--input-card-h'");
+    expect(appSource).toContain('<InputArea key={currentSessionPath || \'__new\'} cardRef={inputCardRef} />');
+    expect(inputSource).toContain("<div className={styles['input-wrapper']} ref={cardRef}>");
   });
 });

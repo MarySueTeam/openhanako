@@ -5,7 +5,7 @@
  * 斜杠命令逻辑在 ./input/slash-commands.ts。
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type Ref } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -40,13 +40,21 @@ const EMPTY_TODOS: TodoItem[] = [];
 
 export type { SlashItem };
 
-// ── 主组件 ──
-
-export function InputArea() {
-  return <InputAreaInner />;
+interface InputAreaProps {
+  cardRef?: Ref<HTMLDivElement>;
 }
 
-function InputAreaInner() {
+// ── 主组件 ──
+
+export function InputArea({ cardRef }: InputAreaProps) {
+  return <InputAreaInner cardRef={cardRef} />;
+}
+
+interface InputAreaInnerProps {
+  cardRef?: Ref<HTMLDivElement>;
+}
+
+function InputAreaInner({ cardRef }: InputAreaInnerProps) {
   const { t } = useI18n();
 
   // Zustand state
@@ -588,7 +596,7 @@ function InputAreaInner() {
         )}
       </div>
       <RcAttachedBanner />
-      <div className={styles['input-wrapper']}>
+      <div className={styles['input-wrapper']} ref={cardRef}>
         <div
           onKeyDown={handleEditorKeyDown}
           onPaste={handlePaste}
