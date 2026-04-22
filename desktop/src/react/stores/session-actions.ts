@@ -23,6 +23,47 @@ import type { ChatMessage, ContentBlock } from './chat-types';
 
 let _switchVersion = 0;
 
+function resetDeskForSessionCwd(cwd?: string | null): void {
+  const state = useStore.getState();
+  const nextBasePath = cwd || '';
+  const currentBasePath = state.deskBasePath || '';
+  const nextSubdir = nextBasePath && currentBasePath === nextBasePath
+    ? (state.deskCurrentPath || '')
+    : '';
+  // Session 切换后的 cwd 以服务端显式返回值为准；旧 session 的相对子目录
+  // 不得隐式带入新 workspace，否则会把上一个工作区的视图假设泄漏过来。
+  state.setDeskBasePath(nextBasePath);
+  state.setDeskCurrentPath(nextSubdir);
+  state.setDeskFiles([]);
+  state.setDeskJianContent(null);
+  if (!cwd) return;
+  void loadDeskFiles(nextSubdir, cwd);
+}
+
+function clearSessionRuntimeCaches(path: string): void {
+  useStore.getState().clearSession?.(path);
+  useStore.setState((s: Record<string, any>) => {
+    const { [path]: _attached, ...attachedFilesBySession } = s.attachedFilesBySession || {};
+    const { [path]: _draft, ...drafts } = s.drafts || {};
+    const { [path]: _streamMeta, ...sessionStreams } = s.sessionStreams || {};
+    const { [path]: _browser, ...browserBySession } = s.browserBySession || {};
+    const { [path]: _scroll, ...scrollPositions } = s.scrollPositions || {};
+    const { [path]: _todos, ...todosBySession } = s.todosBySession || {};
+    const { [path]: _todosLive, ...todosLiveVersionBySession } = s.todosLiveVersionBySession || {};
+    return {
+      attachedFilesBySession,
+      drafts,
+      sessionStreams,
+      browserBySession,
+      scrollPositions,
+      streamingSessions: (s.streamingSessions || []).filter((sessionPath: string) => sessionPath !== path),
+      todosBySession,
+      todosLiveVersionBySession,
+      inlineErrors: s.inlineErrors ? { ...s.inlineErrors, [path]: null } : s.inlineErrors,
+    };
+  });
+}
+
 // ══════════════════════════════════════════════════════
 // 消息加载（从 app-messages-shim 迁移）
 // ══════════════════════════════════════════════════════
@@ -218,7 +259,9 @@ export async function switchSession(path: string): Promise<void> {
       ...agentPatch,
     });
 
-    // desk / preview 状态是 user-level，切 session 不恢复
+    resetDeskForSessionCwd(data.cwd || null);
+
+    // desk / preview 状态是 user-level，但 workspace root 以切入 session 的 cwd 为准
 
     // 同步浏览器状态到 keyed store（服务端返回当前 session 的 browser 状态）
     if (path) {
@@ -256,9 +299,6 @@ export async function switchSession(path: string): Promise<void> {
     if (!hasData) {
       await loadMessages(path);
     }
-
-    // 加载 desk files（切到哪个 session 都按该 session 的 cwd 重新拉一次 flat state）
-    loadDeskFiles(useStore.getState().deskCurrentPath || '', data.cwd || undefined);
 
     // 切换会话后刷新 context ring
     useStore.setState({ contextTokens: null, contextWindow: null, contextPercent: null });
@@ -372,6 +412,8 @@ export async function ensureSession(): Promise<boolean> {
 
     useStore.setState(patch);
 
+    resetDeskForSessionCwd(data.cwd || null);
+
     // New session defaults to plan mode OFF
     window.dispatchEvent(new CustomEvent('hana-plan-mode', { detail: { enabled: data.planMode ?? false } }));
 
@@ -388,8 +430,6 @@ export async function ensureSession(): Promise<boolean> {
       if (cwdHistory.length > 10) cwdHistory = cwdHistory.slice(0, 10);
       useStore.setState({ cwdHistory });
     }
-
-    loadDeskFiles(useStore.getState().deskCurrentPath || '', data.cwd || undefined);
 
     return true;
   } catch (err) {
@@ -417,9 +457,11 @@ export async function archiveSession(path: string): Promise<void> {
     }
 
     const s = useStore.getState();
-    if (path === s.currentSessionPath) {
-      useStore.setState({ currentSessionPath: null });
+    const isCurrent = path === s.currentSessionPath;
+    clearSessionRuntimeCaches(path);
+    if (isCurrent) {
       clearChatAction();
+      useStore.setState({ currentSessionPath: null });
     }
 
     await loadSessions();

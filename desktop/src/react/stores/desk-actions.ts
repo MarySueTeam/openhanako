@@ -12,6 +12,8 @@ import { clearChat } from './agent-actions';
 
 const t = (key: string, vars?: Record<string, string | number>) => window.t?.(key, vars) ?? key;
 
+let _deskLoadVersion = 0;
+
 // ── 路径工具 ──
 
 export function deskFullPath(name: string): string | null {
@@ -36,6 +38,7 @@ export async function loadDeskFiles(subdir?: string, overrideDir?: string): Prom
   const s = useStore.getState();
   if (!s.serverPort) return;
   if (subdir !== undefined) s.setDeskCurrentPath(subdir);
+  const myVersion = ++_deskLoadVersion;
   try {
     const params = new URLSearchParams();
     // 优先用 overrideDir，其次用 store 中已有的 deskBasePath 兜底。
@@ -47,6 +50,8 @@ export async function loadDeskFiles(subdir?: string, overrideDir?: string): Prom
     const qs = params.toString() ? `?${params}` : '';
     const res = await hanaFetch(`/api/desk/files${qs}`);
     const data = await res.json();
+    if (myVersion !== _deskLoadVersion) return;
+    if (data.error) throw new Error(String(data.error));
     const st = useStore.getState();
     st.setDeskFiles(data.files || []);
     if (data.basePath) st.setDeskBasePath(data.basePath);
@@ -54,6 +59,11 @@ export async function loadDeskFiles(subdir?: string, overrideDir?: string): Prom
     updateDeskContextBtn();
   } catch (err) {
     console.error('[jian-desk] load failed:', err);
+    if (myVersion !== _deskLoadVersion) return;
+    const st = useStore.getState();
+    st.setDeskFiles([]);
+    st.setDeskJianContent(null);
+    updateDeskContextBtn();
   }
 }
 

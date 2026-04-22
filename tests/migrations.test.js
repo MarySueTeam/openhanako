@@ -30,7 +30,19 @@ function makePrefs(userDir) {
 /** 最小化 ProviderRegistry stub — 只需 get() 返回是否存在 */
 function makeRegistry(existingProviders) {
   const set = new Set(existingProviders);
-  return { get(id) { return set.has(id) ? { id } : null; } };
+  return {
+    get(id) { return set.has(id) ? { id } : null; },
+    getAllProvidersRaw() { return {}; },
+  };
+}
+
+function makeRegistryWithModels(providers) {
+  const entries = Object.entries(providers || {});
+  const set = new Set(entries.map(([id]) => id));
+  return {
+    get(id) { return set.has(id) ? { id } : null; },
+    getAllProvidersRaw() { return providers; },
+  };
 }
 
 function writeAgentConfig(agentsDir, agentId, config) {
@@ -161,7 +173,7 @@ describe("migration #1: cleanDanglingProviderRefs", () => {
 
     const config = readAgentConfig(agentsDir, "hana");
     expect(config.api.provider).toBe("openai");
-    expect(config.models.chat).toBe("openai/gpt-4o");
+    expect(config.models.chat).toEqual({ id: "gpt-4o", provider: "openai" });
   });
 
   it("清空 models.chat 中 provider/model 格式的悬空引用", () => {
@@ -178,7 +190,7 @@ describe("migration #1: cleanDanglingProviderRefs", () => {
 
     const config = readAgentConfig(agentsDir, "hana");
     expect(config.models.chat).toBe("");
-    expect(config.models.utility).toBe("openai/gpt-4o-mini");
+    expect(config.models.utility).toEqual({ id: "gpt-4o-mini", provider: "openai" });
   });
 
   it("清空 models.chat 中 {id, provider} 对象格式的悬空引用", () => {
@@ -491,7 +503,7 @@ describe("migration #3 — migrateWorkspaceToPerAgent", () => {
 
     const p = prefs.getPreferences();
     expect(p.home_folder).toBeUndefined();
-    expect(p._dataVersion).toBe(4);
+    expect(p._dataVersion).toBe(8);
   });
 
   it("skips when home_folder is empty", () => {
@@ -503,7 +515,7 @@ describe("migration #3 — migrateWorkspaceToPerAgent", () => {
 
     const config = readAgentConfig(agentsDir, "hana");
     expect(config.desk).toBeUndefined();
-    expect(prefs.getPreferences()._dataVersion).toBe(4);
+    expect(prefs.getPreferences()._dataVersion).toBe(8);
   });
 
   it("falls back to first agent when primaryAgent not found", () => {
@@ -568,7 +580,7 @@ describe("migration #3 — migrateWorkspaceToPerAgent", () => {
     });
 
     runMigration3(prefs);
-    expect(prefs.getPreferences()._dataVersion).toBe(4);
+    expect(prefs.getPreferences()._dataVersion).toBe(8);
 
     // Manually reset _dataVersion to 2 to simulate forced rerun
     const p2 = prefs.getPreferences();
@@ -577,7 +589,7 @@ describe("migration #3 — migrateWorkspaceToPerAgent", () => {
     runMigration3(prefs);
 
     // home_folder is gone from prefs, so migration skips cleanly
-    expect(prefs.getPreferences()._dataVersion).toBe(4);
+    expect(prefs.getPreferences()._dataVersion).toBe(8);
     const config = readAgentConfig(agentsDir, "hana");
     expect(config.desk.home_folder).toBe("/workspace");
   });
@@ -813,7 +825,7 @@ describe("#7 migrateVisionToImage", () => {
     expect(models[0].vision).toBeUndefined();
     expect(models[1]).toEqual({ id: "qwen-plus", image: false });
     expect(models[2]).toBe("qwen-turbo");
-    expect(prefs.getPreferences()._dataVersion).toBe(7);
+    expect(prefs.getPreferences()._dataVersion).toBe(8);
   });
 
   it("幂等：已迁移过的 added-models.yaml 重跑不改写", () => {
@@ -872,6 +884,44 @@ describe("#7 migrateVisionToImage", () => {
 
     runMigration7(prefs);
 
-    expect(prefs.getPreferences()._dataVersion).toBe(7);
+    expect(prefs.getPreferences()._dataVersion).toBe(8);
+  });
+});
+
+describe("migration #8 — repairPostMigrationModelRefs", () => {
+  let tmpDir, userDir, agentsDir;
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir();
+    userDir = path.join(tmpDir, "user");
+    agentsDir = path.join(tmpDir, "agents");
+    fs.mkdirSync(userDir, { recursive: true });
+    fs.mkdirSync(agentsDir, { recursive: true });
+  });
+
+  afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
+
+  it("修复 migration #5 之后又被旧入口写回的裸字符串 chat model", () => {
+    writeAgentConfig(agentsDir, "hana", {
+      models: { chat: "qwen3.6-flash" },
+    });
+    const prefs = makePrefs(userDir);
+    prefs.savePreferences({ _dataVersion: 7 });
+
+    runMigrations({
+      hanakoHome: tmpDir,
+      agentsDir,
+      prefs,
+      providerRegistry: makeRegistryWithModels({
+        dashscope: {
+          models: [{ id: "qwen3.6-flash" }],
+        },
+      }),
+      log: () => {},
+    });
+
+    const cfg = readAgentConfig(agentsDir, "hana");
+    expect(cfg.models.chat).toEqual({ id: "qwen3.6-flash", provider: "dashscope" });
+    expect(prefs.getPreferences()._dataVersion).toBe(8);
   });
 });

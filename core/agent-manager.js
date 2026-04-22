@@ -19,7 +19,7 @@ import {
   generateAgentId as _generateAgentId,
   generateDescription,
 } from "./llm-utils.js";
-import { findModel } from "../shared/model-ref.js";
+import { findModel, parseModelRef } from "../shared/model-ref.js";
 
 const log = createModuleLogger("agent-mgr");
 
@@ -297,21 +297,34 @@ export class AgentManager {
     const templateConfig = fs.readFileSync(path.join(this._d.productDir, "config.example.yaml"), "utf-8");
     const currentAgent = this.agent;
     const userName = currentAgent?.userName || "";
-    const safeName = name.trim().replace(/"/g, '\\"');
+    const configSeed = YAML.load(templateConfig);
+    if (!configSeed || typeof configSeed !== "object" || Array.isArray(configSeed)) {
+      throw new Error("Invalid config.example.yaml");
+    }
     const VALID_YUAN = ["hanako", "butter", "ming", "kong"];
     const yuanType = VALID_YUAN.includes(yuan) ? yuan : "hanako";
-    let config = templateConfig.replace(/name: Hanako/, `name: "${safeName}"`);
-    config = config.replace(/yuan: hanako/, `yuan: ${yuanType}`);
+    const config = configSeed;
+    config.agent = { ...(config.agent || {}), name: name.trim(), yuan: yuanType };
     if (userName) {
-      config = config.replace(/user:\s*\n\s+name:\s*""/, `user:\n  name: "${userName}"`);
+      config.user = { ...(config.user || {}), name: userName };
     }
-    // 继承主 agent 的模型配置
-    const chatRef = currentAgent?.config?.models?.chat;
-    const primaryChat = (typeof chatRef === "object" ? chatRef?.id : chatRef) || this._d.getModels().defaultModel?.id || "";
-    if (primaryChat) {
-      config = config.replace(/chat: ""/, `chat: "${primaryChat}"`);
+    // migration #5 之后 models.chat 的唯一合法持久化格式是 {id, provider}。
+    // 新建 agent 时必须直接写完整复合键，不能再把旧字符串格式重新带回磁盘。
+    const chatRef = parseModelRef(currentAgent?.config?.models?.chat);
+    const defaultModel = this._d.getModels().defaultModel;
+    const inheritedChat = (chatRef?.id && chatRef.provider)
+      ? { id: chatRef.id, provider: chatRef.provider }
+      : (defaultModel?.id && defaultModel?.provider)
+        ? { id: defaultModel.id, provider: defaultModel.provider }
+        : null;
+    if (inheritedChat) {
+      config.models = { ...(config.models || {}), chat: inheritedChat };
     }
-    fs.writeFileSync(path.join(agentDir, "config.yaml"), config, "utf-8");
+    fs.writeFileSync(
+      path.join(agentDir, "config.yaml"),
+      YAML.dump(config, { indent: 2, lineWidth: -1, sortKeys: false, quotingType: '"' }),
+      "utf-8",
+    );
 
     // 与 personality/buildSystemPrompt 的 fallback 链保持一致：
     // yuan 专属（locale 细分） → yuan 专属（通用语言） → 通用 example。

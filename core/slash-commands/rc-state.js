@@ -5,6 +5,9 @@
  *   1. pending-selection —— 等待用户输入（当前只用于数字选 session，未来可扩展到 yes/no 等）
  *   2. attachment —— 当前 bridge session 已接管某桌面 session
  *
+ * attachment 额外维护 desktopSessionPath -> bridge sessionKey 的反向索引，
+ * 以保证同一个桌面 session 同时最多只会被一个 bridge session 接管。
+ *
  * 两态同 sessionKey 时刻只持有一个（选择进行中不可能同时已接管；接管中收到新 /rc 会先 reset 再列）。
  *
  * 持久化策略：内存 only，重启即清空。用户已明确"接管态不持久化"。
@@ -38,6 +41,8 @@ export class RcStateStore {
     this._pending = new Map();
     /** @type {Map<string, Attachment>} */
     this._attachment = new Map();
+    /** @type {Map<string, string>} */
+    this._attachedDesktopToBridge = new Map();
     this._ttlMs = ttlMs;
   }
 
@@ -83,10 +88,23 @@ export class RcStateStore {
    * @param {string} desktopSessionPath  桌面 session 的 jsonl 绝对路径
    */
   attach(sessionKey, desktopSessionPath) {
-    this._attachment.set(sessionKey, {
+    const current = this._attachment.get(sessionKey) ?? null;
+    const holderSessionKey = this._attachedDesktopToBridge.get(desktopSessionPath) ?? null;
+    if (holderSessionKey && holderSessionKey !== sessionKey) {
+      throw new Error("目标会话已被另一个 bridge 会话接管，接管取消。请重新 /rc");
+    }
+
+    if (current?.desktopSessionPath && current.desktopSessionPath !== desktopSessionPath) {
+      this._attachedDesktopToBridge.delete(current.desktopSessionPath);
+    }
+
+    const next = {
       desktopSessionPath,
       attachedAt: Date.now(),
-    });
+    };
+    this._attachment.set(sessionKey, next);
+    this._attachedDesktopToBridge.set(desktopSessionPath, sessionKey);
+    return next;
   }
 
   /**
@@ -97,8 +115,32 @@ export class RcStateStore {
     return this._attachment.get(sessionKey) ?? null;
   }
 
+  /**
+   * @param {string} desktopSessionPath
+   * @returns {string | null}
+   */
+  getAttachedBridgeSessionKey(desktopSessionPath) {
+    return this._attachedDesktopToBridge.get(desktopSessionPath) ?? null;
+  }
+
+  /**
+   * @param {string} desktopSessionPath
+   * @returns {boolean}
+   */
+  isDesktopSessionAttached(desktopSessionPath) {
+    return this._attachedDesktopToBridge.has(desktopSessionPath);
+  }
+
   detach(sessionKey) {
+    const current = this._attachment.get(sessionKey) ?? null;
+    if (current?.desktopSessionPath) {
+      const holderSessionKey = this._attachedDesktopToBridge.get(current.desktopSessionPath) ?? null;
+      if (holderSessionKey === sessionKey) {
+        this._attachedDesktopToBridge.delete(current.desktopSessionPath);
+      }
+    }
     this._attachment.delete(sessionKey);
+    return current;
   }
 
   /** @returns {boolean} */
@@ -106,12 +148,59 @@ export class RcStateStore {
     return this._attachment.has(sessionKey);
   }
 
+  /**
+   * 当桌面 session 被 archive/delete 后，清掉所有引用它的临时 rc 状态。
+   * pending 直接整条作废，避免菜单编号在后台漂移。
+   *
+   * @param {string} desktopSessionPath
+   * @returns {{ detachedAttachments: Array<Attachment & { sessionKey: string }>, clearedPendingSessionKeys: string[] }}
+   */
+  invalidateDesktopSession(desktopSessionPath) {
+    const detachedAttachments = [];
+    const holderSessionKey = this._attachedDesktopToBridge.get(desktopSessionPath) ?? null;
+    if (holderSessionKey) {
+      const detached = this.detach(holderSessionKey);
+      if (detached) {
+        detachedAttachments.push({
+          sessionKey: holderSessionKey,
+          ...detached,
+        });
+      }
+    }
+
+    const clearedPendingSessionKeys = [];
+    const now = Date.now();
+    for (const [sessionKey, pending] of Array.from(this._pending.entries())) {
+      if (now >= pending.expiresAt) {
+        this._pending.delete(sessionKey);
+        continue;
+      }
+      if (pending.options?.some(option => option.path === desktopSessionPath)) {
+        this._pending.delete(sessionKey);
+        clearedPendingSessionKeys.push(sessionKey);
+      }
+    }
+
+    return { detachedAttachments, clearedPendingSessionKeys };
+  }
+
+  /**
+   * releaseDesktopSession 是 invalidateDesktopSession 的语义别名：
+   * 调用方表达的是"该桌面 session 生命周期已结束"，不是"某个缓存失效"。
+   *
+   * @param {string} desktopSessionPath
+   * @returns {{ detachedAttachments: Array<Attachment & { sessionKey: string }>, clearedPendingSessionKeys: string[] }}
+   */
+  releaseDesktopSession(desktopSessionPath) {
+    return this.invalidateDesktopSession(desktopSessionPath);
+  }
+
   // ── utility ────────────────────────────────────────────────
 
   /** 同时清 pending + attachment；/exitrc 和 session 重置场景用 */
   reset(sessionKey) {
     this._pending.delete(sessionKey);
-    this._attachment.delete(sessionKey);
+    this.detach(sessionKey);
   }
 
   /**

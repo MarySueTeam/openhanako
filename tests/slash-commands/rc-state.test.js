@@ -114,6 +114,40 @@ describe("RcStateStore attachment", () => {
     expect(store.getAttachment("k").desktopSessionPath).toBe("/p2");
   });
 
+  it("rejects attaching the same desktop session from another bridge session", () => {
+    store.attach("k1", "/shared.jsonl");
+    expect(() => store.attach("k2", "/shared.jsonl")).toThrow(/另一个 bridge 会话接管/);
+    expect(store.getAttachment("k1")?.desktopSessionPath).toBe("/shared.jsonl");
+    expect(store.getAttachment("k2")).toBeNull();
+  });
+
+  it("invalidateDesktopSession clears both attachment and pending that reference the target", () => {
+    store.attach("k1", "/shared.jsonl");
+    store.setPending("k2", {
+      type: "rc-select",
+      promptText: "menu",
+      options: [{ path: "/shared.jsonl", title: "Shared" }],
+    });
+    store.setPending("k3", {
+      type: "rc-select",
+      promptText: "menu",
+      options: [{ path: "/other.jsonl", title: "Other" }],
+    });
+
+    const invalidated = store.invalidateDesktopSession("/shared.jsonl");
+
+    expect(invalidated.detachedAttachments).toEqual([
+      expect.objectContaining({
+        sessionKey: "k1",
+        desktopSessionPath: "/shared.jsonl",
+      }),
+    ]);
+    expect(invalidated.clearedPendingSessionKeys).toEqual(["k2"]);
+    expect(store.isAttached("k1")).toBe(false);
+    expect(store.isPending("k2")).toBe(false);
+    expect(store.isPending("k3")).toBe(true);
+  });
+
   it("detach on unknown key is no-op (no throw)", () => {
     expect(() => store.detach("nope")).not.toThrow();
   });

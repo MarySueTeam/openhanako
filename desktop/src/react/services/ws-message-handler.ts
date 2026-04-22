@@ -354,7 +354,7 @@ export function handleServerMessage(msg: any): void {
       if (msg.key === 'theme') {
         window.applyTheme?.(msg.value);
         // 通知其他窗口（设置窗口等）同步主题
-        window.platform?.settingsChanged?.('theme');
+        window.platform?.settingsChanged?.('theme-changed', { theme: msg.value });
       }
       break;
     }

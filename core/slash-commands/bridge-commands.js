@@ -69,6 +69,9 @@ export const bridgeCommands = [
       if (ctx.sessionRef?.kind !== "bridge") {
         return { reply: "/rc 只能在 bridge 会话中使用" };
       }
+      if (ctx.isGroup) {
+        return { reply: "/rc 只能在 bridge 私聊中使用，群聊里不能发起桌面会话接管" };
+      }
       const rcState = ctx.engine?.rcState;
       if (!rcState) return { error: "rc 状态存储未初始化" };
 
@@ -78,13 +81,14 @@ export const bridgeCommands = [
       }
 
       const sessions = await listRecentAgentSessions(ctx.engine, ctx.sessionRef.agentId, { limit: 10 });
-      if (sessions.length === 0) {
+      const availableSessions = sessions.filter(s => !rcState.isDesktopSessionAttached(s.path));
+      if (availableSessions.length === 0) {
         return { reply: "当前 agent 没有可接管的桌面会话" };
       }
 
-      const lines = sessions.map(s => {
+      const lines = availableSessions.map((s, index) => {
         const titleStr = s.title ? s.title : `未命名 (${_formatShortDate(s.modified)})`;
-        return `${s.index}. ${titleStr}`;
+        return `${index + 1}. ${titleStr}`;
       });
       const promptText = "选择要接管的桌面会话（回复编号）：\n"
         + lines.join("\n")
@@ -93,7 +97,7 @@ export const bridgeCommands = [
       rcState.setPending(ctx.sessionRef.sessionKey, {
         type: "rc-select",
         promptText,
-        options: sessions.map(s => ({ path: s.path, title: s.title })),
+        options: availableSessions.map(s => ({ path: s.path, title: s.title })),
       });
       return { reply: promptText };
     },

@@ -103,7 +103,7 @@ describe("AgentManager.createAgent default skills.enabled", () => {
       }),
       getModels: () => ({
         resolveModelWithCredentials: vi.fn(),
-        defaultModel: { id: "test-model" },
+        defaultModel: { id: "test-model", provider: "test-provider" },
         availableModels: [],
       }),
       getHub: () => ({
@@ -190,5 +190,15 @@ describe("AgentManager.createAgent default skills.enabled", () => {
 
     const mtimeAfter = fs.statSync(firstCfgPath).mtimeMs;
     expect(mtimeAfter).toBe(mtimeBefore);
+  });
+
+  it("persists models.chat as composite ref for newly created agents", async () => {
+    skillsMock._allSkills = [];
+
+    const { id: newId } = await mgr.createAgent({ name: "CompositeAgent", yuan: "hanako" });
+
+    const cfgPath = path.join(agentsDir, newId, "config.yaml");
+    const cfg = YAML.load(fs.readFileSync(cfgPath, "utf-8"));
+    expect(cfg.models.chat).toEqual({ id: "test-model", provider: "test-provider" });
   });
 });

@@ -46,6 +46,7 @@ function makeMockEngine(overrides = {}) {
     setLocale: vi.fn(function (v) { prefs.setLocale(v); }),
     setTimezone: vi.fn(function (v) { prefs.setTimezone(v); }),
     setThinkingLevel: vi.fn(function (v) { prefs.setThinkingLevel(v); }),
+    setDefaultModel: vi.fn(),
     currentSessionPath: "/sessions/test",
     emitSessionEvent: vi.fn(),
   };
@@ -119,6 +120,21 @@ describe("update-settings-tool", () => {
       await tool.execute("c3", { action: "apply", key: "locale", value: "en" });
 
       expect(engine.setLocale).toHaveBeenCalledWith("en");
+    });
+  });
+
+  describe("models.chat — 复合键写路径", () => {
+    it("apply models.chat 使用 provider/id 调 engine.setDefaultModel", async () => {
+      const { tool, engine } = buildTool({
+        availableModels: [
+          { id: "gpt-4o", provider: "openai", name: "GPT-4o" },
+        ],
+      });
+
+      await tool.execute("c-model", { action: "apply", key: "models.chat", value: "openai/gpt-4o" });
+
+      expect(engine.setDefaultModel).toHaveBeenCalledWith("gpt-4o", "openai");
+      expect(engine.agent.updateConfig).not.toHaveBeenCalled();
     });
   });
 

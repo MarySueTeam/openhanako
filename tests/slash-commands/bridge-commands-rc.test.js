@@ -48,6 +48,20 @@ describe("/rc command", () => {
     expect(r.error).toMatch(/rc 状态/);
   });
 
+  it("rejects in group chats and does not create pending state", async () => {
+    const engine = makeEngine({
+      sessions: [{ path: "/a/s1.jsonl", agentId: "a1", modified: new Date(), title: "架构讨论", messageCount: 12 }],
+    });
+    const r = await c.handler({
+      engine,
+      isGroup: true,
+      sessionRef: { kind: "bridge", agentId: "a1", sessionKey: "tg_group_x@a1" },
+    });
+    expect(r.reply).toMatch(/私聊.*群聊里不能/);
+    expect(engine.listSessions).not.toHaveBeenCalled();
+    expect(engine.rcState.isPending("tg_group_x@a1")).toBe(false);
+  });
+
   it("rejects when already attached (must /exitrc first)", async () => {
     const ctx = ctxBridge({ rcAttached: true });
     const r = await c.handler(ctx);
@@ -97,6 +111,24 @@ describe("/rc command", () => {
     const r = await c.handler(ctxBridge({ engine }));
     expect(r.reply).toContain("mine");
     expect(r.reply).not.toContain("theirs");
+  });
+
+  it("filters out desktop sessions already attached by another bridge session", async () => {
+    const rcState = new RcStateStore();
+    rcState.attach("tg_dm_other@a1", "/busy.jsonl");
+    const engine = makeEngine({
+      rcState,
+      sessions: [
+        { path: "/busy.jsonl", agentId: "a1", modified: new Date(), title: "busy", messageCount: 0 },
+        { path: "/free.jsonl", agentId: "a1", modified: new Date(), title: "free", messageCount: 0 },
+      ],
+    });
+    const r = await c.handler(ctxBridge({ engine }));
+    expect(r.reply).toContain("1. free");
+    expect(r.reply).not.toContain("busy");
+    expect(engine.rcState.getPending("tg_dm_x@a1")?.options).toEqual([
+      { path: "/free.jsonl", title: "free" },
+    ]);
   });
 
   it("caps at 10 sessions", async () => {
@@ -267,4 +299,3 @@ describe("/compact redirects to attached desktop session", () => {
     expect(ctx.reply.mock.calls[1][0]).toMatch(/9000.*3200/);
   });
 });
-

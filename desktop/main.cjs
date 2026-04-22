@@ -87,7 +87,7 @@ let _browserWebView = null;        // 当前活跃的 WebContentsView
 const _browserViews = new Map();   // sessionPath → WebContentsView（挂起的浏览器）
 let _currentBrowserSession = null; // 当前浏览器绑定的 sessionPath
 
-/** Vite 入口页面统一加载（dev → Vite dev server，prod → dist-renderer，fallback → src） */
+/** Vite 入口页面统一加载（dev → Vite dev server，其他优先 dist-renderer，最后才回退 src） */
 const _isDev = process.argv.includes("--dev");
 const _distRenderer = path.join(__dirname, "dist-renderer");
 
@@ -101,7 +101,7 @@ function loadWindowURL(win, pageName, opts) {
     win.loadURL(url);
   } else {
     const built = path.join(_distRenderer, `${pageName}.html`);
-    if (!_isDev && fs.existsSync(built)) {
+    if (fs.existsSync(built)) {
       win.loadFile(built, opts);
     } else {
       win.loadFile(path.join(__dirname, "src", `${pageName}.html`), opts);
@@ -434,12 +434,12 @@ async function startServer() {
       : [];
     serverEnv.HANA_ROOT = path.join(process.resourcesPath, "server");
   } else {
-    // 开发模式：用 Electron 自带的 Node（ELECTRON_RUN_AS_NODE=1）跑源码
-    // native addon（better-sqlite3 等）通过 electron-rebuild 编译到对应 ABI，
-    // 必须用 Electron 的 Node 才能加载，用系统 node 会 ABI 不匹配
-    serverBin = process.execPath;
+    // 开发模式：沿用 launch.js 传下来的独立 Node runtime 跑 source server，
+    // 让源码模式和 BUILD 文档保持同一 ABI 合同，避免本地 npm install 的
+    // native addon 被 Electron 自带 Node 误加载。
+    serverBin = process.env.HANA_DEV_NODE_BIN || process.env.npm_node_execpath || "node";
     serverArgs = [path.join(__dirname, "..", "server", "index.js")];
-    serverEnv.ELECTRON_RUN_AS_NODE = "1";
+    delete serverEnv.ELECTRON_RUN_AS_NODE;
   }
 
   // 删除旧 server-info.json
@@ -531,6 +531,12 @@ function showPrimaryWindow() {
   if (process.platform === "darwin") app.dock.show();
   const win = mainWindow || onboardingWindow;
   if (win && !win.isDestroyed()) { win.show(); win.focus(); }
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.show();
+  if (browserViewerWindow && !browserViewerWindow.isDestroyed()) browserViewerWindow.show();
+  for (const [, vw] of _viewerWindows) {
+    if (vw && !vw.isDestroyed()) vw.show();
+  }
 }
 
 /**

@@ -114,6 +114,26 @@ function restoreLegacyCss(): Plugin {
 }
 
 /**
+ * Vite dev server 直接服务 source HTML 时，theme helper 不能再依赖 dist-renderer/lib/theme.js。
+ * 开发模式把旧 script 标签重写到 source theme.ts，保持和 build:theme 同一份实现。
+ */
+function useSourceThemeInDev(): Plugin {
+  return {
+    name: 'hana-use-source-theme-in-dev',
+    apply: 'serve',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        return html.replace(
+          /<script\s+src="lib\/theme\.js"><\/script>/g,
+          '<script type="module" src="/shared/theme.ts"></script>',
+        );
+      },
+    },
+  };
+}
+
+/**
  * Build 后复制旧文件到 dist-renderer/：
  * 旧 JS 模块、CSS、主题、资源、语言包等，
  * 在渐进迁移完成前还需要从 dist-renderer/ 加载。
@@ -154,6 +174,7 @@ export default defineConfig({
     preserveLegacyCss(),
     react(),
     injectCsp(),
+    useSourceThemeInDev(),
     restoreLegacyCss(),
     copyLegacyFiles(),
   ],

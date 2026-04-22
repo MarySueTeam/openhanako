@@ -47,6 +47,7 @@ export const createChatSlice = (
 
   initSession: (path, items, hasMore) => set((s) => {
     const sessions = { ...s.chatSessions };
+    const scrollPositions = { ...s.scrollPositions };
     sessions[path] = {
       items,
       hasMore,
@@ -61,11 +62,12 @@ export const createChatSlice = (
       const oldest = keys.find(k => k !== path);
       if (oldest) {
         delete sessions[oldest];
+        delete scrollPositions[oldest];
         invalidateSessionCache(oldest);
         invalidateStreamBuffer(oldest);
       }
     }
-    return { chatSessions: sessions };
+    return { chatSessions: sessions, scrollPositions };
   }),
 
   prependItems: (path, items, hasMore) => set((s) => {
@@ -194,10 +196,17 @@ export const createChatSlice = (
     delete models[path];
     const versions = { ...s._loadMessagesVersion };
     delete versions[path];
+    const scrollPositions = { ...s.scrollPositions };
+    delete scrollPositions[path];
     // FileRef 缓存和 streamBuffer 都绑定 session 生命周期，归属方主动清
     invalidateSessionCache(path);
     invalidateStreamBuffer(path);
-    return { chatSessions: sessions, sessionModelsByPath: models, _loadMessagesVersion: versions };
+    return {
+      chatSessions: sessions,
+      sessionModelsByPath: models,
+      _loadMessagesVersion: versions,
+      scrollPositions,
+    };
   }),
 
   saveScrollPosition: (path, scrollTop) => set((s) => ({

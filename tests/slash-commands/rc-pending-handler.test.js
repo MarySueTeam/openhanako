@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "fs";
+import os from "os";
+import path from "path";
 
 // Mock summary module so tests don't touch real LLM plumbing
 vi.mock("../../core/slash-commands/rc-summary.js", () => ({
@@ -9,13 +12,14 @@ import { summarizeSessionForRc } from "../../core/slash-commands/rc-summary.js";
 import { handleRcPendingInput } from "../../core/slash-commands/rc-pending-handler.js";
 import { RcStateStore } from "../../core/slash-commands/rc-state.js";
 
-function makeEngine({ isStreaming = () => false, agents = {} } = {}) {
+function makeEngine({ isStreaming = () => false, agents = {}, sessions = [] } = {}) {
   const rcState = new RcStateStore();
   return {
     rcState,
     isSessionStreaming: vi.fn(isStreaming),
     getAgent: vi.fn((id) => agents[id] || null),
     emitEvent: vi.fn(),
+    listSessions: vi.fn(async () => sessions),
   };
 }
 
@@ -25,6 +29,14 @@ function prime(engine, sessionKey, options) {
     promptText: "menu",
     options,
   });
+  engine.listSessions.mockResolvedValue(options.map(option => ({ path: option.path, agentId: "a1" })));
+}
+
+function createLiveSessionPath() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-rc-pending-"));
+  const sessionPath = path.join(dir, "session.jsonl");
+  fs.writeFileSync(sessionPath, "{}\n");
+  return sessionPath;
 }
 
 beforeEach(() => {
@@ -106,9 +118,11 @@ describe("handleRcPendingInput — parsing", () => {
 describe("handleRcPendingInput — selection success flow", () => {
   it("valid selection → progress reply + summary + attach + completion reply", async () => {
     const engine = makeEngine();
+    const sessionA = createLiveSessionPath();
+    const sessionB = createLiveSessionPath();
     prime(engine, "k", [
-      { path: "/sess/a.jsonl", title: "讨论架构" },
-      { path: "/sess/b.jsonl", title: "周报" },
+      { path: sessionA, title: "讨论架构" },
+      { path: sessionB, title: "周报" },
     ]);
     summarizeSessionForRc.mockResolvedValueOnce("聊了 Bridge 路由设计");
     const reply = vi.fn();
@@ -122,13 +136,14 @@ describe("handleRcPendingInput — selection success flow", () => {
     expect(reply.mock.calls[1][0]).toContain("聊了 Bridge 路由设计");
     // attach 建立，pending 清除
     expect(engine.rcState.isAttached("k")).toBe(true);
-    expect(engine.rcState.getAttachment("k").desktopSessionPath).toBe("/sess/a.jsonl");
+    expect(engine.rcState.getAttachment("k").desktopSessionPath).toBe(sessionA);
     expect(engine.rcState.isPending("k")).toBe(false);
   });
 
   it("summary returns null → falls back to '已接管对话 <title>'", async () => {
     const engine = makeEngine();
-    prime(engine, "k", [{ path: "/sess/a.jsonl", title: "架构设计" }]);
+    const sessionPath = createLiveSessionPath();
+    prime(engine, "k", [{ path: sessionPath, title: "架构设计" }]);
     summarizeSessionForRc.mockResolvedValueOnce(null);
     const reply = vi.fn();
     await handleRcPendingInput({
@@ -139,7 +154,8 @@ describe("handleRcPendingInput — selection success flow", () => {
 
   it("summary throws → still attaches, uses fallback text", async () => {
     const engine = makeEngine();
-    prime(engine, "k", [{ path: "/sess/a.jsonl", title: "bug fix" }]);
+    const sessionPath = createLiveSessionPath();
+    prime(engine, "k", [{ path: sessionPath, title: "bug fix" }]);
     summarizeSessionForRc.mockRejectedValueOnce(new Error("boom"));
     const reply = vi.fn();
     await handleRcPendingInput({
@@ -151,7 +167,8 @@ describe("handleRcPendingInput — selection success flow", () => {
 
   it("target session without title → uses '未命名会话' fallback", async () => {
     const engine = makeEngine();
-    prime(engine, "k", [{ path: "/sess/a.jsonl", title: null }]);
+    const sessionPath = createLiveSessionPath();
+    prime(engine, "k", [{ path: sessionPath, title: null }]);
     summarizeSessionForRc.mockResolvedValueOnce(null);
     const reply = vi.fn();
     await handleRcPendingInput({
@@ -163,7 +180,8 @@ describe("handleRcPendingInput — selection success flow", () => {
   it("emits bridge_rc_attached event after successful attach (Phase 2-D)", async () => {
     // 桌面 UI 依赖此事件渲染接管横幅；后端路径和 UI 路径解耦，事件是合约
     const engine = makeEngine();
-    prime(engine, "tg_dm_user123@a1", [{ path: "/sess/a.jsonl", title: "架构" }]);
+    const sessionPath = createLiveSessionPath();
+    prime(engine, "tg_dm_user123@a1", [{ path: sessionPath, title: "架构" }]);
     summarizeSessionForRc.mockResolvedValueOnce("sum");
     const reply = vi.fn();
     await handleRcPendingInput({
@@ -173,11 +191,11 @@ describe("handleRcPendingInput — selection success flow", () => {
       expect.objectContaining({
         type: "bridge_rc_attached",
         sessionKey: "tg_dm_user123@a1",
-        sessionPath: "/sess/a.jsonl",
+        sessionPath,
         title: "架构",
         platform: "tg",
       }),
-      "/sess/a.jsonl",
+      sessionPath,
     );
   });
 
@@ -185,7 +203,8 @@ describe("handleRcPendingInput — selection success flow", () => {
     // emit 抛错不能让整个接管流程挂（非关键路径）
     const engine = makeEngine();
     engine.emitEvent = vi.fn(() => { throw new Error("bus down"); });
-    prime(engine, "k", [{ path: "/sess/a.jsonl", title: "x" }]);
+    const sessionPath = createLiveSessionPath();
+    prime(engine, "k", [{ path: sessionPath, title: "x" }]);
     summarizeSessionForRc.mockResolvedValueOnce("s");
     const reply = vi.fn();
     const r = await handleRcPendingInput({
@@ -200,7 +219,8 @@ describe("handleRcPendingInput — streaming wait", () => {
   it("target session is streaming → polls; cancels after 30s deadline", async () => {
     vi.useFakeTimers();
     const engine = makeEngine({ isStreaming: () => true });
-    prime(engine, "k", [{ path: "/sess/a.jsonl", title: "busy" }]);
+    const sessionPath = createLiveSessionPath();
+    prime(engine, "k", [{ path: sessionPath, title: "busy" }]);
     const reply = vi.fn();
     const promise = handleRcPendingInput({
       engine, agentId: "a1", sessionKey: "k", text: "1", reply,
@@ -219,7 +239,8 @@ describe("handleRcPendingInput — streaming wait", () => {
     vi.useFakeTimers();
     let streaming = true;
     const engine = makeEngine({ isStreaming: () => streaming });
-    prime(engine, "k", [{ path: "/sess/a.jsonl", title: "biz" }]);
+    const sessionPath = createLiveSessionPath();
+    prime(engine, "k", [{ path: sessionPath, title: "biz" }]);
     summarizeSessionForRc.mockResolvedValueOnce("done");
     const reply = vi.fn();
     const promise = handleRcPendingInput({
@@ -233,5 +254,59 @@ describe("handleRcPendingInput — streaming wait", () => {
     expect(r.handled).toBe(true);
     expect(engine.rcState.isAttached("k")).toBe(true);
     vi.useRealTimers();
+  });
+
+  it("missing target session → replies explicit failure and does not attach", async () => {
+    const engine = makeEngine();
+    const missingPath = path.join(os.tmpdir(), `hana-missing-${Date.now()}.jsonl`);
+    prime(engine, "k", [{ path: missingPath, title: "gone" }]);
+    engine.listSessions.mockResolvedValue([]);
+    const reply = vi.fn();
+
+    const r = await handleRcPendingInput({
+      engine, agentId: "a1", sessionKey: "k", text: "1", reply,
+    });
+
+    expect(r.handled).toBe(true);
+    expect(reply).toHaveBeenCalledWith("目标会话已不存在，接管取消。请重新 /rc");
+    expect(engine.rcState.isAttached("k")).toBe(false);
+  });
+
+  it("second bridge session selecting an already attached desktop session fails explicitly", async () => {
+    const engine = makeEngine();
+    const sharedPath = createLiveSessionPath();
+    engine.rcState.attach("k1", sharedPath);
+    prime(engine, "k2", [{ path: sharedPath, title: "shared" }]);
+    const reply = vi.fn();
+
+    const r = await handleRcPendingInput({
+      engine, agentId: "a1", sessionKey: "k2", text: "1", reply,
+    });
+
+    expect(r.handled).toBe(true);
+    expect(reply).toHaveBeenCalledWith("目标会话已被另一个 bridge 会话接管，接管取消。请重新 /rc");
+    expect(engine.rcState.getAttachment("k1")?.desktopSessionPath).toBe(sharedPath);
+    expect(engine.rcState.isAttached("k2")).toBe(false);
+  });
+
+  it("never enters rc attach flow for group replies even if stale pending exists", async () => {
+    const engine = makeEngine();
+    const sessionPath = createLiveSessionPath();
+    prime(engine, "tg_group_chat@a1", [{ path: sessionPath, title: "group" }]);
+    const reply = vi.fn();
+
+    const r = await handleRcPendingInput({
+      engine,
+      agentId: "a1",
+      sessionKey: "tg_group_chat@a1",
+      text: "1",
+      isGroup: true,
+      reply,
+    });
+
+    expect(r.handled).toBe(true);
+    expect(reply).toHaveBeenCalledWith("群聊里不能使用 /rc 接管，请到私聊里重新执行 /rc");
+    expect(engine.rcState.isPending("tg_group_chat@a1")).toBe(false);
+    expect(engine.rcState.isAttached("tg_group_chat@a1")).toBe(false);
   });
 });

@@ -92,6 +92,22 @@ export function createSessionsRoute(engine) {
     }
   }
 
+  function invalidateRcTarget(sessionPath) {
+    const rcState = engine.rcState;
+    if (!rcState?.invalidateDesktopSession) return;
+
+    const { detachedAttachments } = rcState.invalidateDesktopSession(sessionPath);
+    for (const attachment of detachedAttachments) {
+      try {
+        engine.emitEvent?.({
+          type: "bridge_rc_detached",
+          sessionKey: attachment.sessionKey,
+          sessionPath: attachment.desktopSessionPath,
+        }, attachment.desktopSessionPath);
+      } catch {}
+    }
+  }
+
   // 列出所有 agent 的历史 session
   route.get("/sessions", async (c) => {
     try {
@@ -423,6 +439,7 @@ export function createSessionsRoute(engine) {
               deleted++;
               // 清理 titles.json 孤儿（key = 对应的活跃路径）
               const activeKey = path.join(agentsDir, agentId, "sessions", f);
+              invalidateRcTarget(activeKey);
               try { await engine.clearSessionTitle(activeKey); } catch {}
             }
           } catch {}
@@ -480,6 +497,8 @@ export function createSessionsRoute(engine) {
       // 将 mtime 置为归档瞬间，使 cleanup 按"归档时间"而非"最后活动时间"判断
       const nowSec = Date.now() / 1000;
       await fs.utimes(destPath, nowSec, nowSec);
+
+      invalidateRcTarget(sessionPath);
 
       return c.json({ ok: true });
     } catch (err) {
@@ -550,6 +569,7 @@ export function createSessionsRoute(engine) {
       }
       // 清理 titles.json 孤儿（key = 对应的活跃路径）
       const activeKey = path.join(path.dirname(archDir), path.basename(sessionPath));
+      invalidateRcTarget(activeKey);
       try { await engine.clearSessionTitle(activeKey); } catch {}
       return c.json({ ok: true });
     } catch (err) {

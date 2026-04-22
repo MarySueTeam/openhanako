@@ -115,10 +115,12 @@ describe('chat-slice', () => {
       slice.updateSessionModel('/a', MODEL);
       slice.initSession('/a', [], false);
       slice.bumpLoadMessagesVersion('/a');
+      slice.saveScrollPosition('/a', 128);
       slice.clearSession('/a');
       expect(slice.chatSessions['/a']).toBeUndefined();
       expect(slice.sessionModelsByPath['/a']).toBeUndefined();
       expect(slice._loadMessagesVersion['/a']).toBeUndefined();
+      expect(slice.scrollPositions['/a']).toBeUndefined();
     });
 
     it('只清目标 path，别的不动', () => {
@@ -140,11 +142,15 @@ describe('chat-slice', () => {
     it('LRU eviction 时也 invalidate 被淘汰 session 的 streamBuffer', () => {
       const invalidator = vi.fn();
       registerStreamBufferInvalidator(invalidator);
+      for (let i = 0; i < 8; i++) {
+        slice.saveScrollPosition(`/s${i}`, i);
+      }
       for (let i = 0; i < 9; i++) {
         slice.initSession(`/s${i}`, [], false);
       }
       // 第 9 次 initSession 会淘汰最老的 /s0（keys.find(k => k !== path)）
       expect(invalidator).toHaveBeenCalledWith('/s0');
+      expect(slice.scrollPositions['/s0']).toBeUndefined();
     });
   });
 });

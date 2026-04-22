@@ -14,13 +14,19 @@ const mockState: MockState = {};
 const initialStateFactory = (): MockState => ({
   currentSessionPath: null,
   pendingNewSession: false,
+  sessions: [] as Array<{ path: string }>,
   chatSessions: {} as Record<string, unknown>,
   sessionModelsByPath: {} as Record<string, unknown>,
   _loadMessagesVersion: {} as Record<string, number>,
+  scrollPositions: {} as Record<string, number>,
   todosLiveVersionBySession: {} as Record<string, number>,
+  todosBySession: {} as Record<string, unknown>,
+  sessionStreams: {} as Record<string, unknown>,
   attachedFiles: [],
   attachedFilesBySession: {} as Record<string, unknown>,
+  drafts: {} as Record<string, string>,
   streamingSessions: [] as string[],
+  inlineErrors: {} as Record<string, string | null>,
   activePanel: null,
   agents: [] as unknown[],
   currentAgentId: null,
@@ -32,6 +38,10 @@ const initialStateFactory = (): MockState => ({
   welcomeVisible: false,
   deskContextAttached: false,
   docContextAttached: false,
+  deskBasePath: '',
+  deskCurrentPath: '',
+  deskFiles: [] as unknown[],
+  deskJianContent: null,
   selectedFolder: null,
   selectedAgentId: null,
 });
@@ -139,6 +149,12 @@ function installStoreMethods() {
     const models = mockState.sessionModelsByPath as Record<string, unknown>;
     models[path] = model;
   });
+  s.clearSession = vi.fn((path: string) => {
+    delete (mockState.chatSessions as Record<string, unknown>)[path];
+    delete (mockState.sessionModelsByPath as Record<string, unknown>)[path];
+    delete (mockState._loadMessagesVersion as Record<string, number>)[path];
+    delete (mockState.scrollPositions as Record<string, number>)[path];
+  });
   s.setSessionTodosForPath = vi.fn();
   s.appendItem = vi.fn((path: string, item: unknown) => {
     const chat = mockState.chatSessions as Record<string, { items: unknown[] }>;
@@ -148,6 +164,10 @@ function installStoreMethods() {
   s.clearQuotedSelection = vi.fn();
   s.setActivePanel = vi.fn((v: unknown) => { mockState.activePanel = v; });
   s.requestInputFocus = vi.fn();
+  s.setDeskBasePath = vi.fn((path: string) => { mockState.deskBasePath = path; });
+  s.setDeskCurrentPath = vi.fn((path: string) => { mockState.deskCurrentPath = path; });
+  s.setDeskFiles = vi.fn((files: unknown[]) => { mockState.deskFiles = files; });
+  s.setDeskJianContent = vi.fn((content: string | null) => { mockState.deskJianContent = content; });
   s.getDeskStateForOwner = vi.fn((owner: string) => {
     const states = (mockState.deskStateByOwner as Record<string, unknown>) || {};
     return states[owner] || null;
@@ -156,11 +176,13 @@ function installStoreMethods() {
 }
 
 import { hanaFetch } from '../../hooks/use-hana-fetch';
+import { clearChat } from '../../stores/agent-actions';
 import { loadDeskFiles } from '../../stores/desk-actions';
-import { loadMessages, switchSession } from '../../stores/session-actions';
+import { archiveSession, loadMessages, switchSession } from '../../stores/session-actions';
 import { snapshotStreamBuffer } from '../../stores/stream-invalidator';
 
 const mockFetch = vi.mocked(hanaFetch);
+const mockClearChat = vi.mocked(clearChat);
 const mockLoadDeskFiles = vi.mocked(loadDeskFiles);
 const mockSnapshot = vi.mocked(snapshotStreamBuffer);
 
@@ -175,6 +197,7 @@ describe('session-actions', () => {
     Object.assign(mockState, { deskStateByOwner: {} as Record<string, unknown> });
     installStoreMethods();
     mockFetch.mockReset();
+    mockClearChat.mockReset();
     mockLoadDeskFiles.mockReset();
     mockSnapshot.mockReset();
     mockSnapshot.mockReturnValue(null);
@@ -309,10 +332,11 @@ describe('session-actions', () => {
       expect(calls.filter(u => u.startsWith('/api/sessions/messages'))).toHaveLength(0);
     });
 
-    it('切回旧 session 时用 flat deskCurrentPath 加载书桌文件，不再调用 restoreDeskStateForOwner', async () => {
-      // desk 状态是 user-level flat state，切 session 不再从 per-owner keyed store 恢复
-      // deskCurrentPath 已经是 flat store 的值，直接读
+    it('切 session 时重置书桌到目标 cwd 根目录，不携带旧 deskCurrentPath', async () => {
       (mockState as Record<string, unknown>).deskCurrentPath = 'notes/daily';
+      (mockState as Record<string, unknown>).deskBasePath = '/workspace-old';
+      (mockState as Record<string, unknown>).deskFiles = [{ name: 'stale.md' }];
+      (mockState as Record<string, unknown>).deskJianContent = 'stale';
 
       mockFetch.mockResolvedValueOnce(jsonResponse({
         agentId: null,
@@ -330,9 +354,143 @@ describe('session-actions', () => {
       const restoreDeskStateForOwnerMock = (mockState as unknown as {
         restoreDeskStateForOwner: ReturnType<typeof vi.fn>;
       }).restoreDeskStateForOwner;
-      // Task 3 后不再调用 per-owner restore
       expect(restoreDeskStateForOwnerMock).not.toHaveBeenCalled();
+      expect(mockState.deskBasePath).toBe('/workspace-a');
+      expect(mockState.deskCurrentPath).toBe('');
+      expect(mockState.deskFiles).toEqual([]);
+      expect(mockState.deskJianContent).toBeNull();
+      expect(mockLoadDeskFiles).toHaveBeenCalledWith('', '/workspace-a');
+    });
+
+    it('切到同一 workspace 的 session 时保留当前 desk 子目录', async () => {
+      (mockState as Record<string, unknown>).deskCurrentPath = 'notes/daily';
+      (mockState as Record<string, unknown>).deskBasePath = '/workspace-a';
+      (mockState as Record<string, unknown>).deskFiles = [{ name: 'stale.md' }];
+      (mockState as Record<string, unknown>).deskJianContent = 'stale';
+
+      mockFetch.mockResolvedValueOnce(jsonResponse({
+        agentId: null,
+        cwd: '/workspace-a',
+        currentModelId: null,
+        currentModelName: null,
+        currentModelProvider: null,
+      }));
+      mockFetch.mockResolvedValueOnce(jsonResponse({
+        messages: [{ text: 'history' }], blocks: [], todos: [], hasMore: false,
+      }));
+
+      await switchSession('/a');
+
+      expect(mockState.deskBasePath).toBe('/workspace-a');
+      expect(mockState.deskCurrentPath).toBe('notes/daily');
+      expect(mockState.deskFiles).toEqual([]);
+      expect(mockState.deskJianContent).toBeNull();
       expect(mockLoadDeskFiles).toHaveBeenCalledWith('notes/daily', '/workspace-a');
+    });
+
+    it('目标 session 没有 cwd 时清空 desk state，不回落到旧 workspace', async () => {
+      (mockState as Record<string, unknown>).deskBasePath = '/workspace-old';
+      (mockState as Record<string, unknown>).deskCurrentPath = 'notes/daily';
+      (mockState as Record<string, unknown>).deskFiles = [{ name: 'stale.md' }];
+      (mockState as Record<string, unknown>).deskJianContent = 'stale';
+
+      mockFetch.mockResolvedValueOnce(jsonResponse({
+        agentId: null,
+        cwd: null,
+        currentModelId: null,
+        currentModelName: null,
+        currentModelProvider: null,
+      }));
+      mockFetch.mockResolvedValueOnce(jsonResponse({
+        messages: [{ text: 'history' }], blocks: [], todos: [], hasMore: false,
+      }));
+
+      await switchSession('/a');
+
+      expect(mockState.deskBasePath).toBe('');
+      expect(mockState.deskCurrentPath).toBe('');
+      expect(mockState.deskFiles).toEqual([]);
+      expect(mockState.deskJianContent).toBeNull();
+      expect(mockLoadDeskFiles).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('archiveSession 按 path 清缓存', () => {
+    it('归档非当前 session 时也按归档 path 清理 chat / stream 相关缓存', async () => {
+      (mockState as Record<string, unknown>).currentSessionPath = '/current';
+      (mockState.chatSessions as Record<string, unknown>)['/archived'] = {
+        items: [{ type: 'message', data: { id: '1', text: 'archived' } }],
+        hasMore: false,
+        loadingMore: false,
+      };
+      (mockState.sessionModelsByPath as Record<string, unknown>)['/archived'] = { id: 'm', provider: 'p' };
+      (mockState._loadMessagesVersion as Record<string, number>)['/archived'] = 2;
+      (mockState.sessionStreams as Record<string, unknown>)['/archived'] = { isStreaming: true };
+      (mockState.attachedFilesBySession as Record<string, unknown>)['/archived'] = [{ name: 'a.txt' }];
+      (mockState.drafts as Record<string, string>)['/archived'] = 'draft';
+      (mockState.todosBySession as Record<string, unknown>)['/archived'] = [{ id: 'todo-1' }];
+      (mockState.todosLiveVersionBySession as Record<string, number>)['/archived'] = 3;
+      (mockState.streamingSessions as string[]) = ['/current', '/archived'];
+      (mockState.inlineErrors as Record<string, string | null>)['/archived'] = 'boom';
+
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+      mockFetch.mockResolvedValueOnce(jsonResponse([{ path: '/current' }]));
+
+      await archiveSession('/archived');
+
+      const clearSessionMock = (mockState as unknown as {
+        clearSession: ReturnType<typeof vi.fn>;
+      }).clearSession;
+      expect(clearSessionMock).toHaveBeenCalledWith('/archived');
+      expect(mockState.currentSessionPath).toBe('/current');
+      expect((mockState.chatSessions as Record<string, unknown>)['/archived']).toBeUndefined();
+      expect((mockState.sessionStreams as Record<string, unknown>)['/archived']).toBeUndefined();
+      expect((mockState.attachedFilesBySession as Record<string, unknown>)['/archived']).toBeUndefined();
+      expect((mockState.drafts as Record<string, string>)['/archived']).toBeUndefined();
+      expect((mockState.todosBySession as Record<string, unknown>)['/archived']).toBeUndefined();
+      expect((mockState.streamingSessions as string[])).toEqual(['/current']);
+      expect((mockState.inlineErrors as Record<string, string | null>)['/archived']).toBeNull();
+      expect(mockClearChat).not.toHaveBeenCalled();
+    });
+
+    it('归档当前 session 时在 currentSessionPath 置空前按该 path 清理缓存', async () => {
+      (mockState as Record<string, unknown>).currentSessionPath = '/current';
+      (mockState.chatSessions as Record<string, unknown>)['/current'] = {
+        items: [{ type: 'message', data: { id: '1', text: 'current' } }],
+        hasMore: false,
+        loadingMore: false,
+      };
+      (mockState.chatSessions as Record<string, unknown>)['/other'] = {
+        items: [{ type: 'message', data: { id: '2', text: 'other' } }],
+        hasMore: false,
+        loadingMore: false,
+      };
+      (mockState.sessionModelsByPath as Record<string, unknown>)['/current'] = { id: 'm', provider: 'p' };
+      (mockState._loadMessagesVersion as Record<string, number>)['/current'] = 1;
+      (mockState.sessionStreams as Record<string, unknown>)['/current'] = { isStreaming: true };
+      (mockState.streamingSessions as string[]) = ['/current'];
+
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+      mockFetch.mockResolvedValueOnce(jsonResponse([{ path: '/other' }]));
+      mockFetch.mockResolvedValueOnce(jsonResponse({
+        agentId: null,
+        cwd: '/workspace-other',
+        currentModelId: null,
+        currentModelName: null,
+        currentModelProvider: null,
+      }));
+
+      await archiveSession('/current');
+
+      const clearSessionMock = (mockState as unknown as {
+        clearSession: ReturnType<typeof vi.fn>;
+      }).clearSession;
+      expect(clearSessionMock).toHaveBeenCalledWith('/current');
+      expect(mockClearChat).toHaveBeenCalledTimes(1);
+      expect((mockState.chatSessions as Record<string, unknown>)['/current']).toBeUndefined();
+      expect((mockState.sessionStreams as Record<string, unknown>)['/current']).toBeUndefined();
+      expect((mockState.streamingSessions as string[])).toEqual([]);
+      expect(mockState.currentSessionPath).toBe('/other');
     });
   });
 });

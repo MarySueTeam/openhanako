@@ -36,6 +36,7 @@ function createMocks() {
     agentName: "T",
     hanakoHome: os.tmpdir(),
     currentAgentId: "hana",
+    listSessions: vi.fn(async () => []),
   };
   const hub = {
     send: vi.fn().mockResolvedValue("AI response"),
@@ -53,15 +54,25 @@ function createMocks() {
   return { bm, adapter, engine, hub, rcState: slashSystem.rcState };
 }
 
+function primeRcPending({ rcState, engine, sessionKey, options }) {
+  rcState.setPending(sessionKey, {
+    type: "rc-select",
+    promptText: "menu",
+    options,
+  });
+  engine.listSessions.mockResolvedValue(options.map(option => ({ path: option.path, agentId: "hana" })));
+}
+
 describe("BridgeManager RC pending-selection interception", () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
   it("numeric input when pending-selection active → handled by rc handler, NOT sent to hub", async () => {
-    const { bm, hub, adapter, rcState } = createMocks();
-    rcState.setPending("tg_dm_owner123@hana", {
-      type: "rc-select",
-      promptText: "menu",
+    const { bm, hub, adapter, engine, rcState } = createMocks();
+    primeRcPending({
+      rcState,
+      engine,
+      sessionKey: "tg_dm_owner123@hana",
       options: [{ path: "/fake/s.jsonl", title: "架构" }],
     });
 
@@ -85,10 +96,11 @@ describe("BridgeManager RC pending-selection interception", () => {
   });
 
   it("non-numeric input when pending active → replies '请输入数字', does NOT send to hub", async () => {
-    const { bm, hub, adapter, rcState } = createMocks();
-    rcState.setPending("tg_dm_owner123@hana", {
-      type: "rc-select",
-      promptText: "menu",
+    const { bm, hub, adapter, engine, rcState } = createMocks();
+    primeRcPending({
+      rcState,
+      engine,
+      sessionKey: "tg_dm_owner123@hana",
       options: [{ path: "/a.jsonl", title: "A" }, { path: "/b.jsonl", title: "B" }],
     });
 
@@ -110,10 +122,11 @@ describe("BridgeManager RC pending-selection interception", () => {
 
   it("slash command ALWAYS wins over pending-selection (priority rule)", async () => {
     // 纪律：/exitrc 等斜杠命令必须被 dispatcher 接住，即使 pending 在
-    const { bm, hub, adapter, rcState } = createMocks();
-    rcState.setPending("tg_dm_owner123@hana", {
-      type: "rc-select",
-      promptText: "menu",
+    const { bm, hub, adapter, engine, rcState } = createMocks();
+    primeRcPending({
+      rcState,
+      engine,
+      sessionKey: "tg_dm_owner123@hana",
       options: [{ path: "/a.jsonl", title: "A" }],
     });
 
@@ -138,10 +151,11 @@ describe("BridgeManager RC pending-selection interception", () => {
     // pending 按 sessionKey 隔离，但非 owner 在同一 sessionKey 打数字时不应触发
     // （guest 模式 sessionKey 不同，owner 模式 sessionKey 一致但 isOwner=false 不应被当作选择）
     // 此测试用"DM from 非 owner userId" 模拟——实际这种 key 不会出现，但防御性确认逻辑
-    const { bm, hub, adapter, rcState } = createMocks();
-    rcState.setPending("tg_dm_owner123@hana", {
-      type: "rc-select",
-      promptText: "menu",
+    const { bm, hub, adapter, engine, rcState } = createMocks();
+    primeRcPending({
+      rcState,
+      engine,
+      sessionKey: "tg_dm_owner123@hana",
       options: [{ path: "/a.jsonl", title: "A" }],
     });
 
@@ -157,6 +171,31 @@ describe("BridgeManager RC pending-selection interception", () => {
     // pending 仍保留（未被 guest 选中）
     expect(rcState.isPending("tg_dm_owner123@hana")).toBe(true);
     expect(rcState.isAttached("tg_dm_owner123@hana")).toBe(false);
+  });
+
+  it("group messages do not consume rc pending-selection state", async () => {
+    const { bm, hub, engine, rcState } = createMocks();
+    primeRcPending({
+      rcState,
+      engine,
+      sessionKey: "tg_group_42@hana",
+      options: [{ path: "/a.jsonl", title: "A" }],
+    });
+
+    await bm._handleMessage("telegram", {
+      sessionKey: "tg_group_42@hana",
+      text: "1",
+      userId: "owner123",
+      chatId: "42",
+      isGroup: true,
+      agentId: "hana",
+      senderName: "Owner",
+    });
+
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(rcState.isPending("tg_group_42@hana")).toBe(true);
+    expect(rcState.isAttached("tg_group_42@hana")).toBe(false);
+    expect(hub.send).toHaveBeenCalledOnce();
   });
 
   it("no pending state → numeric input goes through normal debounce path", async () => {

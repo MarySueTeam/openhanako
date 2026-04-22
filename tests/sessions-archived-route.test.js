@@ -4,6 +4,7 @@ import fs from "fs";
 import fsp from "fs/promises";
 import os from "os";
 import path from "path";
+import { RcStateStore } from "../core/slash-commands/rc-state.js";
 
 vi.mock("../lib/browser/browser-manager.js", () => ({
   BrowserManager: {
@@ -36,6 +37,8 @@ function makeEngine(tmpDir) {
     getAgent: () => ({ agentName: "Hana" }),
     clearSessionTitle: vi.fn(async () => {}),
     listArchivedSessions: vi.fn(async () => []),
+    emitEvent: vi.fn(),
+    rcState: new RcStateStore(),
   };
 }
 
@@ -71,6 +74,34 @@ describe("archive route: mtime semantics", () => {
     const stat = await fsp.stat(dest);
     const ageMs = Date.now() - stat.mtime.getTime();
     expect(ageMs).toBeLessThan(5000);
+  });
+
+  it("invalidates rc attachment and pending that point at the archived session", async () => {
+    const src = path.join(tmpDir, "agents", "a", "sessions", "s1.jsonl");
+    engine.rcState.attach("tg_dm_owner@a", src);
+    engine.rcState.setPending("tg_dm_other@a", {
+      type: "rc-select",
+      promptText: "menu",
+      options: [{ path: src, title: "S1" }],
+    });
+
+    const res = await app.request("/api/sessions/archive", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: src }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(engine.rcState.isAttached("tg_dm_owner@a")).toBe(false);
+    expect(engine.rcState.isPending("tg_dm_other@a")).toBe(false);
+    expect(engine.emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "bridge_rc_detached",
+        sessionKey: "tg_dm_owner@a",
+        sessionPath: src,
+      }),
+      src,
+    );
   });
 });
 
@@ -189,6 +220,33 @@ describe("POST /api/sessions/archived/delete", () => {
     expect(engine.clearSessionTitle).toHaveBeenCalledWith(activeKey);
   });
 
+  it("also invalidates stale rc state keyed by the original active session path", async () => {
+    engine.rcState.attach("tg_dm_owner@a", activeKey);
+    engine.rcState.setPending("tg_dm_other@a", {
+      type: "rc-select",
+      promptText: "menu",
+      options: [{ path: activeKey, title: "D1" }],
+    });
+
+    const res = await app.request("/api/sessions/archived/delete", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: archPath }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(engine.rcState.isAttached("tg_dm_owner@a")).toBe(false);
+    expect(engine.rcState.isPending("tg_dm_other@a")).toBe(false);
+    expect(engine.emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "bridge_rc_detached",
+        sessionKey: "tg_dm_owner@a",
+        sessionPath: activeKey,
+      }),
+      activeKey,
+    );
+  });
+
   it("rejects non-archived path", async () => {
     const bogus = path.join(tmpDir, "agents", "a", "sessions", "active.jsonl");
     fs.writeFileSync(bogus, "{}\n");
@@ -233,5 +291,33 @@ describe("POST /api/sessions/cleanup (titles orphan cleanup)", () => {
     expect(body.deleted).toBe(1);
     const activeKey = path.join(tmpDir, "agents", "a", "sessions", "old.jsonl");
     expect(engine.clearSessionTitle).toHaveBeenCalledWith(activeKey);
+  });
+
+  it("also invalidates stale rc state that still points at the deleted active path", async () => {
+    const activeKey = path.join(tmpDir, "agents", "a", "sessions", "old.jsonl");
+    engine.rcState.attach("tg_dm_owner@a", activeKey);
+    engine.rcState.setPending("tg_dm_other@a", {
+      type: "rc-select",
+      promptText: "menu",
+      options: [{ path: activeKey, title: "old" }],
+    });
+
+    const res = await app.request("/api/sessions/cleanup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ maxAgeDays: 90 }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(engine.rcState.isAttached("tg_dm_owner@a")).toBe(false);
+    expect(engine.rcState.isPending("tg_dm_other@a")).toBe(false);
+    expect(engine.emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "bridge_rc_detached",
+        sessionKey: "tg_dm_owner@a",
+        sessionPath: activeKey,
+      }),
+      activeKey,
+    );
   });
 });

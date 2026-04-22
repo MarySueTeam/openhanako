@@ -39,6 +39,8 @@ const migrations = {
   // 模型能力字段 vision → image 全量重命名（added-models.yaml + agent config.yaml）
   // 配合 core/model-sync.js 和 core/provider-registry.js 的读时兼容形成双保险
   7: migrateVisionToImage,
+  // 修复 migration #5 之后仍有入口把 models.* 写回旧字符串格式的问题
+  8: repairPostMigrationModelRefs,
 };
 
 // ── Runner ──────────────────────────────────────────────────────────────────
@@ -488,12 +490,12 @@ function migrateSubagentExecutorMetadata(ctx) {
  *     取首个命中。多 provider 同 id 时取 added-models.yaml 第一个（已有行为不变）。
  *     找不到保留原值（避免热删有效配置，/providers 设置页重启会自愈）。
  */
-function migrateModelRefsToCompositeKey(ctx) {
+function normalizeCompositeModelRefs(ctx, { migrationId }) {
   const { agentsDir, prefs, providerRegistry, log } = ctx;
 
   // ── 构建 id → provider 查找表（多 provider 同 id 取首个） ──
   const idToProvider = new Map();
-  const rawProviders = providerRegistry.getAllProvidersRaw();
+  const rawProviders = providerRegistry.getAllProvidersRaw?.() || {};
   for (const [providerId, p] of Object.entries(rawProviders || {})) {
     for (const m of p.models || []) {
       const id = typeof m === "object" ? m.id : m;
@@ -552,7 +554,7 @@ function migrateModelRefsToCompositeKey(ctx) {
       if (ch) {
         next[role] = value;
         changed = true;
-        log(`[migrations] #5 ${dir.name}: models.${role} → ${value.provider}/${value.id}`);
+        log(`[migrations] #${migrationId} ${dir.name}: models.${role} → ${value.provider}/${value.id}`);
       }
     }
 
@@ -570,10 +572,18 @@ function migrateModelRefsToCompositeKey(ctx) {
     if (changed) {
       preferences[key] = value;
       prefsChanged = true;
-      log(`[migrations] #5 preferences.${key} → ${value.provider}/${value.id}`);
+      log(`[migrations] #${migrationId} preferences.${key} → ${value.provider}/${value.id}`);
     }
   }
   if (prefsChanged) prefs.savePreferences(preferences);
+}
+
+function migrateModelRefsToCompositeKey(ctx) {
+  normalizeCompositeModelRefs(ctx, { migrationId: 5 });
+}
+
+function repairPostMigrationModelRefs(ctx) {
+  normalizeCompositeModelRefs(ctx, { migrationId: 8 });
 }
 
 /**

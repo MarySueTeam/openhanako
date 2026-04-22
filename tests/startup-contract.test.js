@@ -1,0 +1,24 @@
+import { describe, it, expect } from "vitest";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT = path.resolve(__dirname, "..");
+
+describe("local startup contract", () => {
+  it("start scripts build theme bundle before launching Electron", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf-8"));
+    expect(pkg.scripts.start).toContain("build:theme");
+    expect(pkg.scripts["start:dev"]).toContain("build:theme");
+  });
+
+  it("dev Electron launcher passes a dedicated Node runtime to main process", () => {
+    const launchJs = fs.readFileSync(path.join(ROOT, "scripts", "launch.js"), "utf-8");
+    const mainCjs = fs.readFileSync(path.join(ROOT, "desktop", "main.cjs"), "utf-8");
+
+    expect(launchJs).toContain("HANA_DEV_NODE_BIN");
+    expect(mainCjs).toContain("HANA_DEV_NODE_BIN");
+  });
+});
