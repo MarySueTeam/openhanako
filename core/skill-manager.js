@@ -9,6 +9,18 @@ import path from "path";
 import chokidar from "chokidar";
 import { parseSkillMetadata } from "../lib/skills/skill-metadata.js";
 
+// chokidar 默认会对"绝对路径里任意段带点"判定为隐藏，而用户的 skill 根
+// （~/.hanako/skills、workspace 下的 .agents/... 等）自身就住在隐藏目录里，
+// 用全局 regex 会把整棵树吞掉。这里改为相对 watch 根做判断，只屏蔽根以下
+// 的隐藏文件和编辑器临时文件（.DS_Store / .swp / foo~ / #foo# 等）。
+function createRelativeDotIgnore(rootDir) {
+  return (absPath) => {
+    const rel = path.relative(rootDir, absPath);
+    if (!rel) return false;
+    return /(^|[/\\])\./.test(rel) || /[~#]$/.test(rel);
+  };
+}
+
 export class SkillManager {
   /**
    * @param {object} opts
@@ -146,7 +158,7 @@ export class SkillManager {
     try {
       this._watcher = chokidar.watch(this.skillsDir, {
         ignoreInitial: true,
-        ignored: [/(^|[/\\])\./, /[~#]$/],
+        ignored: createRelativeDotIgnore(this.skillsDir),
         persistent: true,
       });
       this._watcher.on("all", () => {
@@ -250,24 +262,13 @@ export class SkillManager {
   // ── 外部路径 watcher ──
 
   _watchExternalPaths() {
-    for (const { dirPath, scope } of this._externalPaths) {
+    for (const { dirPath } of this._externalPaths) {
       if (!fs.existsSync(dirPath)) continue;
       if (this._externalWatchers.has(dirPath)) continue;
       try {
-        // workspace 下的 skill 目录本身就在 .agents/.claude 等隐藏目录里，
-        // 不能用全局 dot ignore，否则 dirPath 内的所有文件都会被 chokidar 吞掉。
-        // 改为相对 dirPath 的 ignore 判断，允许 dirPath 自身及其直接子目录，
-        // 只屏蔽子目录内部的隐藏文件（如 .DS_Store）和编辑器临时文件。
-        const ignored = scope === "workspace"
-          ? (absPath) => {
-              const rel = path.relative(dirPath, absPath);
-              if (!rel || rel === "") return false;
-              return /(^|[/\\])\./.test(rel) || /[~#]$/.test(rel);
-            }
-          : [/(^|[/\\])\./, /[~#]$/];
         const w = chokidar.watch(dirPath, {
           ignoreInitial: true,
-          ignored,
+          ignored: createRelativeDotIgnore(dirPath),
           persistent: true,
         });
         w.on("all", () => {
