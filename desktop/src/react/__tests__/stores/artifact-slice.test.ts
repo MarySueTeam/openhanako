@@ -7,7 +7,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   createArtifactSlice,
-  type ArtifactSlice,
   selectArtifacts,
   selectOpenTabs,
   selectActiveTabId,
@@ -100,6 +99,16 @@ describe('artifact slice (user-level flat state)', () => {
       closeTab('a2');
       expect(testStore.getState().openTabs).toEqual(['a1', 'a3']);
       expect(testStore.getState().activeTabId).toBe('a1');
+    });
+
+    it('closeTab 关闭非 active tab，active 不变', () => {
+      openTab('a1');
+      openTab('a2');
+      openTab('a3');
+      setActiveTab('a2');
+      closeTab('a3');
+      expect(testStore.getState().openTabs).toEqual(['a1', 'a2']);
+      expect(testStore.getState().activeTabId).toBe('a2');
     });
 
     it('closeTab 移除最后一个 tab，activeTabId 为 null', () => {

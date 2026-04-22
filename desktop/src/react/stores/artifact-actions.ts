@@ -6,8 +6,10 @@
  */
 
 import { useStore } from './index';
+import type { StoreState } from './index';
 import { updateLayout } from '../components/SidebarLayout';
 import type { Artifact } from '../types';
+import type { ArtifactSlice } from './artifact-slice';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- IPC callback data */
 
@@ -16,15 +18,11 @@ let _artifactCounter = 0;
 // ── Internal write primitive ──
 
 function updatePreview(
-  updater: (prev: { artifacts: Artifact[]; openTabs: string[]; activeTabId: string | null }) =>
-    Partial<{ artifacts: Artifact[]; openTabs: string[]; activeTabId: string | null }>,
+  updater: (prev: Pick<ArtifactSlice, 'artifacts' | 'openTabs' | 'activeTabId'>) =>
+    Partial<Pick<ArtifactSlice, 'artifacts' | 'openTabs' | 'activeTabId'>>,
 ): void {
-  useStore.setState((s: any) => {
-    const prev = {
-      artifacts: s.artifacts as Artifact[],
-      openTabs: s.openTabs as string[],
-      activeTabId: s.activeTabId as string | null,
-    };
+  useStore.setState((s: StoreState) => {
+    const prev = { artifacts: s.artifacts, openTabs: s.openTabs, activeTabId: s.activeTabId };
     return updater(prev);
   });
 }
