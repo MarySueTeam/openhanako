@@ -19,20 +19,22 @@ export async function loadMediaSource(ref: FileRef): Promise<MediaSource> {
   const platform = (window as any).platform;
   if (!platform) throw new Error('platform not available');
 
-  // 1) inline data 优先（screenshot：path === ''，base64 已随消息进 renderer）
-  if (ref.inlineData) {
-    return { url: `data:${ref.inlineData.mimeType};base64,${ref.inlineData.base64}` };
-  }
-
-  // 2) 文件路径走 platform.getFileUrl —— image / svg / video 一视同仁
+  // 1) 文件路径优先：只要存在 path，就走 file:// / preload 统一编码路径。
+  // 这能让浏览器复用磁盘缓存，避免带 path 的大图继续滞留在 renderer heap。
   if (typeof platform.getFileUrl !== 'function') {
     throw new Error('platform.getFileUrl not available (preload.cjs 未实现)');
-  }
-  if (!ref.path) {
-    throw new Error(`media ref 缺少 path: ${ref.id}`);
   }
   if (ref.kind !== 'image' && ref.kind !== 'svg' && ref.kind !== 'video') {
     throw new Error(`unsupported media kind: ${ref.kind}`);
   }
-  return { url: platform.getFileUrl(ref.path) };
+  if (ref.path) {
+    return { url: platform.getFileUrl(ref.path) };
+  }
+
+  // 2) 仅无 path 的 inline 数据（如 screenshot）才走 data URL。
+  if (ref.inlineData) {
+    return { url: `data:${ref.inlineData.mimeType};base64,${ref.inlineData.base64}` };
+  }
+
+  throw new Error(`media ref 缺少 path: ${ref.id}`);
 }

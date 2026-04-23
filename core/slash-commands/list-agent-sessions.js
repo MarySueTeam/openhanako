@@ -15,6 +15,7 @@
  */
 
 const DEFAULT_LIMIT = 10;
+const EPHEMERAL_SEGMENT_RE = /(^|[\\/])\.ephemeral([\\/]|$)/;
 
 /**
  * @typedef {object} AgentSessionSummary
@@ -44,7 +45,7 @@ export async function listRecentAgentSessions(engine, agentId, opts = {}) {
     .filter(s => s.agentId === agentId)
     .filter(s => !excludeSet.has(s.path))
     // 防御性：.ephemeral 理论上 listSessions 就过滤掉了，这里再兜一次防止上游 regress
-    .filter(s => !s.path.includes("/.ephemeral/"))
+    .filter(s => !EPHEMERAL_SEGMENT_RE.test(s.path))
     .slice(0, limit)
     .map((s, i) => ({
       index: i + 1,

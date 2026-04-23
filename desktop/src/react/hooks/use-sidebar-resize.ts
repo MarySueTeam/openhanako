@@ -2,18 +2,13 @@
  * useSidebarResize — 侧边栏宽度拖拽调整
  *
  * 从 sidebar-shim.ts 的 initSidebarResize 迁移。
- * 在 useEffect 中绑定 mousedown 事件，管理三个 resize handle。
+ * 在 useEffect 中绑定 resize handle 事件，并在 unmount 时完整清理。
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 export function useSidebarResize(): void {
-  const initialized = useRef(false);
-
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
     const root = document.documentElement;
     const sidebarEl = document.getElementById('sidebar');
     const jianSidebarEl = document.getElementById('jianSidebar');
@@ -61,6 +56,8 @@ export function useSidebarResize(): void {
     if (savedRight) applyJianWidth(Number(savedRight));
     if (savedPreview) applyPreviewWidth(Number(savedPreview));
 
+    const cleanupFns: Array<() => void> = [];
+
     function setupHandle(
       handle: HTMLElement | null,
       getSidebar: () => HTMLElement | null,
@@ -73,15 +70,20 @@ export function useSidebarResize(): void {
     ): void {
       if (!handle) return;
 
-      handle.addEventListener('mousemove', (e: MouseEvent) => {
+      const onHandleMove = (e: MouseEvent) => {
         const rect = handle.getBoundingClientRect();
         handle.style.setProperty('--handle-y', (e.clientY - rect.top) + 'px');
-      });
-      handle.addEventListener('mouseleave', () => {
+      };
+      const onHandleLeave = () => {
         handle.style.setProperty('--handle-y', '-999px');
-      });
+      };
 
-      handle.addEventListener('mousedown', (e: MouseEvent) => {
+      let activeDragCleanup: (() => void) | null = null;
+
+      const onMouseDown = (e: MouseEvent) => {
+        activeDragCleanup?.();
+        activeDragCleanup = null;
+
         e.preventDefault();
         const sidebarTarget = getSidebar();
         if (!sidebarTarget || sidebarTarget.classList.contains('collapsed')) return;
@@ -107,10 +109,30 @@ export function useSidebarResize(): void {
           localStorage.setItem(storageKey, String(w));
           document.removeEventListener('mousemove', onMove);
           document.removeEventListener('mouseup', onUp);
+          activeDragCleanup = null;
         }
 
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
+        activeDragCleanup = () => {
+          handle.classList.remove('active');
+          document.body.classList.remove('resizing');
+          handle.style.setProperty('--handle-y', '-999px');
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          activeDragCleanup = null;
+        };
+      };
+
+      handle.addEventListener('mousemove', onHandleMove);
+      handle.addEventListener('mouseleave', onHandleLeave);
+      handle.addEventListener('mousedown', onMouseDown);
+
+      cleanupFns.push(() => {
+        activeDragCleanup?.();
+        handle.removeEventListener('mousemove', onHandleMove);
+        handle.removeEventListener('mouseleave', onHandleLeave);
+        handle.removeEventListener('mousedown', onMouseDown);
       });
     }
 
@@ -138,5 +160,9 @@ export function useSidebarResize(): void {
       (w) => applyPreviewWidth(w),
       PREVIEW_MIN, PREVIEW_MAX, 'hana-preview-width', true,
     );
+
+    return () => {
+      for (const cleanup of cleanupFns) cleanup();
+    };
   }, []);
 }

@@ -8,15 +8,20 @@
  * 4. 关闭 splash，显示主窗口
  * 5. 优雅关闭
  */
-const { app, BrowserWindow, WebContentsView, globalShortcut, ipcMain, dialog, session, shell, nativeTheme, Tray, Menu, nativeImage, systemPreferences, Notification } = require("electron");
+const { app, BrowserWindow, WebContentsView, globalShortcut, ipcMain, dialog, session, shell, nativeTheme, Tray, Menu, nativeImage, systemPreferences, Notification, webContents } = require("electron");
 const os = require("os");
 const path = require("path");
 const { spawn, execFile } = require("child_process");
 const fs = require("fs");
 const { pathToFileURL } = require("url");
+const { promisify } = require("util");
 const { initAutoUpdater, checkForUpdatesAuto, setMainWindow: setUpdaterMainWindow, setUpdateChannel, getState: getUpdateState } = require("./auto-updater.cjs");
+const { createFileWatchRegistry } = require("./file-watch-registry.cjs");
+const { MAX_SCREENSHOT_STITCH_RAW_BYTES } = require("./screenshot-stitch-worker.cjs");
 const { wrapIpcHandler, wrapIpcOn } = require('./ipc-wrapper.cjs');
 const themeRegistry = require('./src/shared/theme-registry.cjs');
+
+const execFileAsync = promisify(execFile);
 
 // preload 缺失时 Electron 会静默忽略，renderer 拿不到 window.hana →
 // onboarding/主窗口白屏且无前端报错。此处硬崩，拒绝以不可用状态启动。
@@ -126,6 +131,7 @@ let tray = null;
 let reusedServerPid = null; // 复用已有 server 时记录其 PID，退出时发 SIGTERM
 let isExitingServer = false; // 只有托盘"退出"时才 kill server，其余路径仅关前端
 let _isUpdating = false;  // auto-updater 正在执行 quitAndInstall，before-quit 跳过 server 清理
+let _autoUpdaterInitialized = false;
 let forceQuitApp = false;   // 启动失败等场景需要真正退出，绕过"隐藏保持运行"拦截
 
 // ── 主进程 i18n ──
@@ -784,14 +790,19 @@ function createMainWindow() {
 
   mainWindow = new BrowserWindow(opts);
 
-  // 自动更新：注册 IPC handlers，注入 server 清理和 _isUpdating flag
-  initAutoUpdater(mainWindow, {
-    shutdownServer,
-    setIsUpdating: (v) => { _isUpdating = v; },
-    hanakoHome,
-    showInstalling: createInstallingWindow,
-    failInstalling: failInstallingWindow,
-  });
+  // auto-updater 是进程级服务：初始化只做一次，窗口重建时只更新目标 window 引用。
+  if (!_autoUpdaterInitialized) {
+    initAutoUpdater(mainWindow, {
+      shutdownServer,
+      setIsUpdating: (v) => { _isUpdating = v; },
+      hanakoHome,
+      showInstalling: createInstallingWindow,
+      failInstalling: failInstallingWindow,
+    });
+    _autoUpdaterInitialized = true;
+  } else {
+    setUpdaterMainWindow(mainWindow);
+  }
 
   if (saved?.isMaximized) {
     mainWindow.maximize();
@@ -870,6 +881,7 @@ function createMainWindow() {
   });
 
   mainWindow.on("closed", () => {
+    setUpdaterMainWindow(null);
     mainWindow = null;
     if (settingsWindow && !settingsWindow.isDestroyed()) {
       settingsWindow.destroy();
@@ -1773,6 +1785,31 @@ function getScreenshotWindow() {
   return _screenshotWin;
 }
 
+function getScreenshotStitchWorkerPath() {
+  return path.join(app.getAppPath(), "desktop", "screenshot-stitch-worker.cjs");
+}
+
+async function runScreenshotStitchWorker(payload) {
+  const env = { ...process.env };
+  delete env.ELECTRON_RUN_AS_NODE;
+
+  const { stdout, stderr } = await execFileAsync(
+    process.execPath,
+    [getScreenshotStitchWorkerPath(), JSON.stringify(payload)],
+    { env, maxBuffer: 1024 * 1024 }
+  );
+
+  if (stderr && stderr.trim()) {
+    throw new Error(stderr.trim());
+  }
+  if (!stdout || !stdout.trim()) return;
+
+  const result = JSON.parse(stdout);
+  if (!result?.ok) {
+    throw new Error(result?.error || "screenshot stitch worker failed");
+  }
+}
+
 let _screenshotLock = Promise.resolve();
 
 function withScreenshotLock(fn) {
@@ -1926,12 +1963,10 @@ function buildScreenshotHTML(payload) {
 
 async function screenshotCapture(htmlContent, width) {
   const offscreen = getScreenshotWindow();
-  const scale = 2;
-
   offscreen.setSize(width, 100);
 
-  const tmpDir = app.getPath("temp");
-  const tmpHtml = path.join(tmpDir, `hana-ss-${Date.now()}.html`);
+  const tmpRoot = fs.mkdtempSync(path.join(app.getPath("temp"), "hana-ss-"));
+  const tmpHtml = path.join(tmpRoot, "render.html");
   fs.writeFileSync(tmpHtml, htmlContent, "utf-8");
 
   try {
@@ -1959,49 +1994,57 @@ async function screenshotCapture(htmlContent, width) {
       const image = await offscreen.webContents.capturePage();
       pngBuffer = image.toPNG();
     } else {
-      const segments = [];
+      const segmentPaths = [];
       let captured = 0;
+      let actualWidth = null;
+      let actualTotalHeight = 0;
       while (captured < totalHeight) {
         const segH = Math.min(SCREENSHOT_MAX_SEGMENT, totalHeight - captured);
         offscreen.setSize(width, segH);
         await offscreen.webContents.executeJavaScript(`window.scrollTo(0, ${captured})`);
         await new Promise(r => setTimeout(r, 300));
         const segImage = await offscreen.webContents.capturePage();
-        segments.push(segImage);
+        const segSize = segImage.getSize();
+        if (actualWidth == null) actualWidth = segSize.width;
+        else if (segSize.width !== actualWidth) {
+          throw new Error(`screenshot segment width drifted from ${actualWidth} to ${segSize.width}`);
+        }
+        actualTotalHeight += segSize.height;
+
+        const segPath = path.join(tmpRoot, `segment-${String(segmentPaths.length).padStart(3, "0")}.png`);
+        fs.writeFileSync(segPath, segImage.toPNG());
+        segmentPaths.push(segPath);
         captured += segH;
       }
 
-      const actualWidth = width * scale;
-      const actualTotalHeight = totalHeight * scale;
-      const fullBitmap = Buffer.alloc(actualWidth * actualTotalHeight * 4);
-      let yOffset = 0;
-
-      for (const seg of segments) {
-        const bitmap = seg.toBitmap();
-        const size = seg.getSize();
-        const partHeight = size.height;
-        const partRowBytes = size.width * 4;
-        for (let row = 0; row < partHeight; row++) {
-          bitmap.copy(
-            fullBitmap,
-            (yOffset + row) * actualWidth * 4,
-            row * partRowBytes,
-            row * partRowBytes + Math.min(partRowBytes, actualWidth * 4)
-          );
-        }
-        yOffset += partHeight;
+      if (!actualWidth || !actualTotalHeight) {
+        throw new Error("no screenshot segments captured");
+      }
+      const rawBytes = actualWidth * actualTotalHeight * 4;
+      if (!Number.isSafeInteger(rawBytes)) {
+        throw new Error("screenshot bitmap size overflow");
+      }
+      if (rawBytes > MAX_SCREENSHOT_STITCH_RAW_BYTES) {
+        throw new Error(
+          `screenshot is too large to render safely (${Math.ceil(rawBytes / (1024 * 1024))} MiB raw > ${Math.ceil(MAX_SCREENSHOT_STITCH_RAW_BYTES / (1024 * 1024))} MiB limit)`
+        );
       }
 
-      const fullImage = nativeImage.createFromBitmap(fullBitmap, {
+      const stitchedPath = path.join(tmpRoot, "stitched.png");
+      await runScreenshotStitchWorker({
+        segmentPaths,
+        outputPath: stitchedPath,
         width: actualWidth,
-        height: actualTotalHeight,
+        actualWidth,
+        actualTotalHeight,
+        maxRawBytes: MAX_SCREENSHOT_STITCH_RAW_BYTES,
       });
-      pngBuffer = fullImage.toPNG();
+      pngBuffer = fs.readFileSync(stitchedPath);
     }
 
     return pngBuffer;
   } finally {
-    try { fs.unlinkSync(tmpHtml); } catch {}
+    try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
   }
 }
 
@@ -2436,39 +2479,35 @@ wrapIpcHandler("screenshot-render", (_event, payload) => {
 });
 
 // 文件监听（artifact 编辑 — 外部变更刷新用）
-const _fileWatchers = new Map();
+const _watchedRendererIds = new Set();
+const _fileWatchRegistry = createFileWatchRegistry({
+  watch: (filePath, options, onChange) => fs.watch(filePath, options, onChange),
+  notifySubscriber: (subscriberId, filePath) => {
+    const wc = webContents.fromId(subscriberId);
+    if (!wc || wc.isDestroyed()) {
+      _watchedRendererIds.delete(subscriberId);
+      _fileWatchRegistry.unwatchAllForSubscriber(subscriberId);
+      return;
+    }
+    wc.send("file-changed", filePath);
+  },
+});
 wrapIpcHandler("watch-file", (event, filePath) => {
   if (!filePath || !path.isAbsolute(filePath)) return false;
-  // 取消旧的 watcher
-  if (_fileWatchers.has(filePath)) {
-    _fileWatchers.get(filePath).close();
-    _fileWatchers.delete(filePath);
-  }
-  try {
-    let debounceTimer = null;
-    const watcher = fs.watch(filePath, { persistent: false }, (eventType) => {
-      if (eventType === "change") {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          debounceTimer = null;
-          const win = BrowserWindow.fromWebContents(event.sender);
-          if (win && !win.isDestroyed()) {
-            win.webContents.send("file-changed", filePath);
-          }
-        }, 50);
-      }
+  const subscriberId = event.sender.id;
+  if (!_watchedRendererIds.has(subscriberId)) {
+    _watchedRendererIds.add(subscriberId);
+    event.sender.once("destroyed", () => {
+      _watchedRendererIds.delete(subscriberId);
+      _fileWatchRegistry.unwatchAllForSubscriber(subscriberId);
     });
-    _fileWatchers.set(filePath, watcher);
-    return true;
-  } catch { return false; }
+  }
+  return _fileWatchRegistry.watchFile(filePath, subscriberId);
 });
 
-wrapIpcHandler("unwatch-file", (_event, filePath) => {
-  if (_fileWatchers.has(filePath)) {
-    _fileWatchers.get(filePath).close();
-    _fileWatchers.delete(filePath);
-  }
-  return true;
+wrapIpcHandler("unwatch-file", (event, filePath) => {
+  if (!filePath || !path.isAbsolute(filePath)) return true;
+  return _fileWatchRegistry.unwatchFile(filePath, event.sender.id);
 });
 
 // 读取二进制文件为 base64（图片、PDF 等）

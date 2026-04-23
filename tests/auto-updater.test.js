@@ -33,6 +33,7 @@ vi.mock("electron-updater", () => ({
 describe("auto-updater", () => {
   let handlers;
   let mod;
+  let ipcMain;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -46,7 +47,7 @@ describe("auto-updater", () => {
     mockAutoUpdater.autoInstallOnAppQuit = true;
     mockAutoUpdater.allowPrerelease = false;
 
-    const { ipcMain } = await import("electron");
+    ({ ipcMain } = await import("electron"));
     ipcMain.handle.mockImplementation(() => {});
 
     mod = await import("../desktop/auto-updater.cjs");
@@ -111,5 +112,25 @@ describe("auto-updater", () => {
       handlers["update-downloaded"]({ version: "2.0.0" });
     }
     expect(mod.getState().status).toBe("downloaded");
+  });
+
+  it("second init reuses process-level setup and only updates mainWindow reference", () => {
+    const win1 = initWithMockWindow();
+    const win2 = {
+      isDestroyed: () => false,
+      webContents: { send: vi.fn() },
+    };
+
+    mod.initAutoUpdater(win2);
+
+    expect(mockAutoUpdater.on).toHaveBeenCalledTimes(6);
+    expect(ipcMain.handle).toHaveBeenCalledTimes(5);
+
+    if (handlers["update-not-available"]) {
+      handlers["update-not-available"]();
+    }
+
+    expect(win1.webContents.send).not.toHaveBeenCalledWith("auto-update-state", expect.anything());
+    expect(win2.webContents.send).toHaveBeenCalledWith("auto-update-state", expect.objectContaining({ status: "latest" }));
   });
 });

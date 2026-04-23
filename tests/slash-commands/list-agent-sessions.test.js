@@ -59,6 +59,17 @@ describe("listRecentAgentSessions", () => {
     expect(r.map(s => s.path)).toEqual(["/normal.jsonl"]);
   });
 
+  it("also excludes Windows-style .ephemeral paths", async () => {
+    const engine = {
+      listSessions: async () => [
+        makeSession({ path: "C:\\Users\\foo\\sessions\\keep.jsonl", agentId: "a1", modified: 2 }),
+        makeSession({ path: "C:\\Users\\foo\\.ephemeral\\temp.jsonl", agentId: "a1", modified: 1 }),
+      ],
+    };
+    const r = await listRecentAgentSessions(engine, "a1");
+    expect(r.map(s => s.path)).toEqual(["C:\\Users\\foo\\sessions\\keep.jsonl"]);
+  });
+
   it("preserves title (null passthrough)", async () => {
     const engine = {
       listSessions: async () => [

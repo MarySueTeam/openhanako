@@ -71,7 +71,7 @@ describe("wrapWithCheckpoint", () => {
     );
   });
 
-  it("wraps bash mv — saves destination if present", async () => {
+  it("wraps bash mv — saves source before rename", async () => {
     const bashTool = makeTool("bash");
     const [wrapped] = wrapWithCheckpoint([bashTool], {
       store,
@@ -83,7 +83,7 @@ describe("wrapWithCheckpoint", () => {
     await wrapped.execute("t4", { command: "mv src/a.js src/b.js" });
 
     expect(store.save).toHaveBeenCalledWith(
-      expect.objectContaining({ tool: "bash:mv", filePath: "/project/src/b.js" }),
+      expect.objectContaining({ tool: "bash:mv", filePath: "/project/src/a.js" }),
     );
   });
 

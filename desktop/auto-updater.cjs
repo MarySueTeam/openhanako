@@ -18,6 +18,8 @@ let _hanakoHome = null;     // 由 main.cjs 注入
 let _showInstalling = null; // 由 main.cjs 注入：打开"正在安装更新"小窗
 let _failInstalling = null; // 由 main.cjs 注入：安装失败时切换窗口文案
 let _checkTimer = null;
+let _ipcHandlersRegistered = false;
+let _updaterConfigured = false;
 
 /**
  * 读 preferences.json 里的 auto_check_updates，默认 true。
@@ -245,6 +247,8 @@ function setupAutoUpdater() {
 // ── IPC handlers ──
 
 function registerIpcHandlers() {
+  if (_ipcHandlersRegistered) return;
+  _ipcHandlersRegistered = true;
   ipcMain.handle("auto-update-check", async () => {
     resetState();
     try {
@@ -285,6 +289,7 @@ function registerIpcHandlers() {
 // ── 定时轮询 ──
 
 function startPolling() {
+  if (_checkTimer) return;
   _checkTimer = setInterval(() => {
     // 每 tick 都重新读 preferences：用户关掉开关后，下一 tick 就不再自动查
     if (!isAutoCheckEnabled()) return;
@@ -305,24 +310,24 @@ function initAutoUpdater(mainWindow, {
   _showInstalling = showInstalling;
   _failInstalling = failInstalling;
 
+  registerIpcHandlers(); // IPC handlers 是进程级单例，重复 init 时直接复用
+
   // 开发环境不初始化 auto-updater
-  if (!app.isPackaged) {
-    registerIpcHandlers(); // IPC handler 仍注册（避免 invoke 报错），但不连接 electron-updater
-    return;
-  }
+  if (!app.isPackaged) return;
 
   // macOS：从 DMG 直接运行时禁用
   if (isRunningFromDmg()) {
     setState({ status: "error", error: "running_from_dmg" });
-    registerIpcHandlers();
     return;
   }
+
+  if (_updaterConfigured) return;
+  _updaterConfigured = true;
 
   // 缓存清理（异步，不阻塞启动）
   cleanUpdateCache().catch(() => {});
 
   setupAutoUpdater();
-  registerIpcHandlers();
   // 定时轮询 handler 自己判断开关，直接起 timer 不需要外层判断
   startPolling();
 }

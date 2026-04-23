@@ -542,6 +542,30 @@ describe("cron 解析器边界", () => {
     const result = store._calcNextRun("cron", "0 7 * * *", new Date().toISOString());
     expect(result).not.toBeNull();
   });
+
+  it("当 DOM 与 DOW 都受限时，按标准 cron 语义用 OR 匹配两者", () => {
+    const store = makeTmpStore();
+    const from = localDate(2026, 4, 2, 10, 0);
+    const nextIso = store._calcNextRun("cron", "0 9 1 * 1", from.toISOString());
+    expect(nextIso).not.toBeNull();
+
+    const start = new Date(from);
+    start.setSeconds(0, 0);
+    start.setMinutes(start.getMinutes() + 1);
+    let expected = null;
+    for (let i = 0; i < 366 * 24 * 60; i++) {
+      const t = new Date(start.getTime() + i * 60_000);
+      if (t.getHours() !== 9 || t.getMinutes() !== 0) continue;
+      if (t.getDate() === 1 || t.getDay() === 1) {
+        expected = t.toISOString();
+        break;
+      }
+    }
+
+    expect(nextIso).toBe(expected);
+    const next = new Date(nextIso);
+    expect(next.getDate() === 1 || next.getDay() === 1).toBe(true);
+  });
 });
 
 // ════════════════════════════════════════════

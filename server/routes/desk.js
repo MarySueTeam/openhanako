@@ -12,6 +12,7 @@ import os from "os";
 import { execSync, execFileSync } from "child_process";
 import { Hono } from "hono";
 import { safeJson } from "../hono-helpers.js";
+import { extractZip } from "../../lib/extract-zip.js";
 import { parseSkillMetadata } from "../../lib/skills/skill-metadata.js";
 import { WORKSPACE_SKILL_DIRS } from "../../shared/workspace-skill-paths.js";
 import { t } from "../i18n.js";
@@ -368,7 +369,7 @@ export function createDeskRoute(engine, hub) {
         // 先解压到临时目录确认内容
         const tmpDir = path.join(skillsDir, `_tmp_${Date.now()}`);
         fs.mkdirSync(tmpDir, { recursive: true });
-        execFileSync("unzip", ["-o", "-q", filePath, "-d", tmpDir]);
+        await extractZip(filePath, tmpDir);
 
         // 检查解压结果：如果只有一个子目录，用那个；否则用文件名
         const entries = fs.readdirSync(tmpDir).filter(e => !e.startsWith("."));

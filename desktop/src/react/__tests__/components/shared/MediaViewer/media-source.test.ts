@@ -43,6 +43,17 @@ describe('loadMediaSource', () => {
     expect((window as any).platform.readFileBase64).not.toHaveBeenCalled();
   });
 
+  it('同时存在 path + inlineData 时，优先走 path 而不是 data URL', async () => {
+    const ref: FileRef = {
+      id: '1', kind: 'image', source: 'session-attachment',
+      name: 'p.png', path: '/persisted.png',
+      inlineData: { base64: 'ABC', mimeType: 'image/png' },
+    };
+    const src = await loadMediaSource(ref);
+    expect((window as any).platform.getFileUrl).toHaveBeenCalledWith('/persisted.png');
+    expect(src.url).toBe('file:///MOCK/persisted.png');
+  });
+
   it('video: 走 platform.getFileUrl（不手拼 file://）', async () => {
     const ref: FileRef = { id: '1', kind: 'video', source: 'desk', name: 'a.mp4', path: '/a.mp4', ext: 'mp4' };
     const src = await loadMediaSource(ref);

@@ -141,7 +141,7 @@ export function createSkillsRoute(engine) {
         const tmpDir = path.join(userDir, ".tmp-install-" + Date.now());
         fs.mkdirSync(tmpDir, { recursive: true });
         try {
-          extractZip(srcPath, tmpDir);
+          await extractZip(srcPath, tmpDir);
 
           // 找到 SKILL.md：可能在根目录或一层子目录内
           if (fs.existsSync(path.join(tmpDir, "SKILL.md"))) {

@@ -112,7 +112,7 @@ export function createPluginsRoute(engine) {
 
       if (sourcePath.endsWith(".zip")) {
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-install-"));
-        extractZip(sourcePath, tmpDir);
+        await extractZip(sourcePath, tmpDir);
         const entries = fs.readdirSync(tmpDir, { withFileTypes: true });
         const pluginSrc = entries.length === 1 && entries[0].isDirectory()
           ? path.join(tmpDir, entries[0].name)
