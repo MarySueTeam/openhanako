@@ -36,6 +36,7 @@ function createMocks() {
   const adapter = {
     sendReply: vi.fn().mockResolvedValue(),
     sendBlockReply: vi.fn().mockResolvedValue(),
+    sendTypingIndicator: vi.fn().mockResolvedValue(),
     stop: vi.fn(),
   };
 
@@ -44,6 +45,7 @@ function createMocks() {
       if (id === "hana") return { agentName: "TestAgent", config: { bridge: { telegram: { owner: "owner123" } } }, sessionDir: os.tmpdir() };
       return null;
     }),
+    getBridgeReceiptEnabled: vi.fn().mockReturnValue(true),
     isBridgeSessionStreaming: vi.fn().mockReturnValue(false),
     abortBridgeSession: vi.fn().mockResolvedValue(false),
     steerBridgeSession: vi.fn().mockReturnValue(false),
@@ -182,6 +184,46 @@ describe("BridgeManager._handleMessage", () => {
   // ── DM debounce ──
 
   describe("DM debounce", () => {
+    it("sends the pre-reply receipt prompt only when the LLM reply starts", async () => {
+      const { bm, adapter } = createMocks();
+
+      bm._handleMessage("telegram", {
+        sessionKey: "tg_dm_owner123@hana",
+        text: "hello",
+        userId: "owner123",
+        chatId: "owner123",
+        agentId: "hana",
+      });
+
+      expect(adapter.sendReply).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(2100);
+
+      expect(adapter.sendReply).toHaveBeenNthCalledWith(1, "owner123", "（TestAgent正在输入...）");
+      expect(adapter.sendReply).toHaveBeenLastCalledWith("owner123", "AI response");
+    });
+
+    it("does not send any pre-reply receipt prompt when globally disabled", async () => {
+      const { bm, adapter, engine } = createMocks();
+      engine.getBridgeReceiptEnabled.mockReturnValue(false);
+
+      bm._handleMessage("telegram", {
+        sessionKey: "tg_dm_owner123@hana",
+        text: "hello",
+        userId: "owner123",
+        chatId: "owner123",
+        agentId: "hana",
+      });
+
+      expect(adapter.sendReply).not.toHaveBeenCalledWith("owner123", "（TestAgent正在输入...）");
+      expect(adapter.sendTypingIndicator).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(2100);
+
+      expect(adapter.sendReply).toHaveBeenCalledWith("owner123", "AI response");
+      expect(adapter.sendTypingIndicator).not.toHaveBeenCalled();
+    });
+
     it("buffers messages and sends merged after 2s", async () => {
       const { bm, hub, adapter } = createMocks();
 

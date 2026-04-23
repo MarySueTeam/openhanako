@@ -87,7 +87,7 @@ describe("BridgeManager RC pending-selection interception", () => {
     // hub.send 不应被调用（消息被 rc 拦截）
     await vi.advanceTimersByTimeAsync(3000);
     expect(hub.send).not.toHaveBeenCalled();
-    // adapter.sendReply 收到"正在接管"+"已接管"两条（+1 条 "正在输入..."）
+    expect(adapter.sendReply).not.toHaveBeenCalledWith("owner123", "（T正在输入...）");
     const replies = adapter.sendReply.mock.calls.map(c => c[1]);
     expect(replies.some(r => /正在接管/.test(r))).toBe(true);
     expect(replies.some(r => /已接管/.test(r))).toBe(true);
@@ -114,6 +114,7 @@ describe("BridgeManager RC pending-selection interception", () => {
 
     await vi.advanceTimersByTimeAsync(3000);
     expect(hub.send).not.toHaveBeenCalled();
+    expect(adapter.sendReply).not.toHaveBeenCalledWith("owner123", "（T正在输入...）");
     const replies = adapter.sendReply.mock.calls.map(c => c[1]);
     expect(replies.some(r => /请输入数字编号.*1-2/.test(r))).toBe(true);
     // pending 保留
