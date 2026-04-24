@@ -350,6 +350,20 @@
       "maxOutput": 65536,
       "image": false
     },
+    "deepseek-v4-pro": {
+      "name": "DeepSeek V4 Pro",
+      "context": 1000000,
+      "maxOutput": 384000,
+      "image": false,
+      "reasoning": true
+    },
+    "deepseek-v4-flash": {
+      "name": "DeepSeek V4 Flash",
+      "context": 1000000,
+      "maxOutput": 384000,
+      "image": false,
+      "reasoning": true
+    },
     "deepseek-coder": {
       "name": "Deepseek Coder",
       "context": 128000,
