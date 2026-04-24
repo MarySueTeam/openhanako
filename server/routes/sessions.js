@@ -17,6 +17,7 @@ import {
   loadSessionHistoryMessages,
   loadLatestAssistantSummaryFromSessionFile,
   isValidSessionPath,
+  isActiveSessionPath,
 } from "../../core/message-utils.js";
 import { loadLatestTodosFromSessionFile } from "../../lib/tools/todo-compat.js";
 
@@ -344,8 +345,10 @@ export function createSessionsRoute(engine) {
       if (!sessionPath) {
         return c.json({ error: t("error.missingParam", { param: "path" }) }, 400);
       }
-      // 校验路径在 agentsDir 范围内（支持跨 agent session）
-      if (!isValidSessionPath(sessionPath, engine.agentsDir)) {
+      // 必须是 agents/{id}/sessions/ 或 sessions/archived/ 下的对话文件，
+      // 拒绝 subagent-sessions/、activity/、.ephemeral/ 等旁路目录——那些是
+      // 运行态产物，不是用户可切换的对话焦点。
+      if (!isActiveSessionPath(sessionPath, engine.agentsDir)) {
         return c.json({ error: "Invalid session path" }, 403);
       }
       // 切换前挂起浏览器（保存当前 session 的浏览器状态）

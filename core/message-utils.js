@@ -175,3 +175,23 @@ export function isValidSessionPath(sessionPath, baseDir) {
   const base = path.resolve(baseDir);
   return resolved.startsWith(base + path.sep) || resolved === base;
 }
+
+/**
+ * 严格校验：sessionPath 必须指向某 agent 的"活跃/归档"对话文件，
+ * 即落在 `agents/{id}/sessions/xxx.jsonl` 或 `agents/{id}/sessions/archived/xxx.jsonl`。
+ *
+ * 明确拒绝旁路目录（subagent-sessions/、activity/、heartbeat/、.ephemeral/ 等）。
+ * 这些目录下的 session 文件是 agent 运行态产物，不是用户可切换的对话焦点——把它们
+ * 当成活跃 session 会让 listSessions 的"伪条目"分支伪造出"新对话"幻影条目（不能归档、
+ * 重启即消失），参见 session-coordinator listSessions 占位逻辑。
+ */
+export function isActiveSessionPath(sessionPath, agentsDir) {
+  if (!isValidSessionPath(sessionPath, agentsDir)) return false;
+  const rel = path.relative(path.resolve(agentsDir), path.resolve(sessionPath));
+  const parts = rel.split(path.sep);
+  if (parts.length < 3) return false;
+  if (parts[1] !== "sessions") return false;
+  if (parts.length === 3) return true;
+  if (parts.length === 4 && parts[2] === "archived") return true;
+  return false;
+}

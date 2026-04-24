@@ -231,4 +231,78 @@ describe("SessionCoordinator", () => {
     });
     expect(fs.existsSync(sessionFile)).toBe(false);
   });
+
+  it("switchSession 拒绝 subagent-sessions/activity/.ephemeral 等旁路路径", async () => {
+    const coordinator = new SessionCoordinator({
+      agentsDir: "/tmp/agents",
+      getAgent: () => ({ sessionDir: "/tmp/agents/hana/sessions" }),
+      getActiveAgentId: () => "hana",
+      getModels: () => ({ authStorage: {}, modelRegistry: {}, resolveThinkingLevel: () => "medium" }),
+      getResourceLoader: () => ({ getSystemPrompt: () => "BASE" }),
+      getSkills: () => null,
+      buildTools: () => ({ tools: [], customTools: [] }),
+      emitEvent: () => {},
+      getHomeCwd: () => "/tmp/home",
+      agentIdFromSessionPath: () => "hana",
+      switchAgentOnly: async () => {},
+      getConfig: () => ({}),
+      getPrefs: () => ({ getThinkingLevel: () => "medium" }),
+      getAgents: () => new Map(),
+      getActivityStore: () => null,
+      getAgentById: () => null,
+      listAgents: () => [],
+    });
+
+    await expect(
+      coordinator.switchSession("/tmp/agents/hana/subagent-sessions/child.jsonl"),
+    ).rejects.toThrow(/path must be in/);
+    await expect(
+      coordinator.switchSession("/tmp/agents/hana/activity/tick.jsonl"),
+    ).rejects.toThrow(/path must be in/);
+    await expect(
+      coordinator.switchSession("/tmp/agents/hana/.ephemeral/iso.jsonl"),
+    ).rejects.toThrow(/path must be in/);
+  });
+
+  it("listSessions 不给旁路路径（subagent-sessions 等）伪造占位条目", async () => {
+    const agent = {
+      id: "hana",
+      agentName: "小花",
+      sessionDir: path.join(tempDir, "hana", "sessions"),
+    };
+    fs.mkdirSync(agent.sessionDir, { recursive: true });
+
+    const coordinator = new SessionCoordinator({
+      agentsDir: tempDir,
+      getAgent: () => agent,
+      getActiveAgentId: () => "hana",
+      getModels: () => ({ authStorage: {}, modelRegistry: {}, resolveThinkingLevel: () => "medium" }),
+      getResourceLoader: () => ({ getSystemPrompt: () => "BASE" }),
+      getSkills: () => null,
+      buildTools: () => ({ tools: [], customTools: [] }),
+      emitEvent: () => {},
+      getHomeCwd: () => "/tmp/home",
+      agentIdFromSessionPath: () => "hana",
+      switchAgentOnly: async () => {},
+      getConfig: () => ({}),
+      getPrefs: () => ({ getThinkingLevel: () => "medium" }),
+      getAgents: () => new Map(),
+      getActivityStore: () => null,
+      getAgentById: () => agent,
+      listAgents: () => [{ id: "hana", name: "小花" }],
+    });
+
+    // 模拟焦点被污染到 subagent-sessions 下
+    const subagentPath = path.join(tempDir, "hana", "subagent-sessions", "child.jsonl");
+    coordinator._session = {
+      sessionManager: {
+        getSessionFile: () => subagentPath,
+        getCwd: () => "/tmp/home",
+      },
+    };
+    coordinator._sessionStarted = true;
+
+    const sessions = await coordinator.listSessions();
+    expect(sessions.find((s) => s.path === subagentPath)).toBeUndefined();
+  });
 });

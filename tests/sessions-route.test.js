@@ -31,6 +31,7 @@ vi.mock("../core/message-utils.js", () => ({
   loadSessionHistoryMessages: vi.fn(async () => []),
   loadLatestAssistantSummaryFromSessionFile: vi.fn(async () => null),
   isValidSessionPath: vi.fn(() => true),
+  isActiveSessionPath: vi.fn(() => true),
 }));
 
 describe("sessions route", () => {

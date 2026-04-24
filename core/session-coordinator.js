@@ -19,6 +19,7 @@ import { READ_ONLY_BUILTIN_TOOLS } from "./config-coordinator.js";
 import { findModel } from "../shared/model-ref.js";
 import { computeToolSnapshot, DEFAULT_DISABLED_TOOL_NAMES } from "../shared/tool-categories.js";
 import { buildUiContextReminder, injectReminderIntoLastUserMessage } from "./ui-context-reminder.js";
+import { isActiveSessionPath } from "./message-utils.js";
 
 const log = createModuleLogger("session");
 
@@ -403,6 +404,13 @@ After dispatching subagent or other background tasks:
   }
 
   async switchSession(sessionPath) {
+    // 只接受"对话焦点"路径，拒绝 subagent-sessions/、activity/、.ephemeral/ 等旁路
+    // 目录下的 session 文件。一旦这类路径混入焦点指针，listSessions 的占位逻辑会把
+    // 它伪造成"新对话"幻影条目（不能归档、重启即消失）。
+    if (!isActiveSessionPath(sessionPath, this._d.agentsDir)) {
+      throw new Error(`switchSession: path must be in agents/{id}/sessions/ — got ${sessionPath}`);
+    }
+
     // 切到已有 session 时清空 pendingModel（用户的临时选择不应跟到别的 session）
     this._pendingModel = null;
 
@@ -1039,7 +1047,15 @@ After dispatching subagent or other background tasks:
 
     const currentPath = this.currentSessionPath;
     const activeAgentId = this._d.getActiveAgentId();
-    if (currentPath && this._sessionStarted && !allSessions.find(s => s.path === currentPath)) {
+    // 只对"真正落在 agents/{id}/sessions/ 下但 SessionManager.list 暂未扫到"的
+    // 新 session 做占位——否则 subagent-sessions/、activity/、.ephemeral/ 等旁路
+    // 路径如果被意外塞进 this._session，会被伪造成"新对话"幻影条目。
+    if (
+      currentPath
+      && this._sessionStarted
+      && isActiveSessionPath(currentPath, this._d.agentsDir)
+      && !allSessions.find(s => s.path === currentPath)
+    ) {
       const currentEntry = this._sessions.get(currentPath);
       allSessions.unshift({
         path: currentPath,
