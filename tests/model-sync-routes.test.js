@@ -187,6 +187,12 @@ describe("model sync related routes", () => {
           provider: "openai-codex",
           reasoning: true,
         },
+        {
+          id: "deepseek-v4-pro",
+          name: "DeepSeek V4 Pro",
+          provider: "deepseek",
+          reasoning: true,
+        },
       ],
       currentModel: { id: "gpt-5.4", name: "Gpt 5.4" },
       config: {},
@@ -200,6 +206,7 @@ describe("model sync related routes", () => {
     expect(allRes.status).toBe(200);
     expect(allData.models[0].id).toBe("gpt-5.4");
     expect(allData.models[0].name).toBe("Gpt 5.4");
+    expect(allData.models[1].xhigh).toBe(true);
   });
 
   it("oauth provider with empty baseUrl falls back to registry", async () => {

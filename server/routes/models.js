@@ -16,6 +16,22 @@ function resolveModelName(id, sdkName, overrides, provider) {
   return sdkName || id;
 }
 
+function lower(value) {
+  return typeof value === "string" ? value.toLowerCase() : "";
+}
+
+function modelSupportsXhigh(model) {
+  const id = lower(model?.id);
+  const known = lookupKnown(model?.provider, model?.id);
+  return model?.xhigh === true
+    || known?.xhigh === true
+    || id.includes("gpt-5.2")
+    || id.includes("gpt-5.3")
+    || id.includes("gpt-5.4")
+    || id.includes("opus-4-6")
+    || id.includes("opus-4.6");
+}
+
 export function createModelsRoute(engine) {
   const route = new Hono();
 
@@ -34,6 +50,7 @@ export function createModelsRoute(engine) {
         reasoning: m.reasoning,
         contextWindow: m.contextWindow,
         maxTokens: m.maxTokens,
+        ...(modelSupportsXhigh(m) ? { xhigh: true } : {}),
       }));
       return c.json({
         models,

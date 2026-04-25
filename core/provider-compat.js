@@ -49,12 +49,34 @@ function isKnownThinkingModelId(id) {
 
 // ── DeepSeek 专用处理 ──
 
-function shouldUseThinking(payload, model) {
+function isThinkingOff(level) {
+  return level === "off" || level === "none" || level === "disabled";
+}
+
+function reasoningEffortForLevel(level) {
+  if (!level) return null;
+  if (level === "xhigh" || level === "max") return "max";
+  if (level === "minimal" || level === "low" || level === "medium" || level === "high") return "high";
+  return null;
+}
+
+function applyRequestedReasoningLevel(payload, level) {
+  const effort = reasoningEffortForLevel(level);
+  if (effort) payload.reasoning_effort = effort;
+}
+
+function enableThinking(payload) {
+  payload.thinking = { type: "enabled" };
+}
+
+function shouldUseThinking(payload, model, reasoningLevel) {
   if (payload.thinking?.type === "disabled") return false;
+  if (isThinkingOff(reasoningLevel)) return false;
+  const knownThinkingModel = model?.reasoning === true || isKnownThinkingModelId(model?.id || payload.model);
   return Boolean(
     payload.reasoning_effort
-    || model?.reasoning === true
-    || isKnownThinkingModelId(model?.id || payload.model)
+    || (knownThinkingModel && reasoningEffortForLevel(reasoningLevel))
+    || knownThinkingModel
   );
 }
 
@@ -116,8 +138,10 @@ function ensureThinkingTokenBudget(payload, model) {
   payload.max_tokens = target;
 }
 
-function applyDeepSeekCompat(payload, model, mode) {
+function applyDeepSeekCompat(payload, model, options) {
   if (!Array.isArray(payload.messages)) return payload;
+  const mode = options.mode || "chat";
+  const reasoningLevel = options.reasoningLevel;
 
   let next = payload;
   const editable = () => {
@@ -129,20 +153,22 @@ function applyDeepSeekCompat(payload, model, mode) {
     normalizeMaxTokenField(editable());
   }
 
-  if (!shouldUseThinking(next, model)) return next;
+  if (isThinkingOff(reasoningLevel) || next.thinking?.type === "disabled") {
+    disableThinking(editable());
+    return next;
+  }
+
+  if (!shouldUseThinking(next, model, reasoningLevel)) return next;
 
   if (mode === "utility") {
     disableThinking(editable());
     return next;
   }
 
-  if (Array.isArray(next.tools) && next.tools.length > 0) {
-    disableThinking(editable());
-    return next;
-  }
-
   const p = editable();
+  applyRequestedReasoningLevel(p, reasoningLevel);
   normalizeReasoningEffort(p);
+  enableThinking(p);
   ensureThinkingTokenBudget(p, model);
   return next;
 }
@@ -172,7 +198,7 @@ function stripIncompatibleThinking(payload, model) {
  *
  * @param {object} payload — 即将发送的 HTTP body（OpenAI / Anthropic 风格）
  * @param {object|null|undefined} model — 完整 model 对象 {id, provider, baseUrl, reasoning, maxTokens, ...}
- * @param {{ mode?: "chat" | "utility" }} [options]
+ * @param {{ mode?: "chat" | "utility", reasoningLevel?: string }} [options]
  * @returns {object} 处理后的 payload
  */
 export function normalizeProviderPayload(payload, model, options = {}) {
@@ -184,7 +210,7 @@ export function normalizeProviderPayload(payload, model, options = {}) {
   result = stripIncompatibleThinking(result, model);
 
   if (isDeepSeekModel(model)) {
-    result = applyDeepSeekCompat(result, model, mode);
+    result = applyDeepSeekCompat(result, model, { mode, reasoningLevel: options.reasoningLevel });
   }
 
   return result;

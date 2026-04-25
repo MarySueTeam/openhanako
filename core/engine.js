@@ -34,6 +34,21 @@ const WELL_KNOWN_SKILL_PATHS = [
 
 const allBuiltInTools = [...codingTools, grepTool, findTool, lsTool];
 
+function findUniqueModelById(models, id) {
+  if (!id || !Array.isArray(models)) return null;
+  const matches = models.filter(m => m.id === id);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function readSessionThinkingLevel(ctx) {
+  try {
+    const level = ctx?.sessionManager?.buildSessionContext?.()?.thinkingLevel;
+    return typeof level === "string" ? level : null;
+  } catch {
+    return null;
+  }
+}
+
 import { PreferencesManager } from "./preferences-manager.js";
 import { ModelManager } from "./model-manager.js";
 import { SkillManager } from "./skill-manager.js";
@@ -736,17 +751,22 @@ export class HanaEngine {
          * 是两条调用路径唯一的 normalize 入口——末端只在"流式 vs 非流式 fetch"分叉。
          *
          * ctx.model 是 Pi SDK 标准入参，正常 chat session 都会带；少数 edge case
-         * （子 session / 工具内调）下偏 SDK 实现可能不带，此时按 payload.model 在
-         * availableModels 里找一次兜底，避免 DeepSeek 兼容意外失效。
+         * （子 session / 工具内调）下偏 SDK 实现可能不带，此时只在 payload.model
+         * 唯一匹配时补 model；重复 id 直接不猜 provider，避免错套 provider 兼容。
          */
         (pi) => {
           pi.on("before_provider_request", (event, ctx) => {
             const p = event.payload;
             if (!p) return p;
             const requestModel = ctx?.model
-              || this._models.availableModels.find(m => m.id === p.model)
+              || findUniqueModelById(this._models.availableModels, p.model)
               || null;
-            return normalizeProviderPayload(p, requestModel, { mode: "chat" });
+            const sessionThinkingLevel = readSessionThinkingLevel(ctx);
+            const preferenceThinkingLevel = this._models.resolveThinkingLevel(this._prefs.getThinkingLevel());
+            const reasoningLevel = preferenceThinkingLevel === "xhigh" && sessionThinkingLevel === "high"
+              ? "xhigh"
+              : (sessionThinkingLevel || preferenceThinkingLevel);
+            return normalizeProviderPayload(p, requestModel, { mode: "chat", reasoningLevel });
           });
         },
         /**

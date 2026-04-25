@@ -355,14 +355,16 @@
       "context": 1000000,
       "maxOutput": 384000,
       "image": false,
-      "reasoning": true
+      "reasoning": true,
+      "xhigh": true
     },
     "deepseek-v4-flash": {
       "name": "DeepSeek V4 Flash",
       "context": 1000000,
       "maxOutput": 384000,
       "image": false,
-      "reasoning": true
+      "reasoning": true,
+      "xhigh": true
     },
     "deepseek-coder": {
       "name": "Deepseek Coder",

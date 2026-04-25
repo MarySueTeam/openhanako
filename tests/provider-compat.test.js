@@ -100,6 +100,39 @@ describe("normalizeProviderPayload — DeepSeek chat 模式", () => {
     expect(payload).toHaveProperty("max_completion_tokens", 32000);
   });
 
+  it("DeepSeek V4 xhigh 会按官方兼容规则转成 max", () => {
+    const payload = {
+      model: "deepseek-v4-pro",
+      messages: [{ role: "user", content: "hello" }],
+      reasoning_effort: "high",
+      max_completion_tokens: 32000,
+    };
+    const result = normalizeProviderPayload(payload, deepseekModel, {
+      mode: "chat",
+      reasoningLevel: "xhigh",
+    });
+    expect(result).toMatchObject({
+      thinking: { type: "enabled" },
+      reasoning_effort: "max",
+      max_tokens: 131072,
+    });
+  });
+
+  it("DeepSeek V4 off 会显式关闭官方思考模式", () => {
+    const payload = {
+      model: "deepseek-v4-pro",
+      messages: [{ role: "user", content: "hello" }],
+      max_tokens: 32000,
+    };
+    const result = normalizeProviderPayload(payload, deepseekModel, {
+      mode: "chat",
+      reasoningLevel: "off",
+    });
+    expect(result).toMatchObject({ thinking: { type: "disabled" } });
+    expect(result).not.toHaveProperty("reasoning_effort");
+    expect(result.max_tokens).toBe(32000);
+  });
+
   it("DeepSeek 已经足够大的 max_tokens 不被放大", () => {
     const payload = {
       model: "deepseek-v4-pro",
@@ -111,7 +144,7 @@ describe("normalizeProviderPayload — DeepSeek chat 模式", () => {
     expect(result.max_tokens).toBe(50000);
   });
 
-  it("DeepSeek 工具请求关闭思考协议，并移除历史 reasoning_content", () => {
+  it("DeepSeek V4 工具请求保留官方思考协议和 reasoning_content", () => {
     const payload = {
       model: "deepseek-v4-pro",
       messages: [
@@ -128,14 +161,17 @@ describe("normalizeProviderPayload — DeepSeek chat 模式", () => {
       reasoning_effort: "medium",
       max_completion_tokens: 32000,
     };
-    const result = normalizeProviderPayload(payload, deepseekModel, { mode: "chat" });
-    expect(result).toMatchObject({
-      thinking: { type: "disabled" },
-      max_tokens: 32000,
+    const result = normalizeProviderPayload(payload, deepseekModel, {
+      mode: "chat",
+      reasoningLevel: "xhigh",
     });
-    expect(result).not.toHaveProperty("reasoning_effort");
+    expect(result).toMatchObject({
+      thinking: { type: "enabled" },
+      reasoning_effort: "max",
+      max_tokens: 131072,
+    });
     expect(result).not.toHaveProperty("max_completion_tokens");
-    expect(result.messages[1]).not.toHaveProperty("reasoning_content");
+    expect(result.messages[1]).toHaveProperty("reasoning_content", "Need to call the date tool.");
     expect(payload.messages[1]).toHaveProperty("reasoning_content");
   });
 
@@ -149,7 +185,10 @@ describe("normalizeProviderPayload — DeepSeek chat 模式", () => {
       id: "deepseek-v4-pro",
       provider: "deepseek",
     }, { mode: "chat" });
-    expect(result).toMatchObject({ thinking: { type: "disabled" } });
+    expect(result).toMatchObject({
+      thinking: { type: "enabled" },
+      max_tokens: 65536,
+    });
   });
 });
 
@@ -183,7 +222,7 @@ describe("normalizeProviderPayload — DeepSeek utility 模式", () => {
       id: "deepseek-chat",
       provider: "deepseek",
       reasoning: false,
-    }, { mode: "utility" });
+    }, { mode: "utility", reasoningLevel: "high" });
     expect(result).not.toHaveProperty("thinking");
     expect(result.max_tokens).toBe(100);
   });
