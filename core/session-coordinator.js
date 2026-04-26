@@ -1392,8 +1392,13 @@ After dispatching subagent or other background tasks:
       }
       const execModel = models.resolveExecutionModel(resolvedModel);
       tempSessionMgr = SessionManager.create(execCwd, sessionDir);
+      const targetAgentToolsSnapshot = typeof targetAgent.getToolsSnapshot === "function"
+        ? targetAgent.getToolsSnapshot({ forceMemoryEnabled: targetAgent.memoryMasterEnabled !== false })
+        : targetAgent.tools;
       const { tools: allBuiltinTools, customTools: allCustomTools } = this._d.buildTools(
-        execCwd, targetAgent.tools, { agentDir: targetAgent.agentDir, workspace: this._d.getHomeCwd(targetAgent.id) }
+        execCwd,
+        targetAgentToolsSnapshot,
+        { agentDir: targetAgent.agentDir, workspace: this._d.getHomeCwd(targetAgent.id) },
       );
 
       const patrolAllowed = opts.toolFilter

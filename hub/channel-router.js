@@ -39,6 +39,18 @@ export class ChannelRouter {
   /** @returns {import('../core/engine.js').HanaEngine} */
   get _engine() { return this._hub.engine; }
 
+  _getAgentInstance(agentId) {
+    return this._engine.getAgent?.(agentId)
+      || this._engine.agents?.get?.(agentId)
+      || null;
+  }
+
+  _resolveMemoryMasterEnabled(agentId, { agentInstance = null, cfg = null } = {}) {
+    if (agentInstance) return agentInstance.memoryMasterEnabled !== false;
+    const resolvedCfg = cfg || loadConfig(path.join(this._engine.agentsDir, agentId, "config.yaml"));
+    return resolvedCfg?.memory?.enabled !== false;
+  }
+
   // ──────────── 生命周期 ────────────
 
   start() {
@@ -135,7 +147,7 @@ export class ChannelRouter {
     const agentDir = path.join(engine.agentsDir, agentId);
 
     // 复用 Agent 实例的 personality（identity + yuan + ishiki 已在内存中组装）
-    const agentInstance = engine.agents?.get(agentId);
+    const agentInstance = this._getAgentInstance(agentId);
     const cfg = agentInstance?.config || loadConfig(path.join(agentDir, "config.yaml"));
     const agentName = cfg.agent?.name || agentId;
 
@@ -146,7 +158,7 @@ export class ChannelRouter {
 
     // memory.md 和 user.md 内容会变，仍需从磁盘读取
     // 记忆 master 关闭时跳过 memory.md（user.md 是用户档案，不属于记忆系统）
-    const memoryMasterOn = agentInstance?.memoryMasterEnabled !== false;
+    const memoryMasterOn = this._resolveMemoryMasterEnabled(agentId, { agentInstance, cfg });
     const memoryMd = memoryMasterOn ? readFile(path.join(agentDir, "memory", "memory.md")) : "";
     const userMd = readFile(path.join(engine.userDir, "user.md"));
     const isZh = getLocale().startsWith("zh");
@@ -305,8 +317,9 @@ export class ChannelRouter {
     const engine = this._engine;
     try {
       // 记忆 master 关闭时不写入新记忆（频道摘要是写侧操作）
-      const agentInstance = engine.getAgent(agentId);
-      if (agentInstance && agentInstance.memoryMasterEnabled === false) {
+      const agentInstance = this._getAgentInstance(agentId);
+      const memoryMasterOn = this._resolveMemoryMasterEnabled(agentId, { agentInstance });
+      if (!memoryMasterOn) {
         console.log(`\x1b[90m[channel] ${agentId} memory master 已关闭，跳过频道记忆摘要\x1b[0m`);
         return;
       }

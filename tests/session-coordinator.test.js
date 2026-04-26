@@ -232,6 +232,81 @@ describe("SessionCoordinator", () => {
     expect(fs.existsSync(sessionFile)).toBe(false);
   });
 
+  it("executeIsolated builds non-session tools from the master memory switch, not the focused session switch", async () => {
+    const sessionFile = path.join(tempDir, "isolated-master-tools.jsonl");
+    const builtinTool = { name: "read" };
+    const plainTool = { name: "plain_custom" };
+    const memoryTool = { name: "search_memory" };
+    const getToolsSnapshot = vi.fn(({ forceMemoryEnabled } = {}) => (
+      forceMemoryEnabled ? [plainTool, memoryTool] : [plainTool]
+    ));
+    const buildTools = vi.fn((_cwd, customTools) => ({
+      tools: [builtinTool],
+      customTools,
+    }));
+    const agent = {
+      id: "hana",
+      agentDir: tempDir,
+      sessionDir: tempDir,
+      agentName: "hana",
+      memoryMasterEnabled: true,
+      sessionMemoryEnabled: false,
+      config: { models: { chat: { id: "default-model", provider: "test" } } },
+      systemPrompt: "MEMORY MASTER PROMPT",
+      tools: [plainTool],
+      getToolsSnapshot,
+    };
+
+    sessionManagerCreateMock.mockReturnValue({
+      getCwd: () => tempDir,
+      getSessionFile: () => sessionFile,
+    });
+    createAgentSessionMock.mockResolvedValue({
+      session: {
+        sessionManager: { getSessionFile: () => sessionFile },
+        subscribe: vi.fn(() => vi.fn()),
+        prompt: vi.fn(async () => {}),
+        abort: vi.fn(),
+      },
+    });
+
+    const coordinator = new SessionCoordinator({
+      agentsDir: "/tmp/agents",
+      getAgent: () => agent,
+      getActiveAgentId: () => "hana",
+      getModels: () => ({
+        authStorage: {},
+        modelRegistry: {},
+        defaultModel: { id: "default-model", provider: "test" },
+        availableModels: [{ id: "default-model", provider: "test" }],
+        resolveExecutionModel: (model) => model,
+        resolveThinkingLevel: () => "medium",
+      }),
+      getResourceLoader: () => ({ getSystemPrompt: () => "prompt" }),
+      getSkills: () => ({ getSkillsForAgent: () => [] }),
+      buildTools,
+      emitEvent: () => {},
+      getHomeCwd: () => tempDir,
+      agentIdFromSessionPath: () => null,
+      switchAgentOnly: async () => {},
+      getConfig: () => ({}),
+      getPrefs: () => ({ getThinkingLevel: () => "medium" }),
+      getAgents: () => new Map(),
+      getActivityStore: () => null,
+      getAgentById: () => null,
+      listAgents: () => [],
+    });
+
+    await coordinator.executeIsolated("background check");
+
+    expect(getToolsSnapshot).toHaveBeenCalledWith({ forceMemoryEnabled: true });
+    expect(buildTools.mock.calls[0][1].map((tool) => tool.name)).toEqual([
+      "plain_custom",
+      "search_memory",
+    ]);
+    expect(createAgentSessionMock.mock.calls[0][0].customTools.map((tool) => tool.name)).toContain("search_memory");
+  });
+
   it("switchSession 拒绝 subagent-sessions/activity/.ephemeral 等旁路路径", async () => {
     const coordinator = new SessionCoordinator({
       agentsDir: "/tmp/agents",

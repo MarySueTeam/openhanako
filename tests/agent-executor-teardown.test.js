@@ -101,4 +101,55 @@ describe("runAgentSession teardown", () => {
     expect(session.dispose).toHaveBeenCalledOnce();
     expect(fs.existsSync(sessionFile)).toBe(false);
   });
+
+  it("hub 临时 session tools follow the master memory switch instead of session memory state", async () => {
+    const cwd = path.join(rootDir, "cwd");
+    fs.mkdirSync(cwd, { recursive: true });
+    const agent = makeAgent(rootDir);
+    agent.memoryMasterEnabled = true;
+    const plainTool = { name: "plain_custom" };
+    const memoryTool = { name: "search_memory" };
+    agent.tools = [plainTool];
+    agent.getToolsSnapshot = vi.fn(({ forceMemoryEnabled } = {}) => (
+      forceMemoryEnabled ? [plainTool, memoryTool] : [plainTool]
+    ));
+
+    const buildTools = vi.fn((_cwd, customTools) => ({
+      tools: [],
+      customTools,
+    }));
+    const engine = {
+      ...makeEngine(agent, cwd),
+      createSessionContext: () => ({
+        resourceLoader: {},
+        getSkillsForAgent: () => ({ skills: [], diagnostics: [] }),
+        buildTools,
+        resolveModel: () => ({ id: "gpt-4o", provider: "openai", name: "GPT-4o" }),
+        authStorage: {},
+        modelRegistry: {},
+      }),
+    };
+    const sessionFile = path.join(agent.agentDir, "sessions", "temp", "s-master-tools.jsonl");
+    fs.mkdirSync(path.dirname(sessionFile), { recursive: true });
+    fs.writeFileSync(sessionFile, "", "utf-8");
+    sessionManagerCreateMock.mockReturnValue({ getSessionFile: () => sessionFile });
+    createAgentSessionMock.mockResolvedValue({
+      session: {
+        prompt: vi.fn(async () => {}),
+        subscribe: vi.fn(() => () => {}),
+        dispose: vi.fn(),
+        sessionManager: { getSessionFile: () => sessionFile },
+        extensionRunner: { hasHandlers: vi.fn(() => false) },
+      },
+    });
+
+    await runAgentSession("agent-a", [{ text: "hello", capture: true }], { engine });
+
+    expect(agent.getToolsSnapshot).toHaveBeenCalledWith({ forceMemoryEnabled: true });
+    expect(buildTools.mock.calls[0][1].map((tool) => tool.name)).toEqual([
+      "plain_custom",
+      "search_memory",
+    ]);
+    expect(createAgentSessionMock.mock.calls[0][0].customTools.map((tool) => tool.name)).toContain("search_memory");
+  });
 });

@@ -143,6 +143,48 @@ describe("BridgeSessionManager teardown", () => {
     expect(createArgs.resourceLoader.getSystemPrompt()).toBe(`system prompt @ ${rootCwd}`);
   });
 
+  it("owner bridge tools follow the master memory switch instead of session memory state", async () => {
+    const agent = makeAgent(rootDir);
+    agent.memoryMasterEnabled = true;
+    const plainTool = { name: "plain_custom" };
+    const memoryTool = { name: "search_memory" };
+    agent.tools = [plainTool];
+    agent.getToolsSnapshot = vi.fn(({ forceMemoryEnabled } = {}) => (
+      forceMemoryEnabled ? [plainTool, memoryTool] : [plainTool]
+    ));
+    const buildTools = vi.fn((_cwd, customTools) => ({
+      tools: [],
+      customTools,
+    }));
+    const deps = {
+      ...makeDeps(agent),
+      buildTools,
+    };
+    const mgrPath = path.join(agent.sessionDir, "bridge", "owner", "s-master-tools.jsonl");
+    const manager = new BridgeSessionManager(deps);
+    sessionManagerCreateMock.mockReturnValue({ getSessionFile: () => mgrPath });
+
+    createAgentSessionMock.mockResolvedValue({
+      session: {
+        model: { input: ["text"] },
+        prompt: vi.fn(async () => {}),
+        subscribe: vi.fn(() => () => {}),
+        dispose: vi.fn(),
+        sessionManager: { getSessionFile: () => mgrPath },
+        extensionRunner: { hasHandlers: vi.fn(() => false) },
+      },
+    });
+
+    await manager.executeExternalMessage("hello", "bridge-k-master-tools", null, { agentId: "agent-a" });
+
+    expect(agent.getToolsSnapshot).toHaveBeenCalledWith({ forceMemoryEnabled: true });
+    expect(buildTools.mock.calls[0][1].map((tool) => tool.name)).toEqual([
+      "plain_custom",
+      "search_memory",
+    ]);
+    expect(createAgentSessionMock.mock.calls[0][0].customTools.map((tool) => tool.name)).toContain("search_memory");
+  });
+
   it("compactSession 的临时 owner session 结束后也会 shutdown + dispose", async () => {
     const agent = makeAgent(rootDir);
     const manager = new BridgeSessionManager(makeDeps(agent));

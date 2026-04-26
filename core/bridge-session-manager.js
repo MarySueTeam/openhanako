@@ -398,8 +398,11 @@ export class BridgeSessionManager {
   _buildOwnerSessionOpts(agent, mm, homeCwd) {
     const prefs = this._deps.getPreferences();
     const bridgeReadOnly = prefs?.bridge?.readOnly === true;
+    const agentToolsSnapshot = typeof agent.getToolsSnapshot === "function"
+      ? agent.getToolsSnapshot({ forceMemoryEnabled: agent.memoryMasterEnabled !== false })
+      : agent.tools;
     const { tools: baseTools, customTools: baseCustomTools } = this._deps.buildTools(
-      homeCwd, agent.tools,
+      homeCwd, agentToolsSnapshot,
       { workspace: homeCwd, agentDir: agent.agentDir },
     );
 
