@@ -1,179 +1,56 @@
 /**
- * core/provider-compat.js — LLM HTTP payload 兼容层（唯一根）
+ * core/provider-compat.js — LLM HTTP payload 兼容层（唯一对外入口）
  *
- * 所有 provider-specific 的 payload 调整集中在这里。两条调用路径共享：
+ * 架构：dispatcher + 子模块。所有 provider-specific 补丁拆到 ./provider-compat/<name>.js。
+ * 完整规范见 ./provider-compat/README.md。
+ *
+ * 两条调用路径共享本入口（commit f5b5d69 立的纪律）：
  *   - core/llm-client.js 的 callText（非流式 / utility 路径）
  *   - core/engine.js 的 Pi SDK before_provider_request 扩展（流式 / chat 路径）
  *
- * 末端分叉只发生在 fetch 层本身（流式 SSE vs 非流式 POST），跟 provider 兼容性无关。
+ * 本文件只保留：
+ *   1. dispatcher（按 matches 分发到子模块，first-match-wins）
+ *   2. 与 provider 无关的通用补丁（stripEmptyTools, stripIncompatibleThinking）
+ *   3. 鉴别函数（isDeepSeekModel, isAnthropicModel）— 供其他 hana 模块复用
  *
- * mode 区分：
- *   - "chat"：保留思考链。chat 路径默认。
- *   - "utility"：短文本调用，DeepSeek reasoning 模型主动 disableThinking
- *     （utility 是 50~500 token 输出，思考链既无意义也耗光预算）。
+ * 不允许在本文件加任何 provider-specific 实现细节；新 provider 一律开
+ * core/provider-compat/<name>.js 子模块。
  */
 
-const DEEPSEEK_HIGH_THINKING_BUDGET = 32768;
-const DEEPSEEK_HIGH_SAFE_MAX_TOKENS = 65536;
-const DEEPSEEK_MAX_SAFE_MAX_TOKENS = 131072;
+import * as deepseek from "./provider-compat/deepseek.js";
+import * as qwen from "./provider-compat/qwen.js";
 
-const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+/**
+ * 子模块注册表。顺序敏感：first-match-wins。
+ * 新 provider 默认加在末尾；只有当模块的 matches 是另一模块子集（更具体规则）时才前置。
+ */
+const PROVIDER_MODULES = [deepseek, qwen];
 
 function lower(value) {
   return typeof value === "string" ? value.toLowerCase() : "";
 }
 
-function positiveInteger(value) {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
-}
+// ── Provider 鉴别（导出供其他 hana 模块复用，不属于子模块逻辑）──
 
-// ── Provider 鉴别 ──
-
+/**
+ * 判断 model 是否走 DeepSeek 兼容路径。
+ * 委托给 deepseek 子模块的 matches，避免双源真相。
+ */
 export function isDeepSeekModel(model) {
-  if (!model || typeof model !== "object") return false;
-  const provider = lower(model.provider);
-  const baseUrl = lower(model.baseUrl || model.base_url);
-  return provider === "deepseek" || baseUrl.includes("api.deepseek.com");
+  return deepseek.matches(model);
 }
 
+/**
+ * 判断 model 是否走 Anthropic 兼容路径。
+ * Anthropic 没有专门的子模块（pi-ai SDK 已直接兼容），仅供本文件 stripIncompatibleThinking 与
+ * 其他 hana 模块的鉴别需求复用。
+ */
 export function isAnthropicModel(model) {
   if (!model || typeof model !== "object") return false;
   return lower(model.provider) === "anthropic";
 }
 
-function isKnownThinkingModelId(id) {
-  const normalized = lower(id);
-  return normalized === "deepseek-reasoner" || normalized.startsWith("deepseek-v4-");
-}
-
-// ── DeepSeek 专用处理 ──
-
-function isThinkingOff(level) {
-  return level === "off" || level === "none" || level === "disabled";
-}
-
-function reasoningEffortForLevel(level) {
-  if (!level) return null;
-  if (level === "xhigh" || level === "max") return "max";
-  if (level === "minimal" || level === "low" || level === "medium" || level === "high") return "high";
-  return null;
-}
-
-function applyRequestedReasoningLevel(payload, level) {
-  const effort = reasoningEffortForLevel(level);
-  if (effort) payload.reasoning_effort = effort;
-}
-
-function enableThinking(payload) {
-  payload.thinking = { type: "enabled" };
-}
-
-function shouldUseThinking(payload, model, reasoningLevel) {
-  if (payload.thinking?.type === "disabled") return false;
-  if (isThinkingOff(reasoningLevel)) return false;
-  const knownThinkingModel = model?.reasoning === true || isKnownThinkingModelId(model?.id || payload.model);
-  return Boolean(
-    payload.reasoning_effort
-    || (knownThinkingModel && reasoningEffortForLevel(reasoningLevel))
-    || knownThinkingModel
-  );
-}
-
-function normalizeReasoningEffort(payload) {
-  if (!hasOwn(payload, "reasoning_effort")) return;
-  if (payload.reasoning_effort === "low" || payload.reasoning_effort === "medium") {
-    payload.reasoning_effort = "high";
-  } else if (payload.reasoning_effort === "xhigh") {
-    payload.reasoning_effort = "max";
-  }
-}
-
-function stripReasoningContent(messages) {
-  let changed = false;
-  const next = messages.map((message) => {
-    if (!message || typeof message !== "object" || !hasOwn(message, "reasoning_content")) {
-      return message;
-    }
-    changed = true;
-    const copy = { ...message };
-    delete copy.reasoning_content;
-    return copy;
-  });
-  return changed ? next : messages;
-}
-
-function disableThinking(payload) {
-  delete payload.reasoning_effort;
-  payload.thinking = { type: "disabled" };
-  if (Array.isArray(payload.messages)) {
-    const stripped = stripReasoningContent(payload.messages);
-    if (stripped !== payload.messages) payload.messages = stripped;
-  }
-}
-
-function normalizeMaxTokenField(payload) {
-  if (!hasOwn(payload, "max_completion_tokens")) return;
-  if (!hasOwn(payload, "max_tokens")) {
-    payload.max_tokens = payload.max_completion_tokens;
-  }
-  delete payload.max_completion_tokens;
-}
-
-function ensureThinkingTokenBudget(payload, model) {
-  const current = positiveInteger(payload.max_tokens);
-  if (current && current > DEEPSEEK_HIGH_THINKING_BUDGET) return;
-
-  const modelLimit = positiveInteger(model?.maxTokens || model?.maxOutput);
-  const desired = payload.reasoning_effort === "max"
-    ? DEEPSEEK_MAX_SAFE_MAX_TOKENS
-    : DEEPSEEK_HIGH_SAFE_MAX_TOKENS;
-  const target = modelLimit ? Math.min(modelLimit, desired) : desired;
-
-  if (target <= DEEPSEEK_HIGH_THINKING_BUDGET) {
-    disableThinking(payload);
-    return;
-  }
-
-  payload.max_tokens = target;
-}
-
-function applyDeepSeekCompat(payload, model, options) {
-  if (!Array.isArray(payload.messages)) return payload;
-  const mode = options.mode || "chat";
-  const reasoningLevel = options.reasoningLevel;
-
-  let next = payload;
-  const editable = () => {
-    if (next === payload) next = { ...payload };
-    return next;
-  };
-
-  if (hasOwn(payload, "max_completion_tokens")) {
-    normalizeMaxTokenField(editable());
-  }
-
-  if (isThinkingOff(reasoningLevel) || next.thinking?.type === "disabled") {
-    disableThinking(editable());
-    return next;
-  }
-
-  if (!shouldUseThinking(next, model, reasoningLevel)) return next;
-
-  if (mode === "utility") {
-    disableThinking(editable());
-    return next;
-  }
-
-  const p = editable();
-  applyRequestedReasoningLevel(p, reasoningLevel);
-  normalizeReasoningEffort(p);
-  enableThinking(p);
-  ensureThinkingTokenBudget(p, model);
-  return next;
-}
-
-// ── 通用 payload 处理 ──
+// ── 通用 payload 处理（与 provider 无关）──
 
 function stripEmptyTools(payload) {
   if (Array.isArray(payload.tools) && payload.tools.length === 0) {
@@ -194,23 +71,32 @@ function stripIncompatibleThinking(payload, model) {
 }
 
 /**
- * Provider payload 兼容化的唯一入口。
+ * Provider payload 兼容化的唯一入口。chat 路径与 utility 路径共享。
+ *
+ * 处理顺序：
+ *   1. 通用补丁（stripEmptyTools / stripIncompatibleThinking）
+ *   2. 子模块分发（first-match-wins，最多匹配一个）
  *
  * @param {object} payload — 即将发送的 HTTP body（OpenAI / Anthropic 风格）
- * @param {object|null|undefined} model — 完整 model 对象 {id, provider, baseUrl, reasoning, maxTokens, ...}
+ * @param {object|null|undefined} model — 完整 model 对象 {id, provider, baseUrl, reasoning, maxTokens, quirks, ...}
  * @param {{ mode?: "chat" | "utility", reasoningLevel?: string }} [options]
  * @returns {object} 处理后的 payload
  */
 export function normalizeProviderPayload(payload, model, options = {}) {
   if (!payload || typeof payload !== "object") return payload;
-  const mode = options.mode || "chat";
 
   let result = payload;
+
+  // 1. 通用补丁（与 provider 无关）
   result = stripEmptyTools(result);
   result = stripIncompatibleThinking(result, model);
 
-  if (isDeepSeekModel(model)) {
-    result = applyDeepSeekCompat(result, model, { mode, reasoningLevel: options.reasoningLevel });
+  // 2. Provider-specific 补丁（按 matches 分发，first-match-wins）
+  for (const mod of PROVIDER_MODULES) {
+    if (mod.matches(model)) {
+      result = mod.apply(result, model, options);
+      break;
+    }
   }
 
   return result;
