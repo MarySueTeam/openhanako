@@ -8,8 +8,8 @@
 1. **唯一对外入口**：所有出站 payload 兼容必须经过 [`core/provider-compat.js`](../provider-compat.js) 的 `normalizeProviderPayload(payload, model, options)`。chat 路径（`engine.js` 注册的 `before_provider_request` 钩子）和 utility 路径（`llm-client.js` 的 `callText`）共享这一个入口。
 2. **通用补丁留主入口**：与 provider 无关的处理（空 tools 数组剥离、不兼容 provider 的 thinking 字段剥离）写在 `provider-compat.js` 主入口。
 3. **Provider-specific 补丁拆子文件**：每个 provider 一个 `core/provider-compat/<name>.js`，互不串扰。
-4. **接口契约**：每个子文件 export `matches(model) → boolean` 和 `apply(payload, model, options) → payload`。
-5. **dispatch 单调性**：dispatcher 按数组顺序遍历，第一个 `matches` 返回 true 的子模块负责处理（first-match-wins）。一个 model 只匹配一个子模块。
+4. **接口契约**：每个子文件 export `matches(model) → boolean`（必须容忍 `model = null/undefined`，不抛错）和 `apply(payload, model, options) → payload`（不可 mutate 输入 payload）。
+5. **dispatch 单调性**：dispatcher 按数组顺序遍历，第一个 `matches` 返回 true 的子模块负责处理（first-match-wins）。一个 model 只匹配一个子模块。新 provider 默认加在数组末尾；只有当模块的 `matches` 是另一模块的子集（更具体的规则）时才前置，避免被通用规则吞掉。
 6. **禁止散落**：调用点（`callText`、`engine.js` 钩子、route handler 等）禁止内联 provider-specific 补丁。一旦发现，迁移到本目录。
 
 ## 新增 provider 补丁的步骤
@@ -59,7 +59,7 @@ export function matches(model) { ... }
  * 对 payload 应用本 provider 的全部兼容补丁。
  *
  * 实现要求：
- *   - 不可变契约：返回新对象（修改时浅拷贝），未修改时返回原 payload
+ *   - 不可变契约：返回新对象（或原对象，未修改时）；不直接 mutate 调用方传入的 payload
  *   - 必须能处理 mode: "chat" 和 mode: "utility" 两种调用上下文
  *   - 必须能容忍 model 字段缺失（保守处理，宁可不补也别错补）
  */
@@ -75,4 +75,5 @@ export function apply(payload, model, options) { ... }
 
 ## 历史背景
 
-本架构由 commit `<本 plan 完成后的 commit hash>` 引入，根因来自 issue [#468](https://github.com/liliMozi/openhanako/issues/468) 的 DeepSeek 思考模式 400。设计 spec：[docs/superpowers/specs/2026-04-26-provider-compat-layer-design.md](../../docs/superpowers/specs/2026-04-26-provider-compat-layer-design.md)（注：spec 是本地工作文档，不入仓）。
+<!-- TODO(plan-final-commit): fill in commit hash -->
+本架构由 commit `<本 plan 完成后的 commit hash>` 引入，根因来自 issue [#468](https://github.com/liliMozi/openhanako/issues/468) 的 DeepSeek 思考模式 400。设计 spec（本地工作文档，不入仓）：[docs/superpowers/specs/2026-04-26-provider-compat-layer-design.md](../../docs/superpowers/specs/2026-04-26-provider-compat-layer-design.md)。
