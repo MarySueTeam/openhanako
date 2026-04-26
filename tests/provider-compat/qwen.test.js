@@ -25,7 +25,7 @@ describe("provider-compat/qwen — matches", () => {
     })).toBe(true);
   });
 
-  it("dashscope provider 但无 enable_thinking quirk → false", () => {
+  it("quirks 不含 enable_thinking 即使 provider=dashscope 也 → false", () => {
     expect(qwen.matches({
       provider: "dashscope",
       quirks: ["other_quirk"],
@@ -35,16 +35,21 @@ describe("provider-compat/qwen — matches", () => {
     })).toBe(false);
   });
 
-  it("非 dashscope provider 即使带 enable_thinking quirk → false", () => {
+  it("非 dashscope provider 但带 enable_thinking quirk → 也匹配（quirks 是协议特征声明）", () => {
     expect(qwen.matches({
-      provider: "openai",
+      provider: "siliconflow",
       quirks: ["enable_thinking"],
-    })).toBe(false);
-  });
-
-  it("provider 大小写不敏感", () => {
+    })).toBe(true);
     expect(qwen.matches({
-      provider: "DashScope",
+      provider: "modelscope",
+      quirks: ["enable_thinking"],
+    })).toBe(true);
+    expect(qwen.matches({
+      provider: "infini",
+      quirks: ["enable_thinking"],
+    })).toBe(true);
+    expect(qwen.matches({
+      provider: "dashscope-coding",
       quirks: ["enable_thinking"],
     })).toBe(true);
   });
