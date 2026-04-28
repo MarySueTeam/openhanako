@@ -25,6 +25,10 @@ export default defineConfig({
         "node-telegram-bot-api",
         "exceljs",
         "mammoth",
+        // jsdom: CJS package that reads package-local resources via __dirname
+        // during initialization. Bundling it into the ESM server bundle breaks
+        // packaged runtime startup because __dirname is not defined there.
+        "jsdom",
         "fsevents",
 
         // qrcode: 有 browser/node 双入口，Vite 会选 browser 版（期望 DOM canvas）。

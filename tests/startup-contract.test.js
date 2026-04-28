@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import viteServerConfig from "../vite.config.server.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,5 +21,11 @@ describe("local startup contract", () => {
 
     expect(launchJs).toContain("HANA_DEV_NODE_BIN");
     expect(mainCjs).toContain("HANA_DEV_NODE_BIN");
+  });
+
+  it("keeps jsdom external in the server bundle for packaged runtime", () => {
+    const external = viteServerConfig.build?.rollupOptions?.external || [];
+
+    expect(external).toContain("jsdom");
   });
 });
