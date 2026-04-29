@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   normalizeProviderPayload,
+  normalizeProviderContextMessages,
   isDeepSeekModel,
   isAnthropicModel,
   getThinkingFormat,
+  getReasoningProfile,
 } from "../core/provider-compat.js";
 
 describe("isDeepSeekModel", () => {
@@ -53,6 +55,44 @@ describe("getThinkingFormat", () => {
       reasoning: true,
       compat: { supportsDeveloperRole: false },
     })).toBe("anthropic");
+  });
+});
+
+describe("getReasoningProfile", () => {
+  it("显式 reasoningProfile 优先于派生规则", () => {
+    expect(getReasoningProfile({
+      provider: "custom",
+      api: "anthropic-messages",
+      reasoning: true,
+      compat: { reasoningProfile: "deepseek-v4-anthropic" },
+    })).toBe("deepseek-v4-anthropic");
+  });
+
+  it("DeepSeek V4 官方 Anthropic endpoint 派生为 deepseek-v4-anthropic", () => {
+    expect(getReasoningProfile({
+      id: "deepseek-v4-pro",
+      provider: "deepseek",
+      api: "anthropic-messages",
+      baseUrl: "https://api.deepseek.com/anthropic",
+      reasoning: true,
+    })).toBe("deepseek-v4-anthropic");
+  });
+
+  it("Kimi / MiniMax Anthropic-compatible 模型不被误判成 DeepSeek profile", () => {
+    expect(getReasoningProfile({
+      id: "kimi-k2.6",
+      provider: "kimi-coding",
+      api: "anthropic-messages",
+      reasoning: true,
+      compat: { thinkingFormat: "anthropic" },
+    })).toBe(null);
+    expect(getReasoningProfile({
+      id: "MiniMax-M2.7",
+      provider: "minimax",
+      api: "anthropic-messages",
+      reasoning: true,
+      compat: { thinkingFormat: "anthropic" },
+    })).toBe(null);
   });
 });
 
@@ -130,6 +170,149 @@ describe("normalizeProviderPayload — 通用层", () => {
     };
     const result = normalizeProviderPayload(payload, null);
     expect(result.thinking).toEqual({ type: "enabled" });
+  });
+});
+
+describe("normalizeProviderPayload — DeepSeek Anthropic 模式", () => {
+  const deepseekAnthropicModel = {
+    id: "deepseek-v4-pro",
+    provider: "deepseek",
+    api: "anthropic-messages",
+    baseUrl: "https://api.deepseek.com/anthropic",
+    reasoning: true,
+    maxTokens: 384000,
+    compat: { thinkingFormat: "anthropic", reasoningProfile: "deepseek-v4-anthropic" },
+  };
+
+  it("xhigh 映射到 Anthropic 格式 output_config.effort=max，且不泄漏 OpenAI reasoning_effort", () => {
+    const payload = {
+      model: "deepseek-v4-pro",
+      messages: [{ role: "user", content: "hi" }],
+      thinking: { type: "enabled", budget_tokens: 16384, display: "summarized" },
+      reasoning_effort: "high",
+      max_tokens: 32000,
+    };
+    const result = normalizeProviderPayload(payload, deepseekAnthropicModel, {
+      mode: "chat",
+      reasoningLevel: "xhigh",
+    });
+    expect(result).not.toBe(payload);
+    expect(result.thinking).toEqual({ type: "enabled", budget_tokens: 16384 });
+    expect(result.output_config).toEqual({ effort: "max" });
+    expect(result).not.toHaveProperty("reasoning_effort");
+    expect(result.max_tokens).toBe(32000);
+    expect(payload).toHaveProperty("reasoning_effort", "high");
+  });
+
+  it("high 映射到 Anthropic 格式 output_config.effort=high", () => {
+    const payload = {
+      model: "deepseek-v4-pro",
+      messages: [{ role: "user", content: "hi" }],
+      thinking: { type: "enabled", budget_tokens: 8192 },
+    };
+    const result = normalizeProviderPayload(payload, deepseekAnthropicModel, {
+      mode: "chat",
+      reasoningLevel: "high",
+    });
+    expect(result.output_config).toEqual({ effort: "high" });
+    expect(result).not.toHaveProperty("reasoning_effort");
+  });
+
+  it("off 显式关闭 Anthropic thinking，并移除 output_config / reasoning_effort", () => {
+    const payload = {
+      model: "deepseek-v4-pro",
+      messages: [{ role: "user", content: "hi" }],
+      thinking: { type: "enabled", budget_tokens: 8192 },
+      output_config: { effort: "max" },
+      reasoning_effort: "max",
+    };
+    const result = normalizeProviderPayload(payload, deepseekAnthropicModel, {
+      mode: "chat",
+      reasoningLevel: "off",
+    });
+    expect(result.thinking).toEqual({ type: "disabled" });
+    expect(result).not.toHaveProperty("output_config");
+    expect(result).not.toHaveProperty("reasoning_effort");
+  });
+
+  it("Kimi Anthropic-compatible payload 不被加 DeepSeek output_config", () => {
+    const payload = {
+      model: "kimi-k2.6",
+      messages: [{ role: "user", content: "hi" }],
+      thinking: { type: "enabled", budget_tokens: 8192 },
+    };
+    const result = normalizeProviderPayload(payload, {
+      id: "kimi-k2.6",
+      provider: "kimi-coding",
+      api: "anthropic-messages",
+      reasoning: true,
+      compat: { thinkingFormat: "anthropic" },
+    }, { mode: "chat", reasoningLevel: "xhigh" });
+    expect(result).toBe(payload);
+    expect(result).not.toHaveProperty("output_config");
+  });
+});
+
+describe("normalizeProviderContextMessages — DeepSeek Anthropic replay", () => {
+  const deepseekAnthropicModel = {
+    id: "deepseek-v4-pro",
+    provider: "deepseek",
+    api: "anthropic-messages",
+    baseUrl: "https://api.deepseek.com/anthropic",
+    reasoning: true,
+    compat: { thinkingFormat: "anthropic", reasoningProfile: "deepseek-v4-anthropic" },
+  };
+
+  it("thinking 开启时，Anthropic tool replay 缺少非空 thinking 原文会 fail closed", () => {
+    const messages = [
+      { role: "user", content: "look up date" },
+      {
+        role: "assistant",
+        content: [
+          { type: "thinking", thinking: "", thinkingSignature: "sig" },
+          { type: "toolCall", id: "call_1", name: "date", arguments: {} },
+        ],
+      },
+      { role: "toolResult", toolCallId: "call_1", toolName: "date", content: [{ type: "text", text: "ok" }] },
+    ];
+    expect(() => normalizeProviderContextMessages(messages, deepseekAnthropicModel, {
+      mode: "chat",
+      reasoningLevel: "high",
+    })).toThrow(/DeepSeek.*Anthropic.*thinking.*tool/);
+  });
+
+  it("thinking 开启且 tool replay 有非空 thinking 原文时不改消息引用", () => {
+    const messages = [
+      { role: "user", content: "look up date" },
+      {
+        role: "assistant",
+        content: [
+          { type: "thinking", thinking: "need date", thinkingSignature: "sig" },
+          { type: "toolCall", id: "call_1", name: "date", arguments: {} },
+        ],
+      },
+      { role: "toolResult", toolCallId: "call_1", toolName: "date", content: [{ type: "text", text: "ok" }] },
+    ];
+    expect(normalizeProviderContextMessages(messages, deepseekAnthropicModel, {
+      mode: "chat",
+      reasoningLevel: "high",
+    })).toBe(messages);
+  });
+
+  it("thinking off 时不校验 Anthropic tool replay", () => {
+    const messages = [
+      { role: "user", content: "look up date" },
+      {
+        role: "assistant",
+        content: [
+          { type: "toolCall", id: "call_1", name: "date", arguments: {} },
+        ],
+      },
+    ];
+    expect(normalizeProviderContextMessages(messages, deepseekAnthropicModel, {
+      mode: "chat",
+      reasoningLevel: "off",
+    })).toBe(messages);
   });
 });
 

@@ -8,6 +8,7 @@
  * 解决的协议问题：
  *   1. 思考模式开启字段：thinking: {type: "enabled" | "disabled"}
  *   2. reasoning_effort 归一化：low/medium → high；xhigh → max
+ *      Anthropic 格式下对应 output_config.effort
  *   3. max_tokens 抬升：思考模式下需 ≥ 32768
  *   4. utility mode 主动关思考（短输出场景思考链既无意义又耗光预算）
  *   5. 工具调用轮次必须回传真实 reasoning_content（issue #468 根因；缺失时 fail closed，不伪造空占位）
@@ -22,6 +23,8 @@
  * 接口契约：见 ./README.md
  */
 
+import { getReasoningProfile } from "../../shared/model-capabilities.js";
+
 const DEEPSEEK_HIGH_THINKING_BUDGET = 32768;
 const DEEPSEEK_HIGH_SAFE_MAX_TOKENS = 65536;
 const DEEPSEEK_MAX_SAFE_MAX_TOKENS = 131072;
@@ -30,6 +33,9 @@ const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 const MISSING_TOOL_REASONING_ERROR =
   "DeepSeek thinking mode reasoning_content is missing for tool_calls history. "
   + "Compact this session or start a new session before continuing with DeepSeek thinking mode.";
+const MISSING_ANTHROPIC_TOOL_THINKING_ERROR =
+  "DeepSeek Anthropic thinking mode history is missing non-empty thinking content for a tool call. "
+  + "Compact this session or start a new session before continuing with DeepSeek Anthropic thinking mode.";
 
 function lower(value) {
   return typeof value === "string" ? value.toLowerCase() : "";
@@ -61,6 +67,18 @@ function isKnownThinkingModelId(id) {
   return normalized === "deepseek-reasoner" || normalized.startsWith("deepseek-v4-");
 }
 
+function isDeepSeekV4ModelId(id) {
+  const normalized = lower(id);
+  return normalized === "deepseek-v4"
+    || normalized.startsWith("deepseek-v4-")
+    || normalized.startsWith("deepseek-v4.");
+}
+
+function isDeepSeekAnthropicProfile(model) {
+  if (getReasoningProfile(model) === "deepseek-v4-anthropic") return true;
+  return lower(model?.api) === "anthropic-messages" && isDeepSeekV4ModelId(model?.id);
+}
+
 function isThinkingOff(level) {
   return level === "off" || level === "none" || level === "disabled";
 }
@@ -79,6 +97,17 @@ function applyRequestedReasoningLevel(payload, level) {
 
 function enableThinking(payload) {
   payload.thinking = { type: "enabled" };
+}
+
+function normalizeAnthropicThinking(thinking) {
+  if (!thinking || typeof thinking !== "object" || Array.isArray(thinking)) {
+    return { type: "enabled" };
+  }
+  const next = { type: "enabled" };
+  if (positiveInteger(thinking.budget_tokens)) {
+    next.budget_tokens = positiveInteger(thinking.budget_tokens);
+  }
+  return next;
 }
 
 function shouldUseThinking(payload, model, reasoningLevel) {
@@ -122,6 +151,12 @@ function disableThinking(payload) {
     const stripped = stripReasoningContent(payload.messages);
     if (stripped !== payload.messages) payload.messages = stripped;
   }
+}
+
+function disableAnthropicThinking(payload) {
+  delete payload.reasoning_effort;
+  delete payload.output_config;
+  payload.thinking = { type: "disabled" };
 }
 
 function normalizeMaxTokenField(payload) {
@@ -237,8 +272,80 @@ export function ensureReasoningContentForToolCalls(messages) {
   return changed ? next : messages;
 }
 
+function hasAgentToolCall(content) {
+  return Array.isArray(content) && content.some((block) => {
+    if (!block || typeof block !== "object") return false;
+    return block.type === "toolCall" || block.type === "tool_use" || block.type === "function_call";
+  });
+}
+
+function hasNonEmptyThinking(content) {
+  return Array.isArray(content) && content.some((block) => {
+    return block
+      && block.type === "thinking"
+      && typeof block.thinking === "string"
+      && block.thinking.trim().length > 0;
+  });
+}
+
+export function normalizeContextMessages(messages, model, options = {}) {
+  if (!Array.isArray(messages)) return messages;
+  if (!isDeepSeekAnthropicProfile(model)) return messages;
+  if (options.mode === "utility" || isThinkingOff(options.reasoningLevel)) return messages;
+
+  for (const message of messages) {
+    if (!message || typeof message !== "object" || message.role !== "assistant") continue;
+    const content = message.content;
+    if (!hasAgentToolCall(content)) continue;
+    if (!hasNonEmptyThinking(content)) {
+      throw new Error(MISSING_ANTHROPIC_TOOL_THINKING_ERROR);
+    }
+  }
+
+  return messages;
+}
+
+function applyAnthropicPayload(payload, model, options = {}) {
+  const mode = options.mode || "chat";
+  const reasoningLevel = options.reasoningLevel;
+
+  let next = payload;
+  const editable = () => {
+    if (next === payload) next = { ...payload };
+    return next;
+  };
+
+  if (isThinkingOff(reasoningLevel) || next.thinking?.type === "disabled") {
+    disableAnthropicThinking(editable());
+    return next;
+  }
+
+  if (!shouldUseThinking(next, model, reasoningLevel)) return next;
+
+  if (mode === "utility") {
+    disableAnthropicThinking(editable());
+    return next;
+  }
+
+  const p = editable();
+  delete p.reasoning_effort;
+  p.thinking = normalizeAnthropicThinking(p.thinking);
+
+  const effort = reasoningEffortForLevel(reasoningLevel);
+  if (effort) {
+    p.output_config = { effort };
+  } else {
+    delete p.output_config;
+  }
+
+  return next;
+}
+
 export function apply(payload, model, options = {}) {
   if (!Array.isArray(payload.messages)) return payload;
+  if (isDeepSeekAnthropicProfile(model)) {
+    return applyAnthropicPayload(payload, model, options);
+  }
   const mode = options.mode || "chat";
   const reasoningLevel = options.reasoningLevel;
 

@@ -49,6 +49,14 @@ function readSessionThinkingLevel(ctx) {
   }
 }
 
+function resolveRequestReasoningLevel(models, prefs, ctx) {
+  const sessionThinkingLevel = readSessionThinkingLevel(ctx);
+  const preferenceThinkingLevel = models.resolveThinkingLevel(prefs.getThinkingLevel());
+  return preferenceThinkingLevel === "xhigh" && sessionThinkingLevel === "high"
+    ? "xhigh"
+    : (sessionThinkingLevel || preferenceThinkingLevel);
+}
+
 import { PreferencesManager } from "./preferences-manager.js";
 import { ModelManager } from "./model-manager.js";
 import { SkillManager } from "./skill-manager.js";
@@ -56,7 +64,7 @@ import { BridgeSessionManager } from "./bridge-session-manager.js";
 import { createSlashSystem } from "./slash-commands/index.js";
 import { AgentManager } from "./agent-manager.js";
 import { sanitizeMessagesForModel } from "./message-sanitizer.js";
-import { normalizeProviderPayload } from "./provider-compat.js";
+import { normalizeProviderContextMessages, normalizeProviderPayload } from "./provider-compat.js";
 import { VisionBridge } from "./vision-bridge.js";
 import { SessionCoordinator } from "./session-coordinator.js";
 import { ConfigCoordinator, SHARED_MODEL_KEYS } from "./config-coordinator.js";
@@ -801,17 +809,25 @@ export class HanaEngine {
          * 唯一匹配时补 model；重复 id 直接不猜 provider，避免错套 provider 兼容。
          */
         (pi) => {
+          pi.on("context", (event, ctx) => {
+            const model = ctx?.model;
+            if (!model) return;
+            const reasoningLevel = resolveRequestReasoningLevel(this._models, this._prefs, ctx);
+            const messages = normalizeProviderContextMessages(event.messages, model, {
+              mode: "chat",
+              reasoningLevel,
+            });
+            if (messages === event.messages) return;
+            return { messages };
+          });
+
           pi.on("before_provider_request", (event, ctx) => {
             const p = event.payload;
             if (!p) return p;
             const requestModel = ctx?.model
               || findUniqueModelById(this._models.availableModels, p.model)
               || null;
-            const sessionThinkingLevel = readSessionThinkingLevel(ctx);
-            const preferenceThinkingLevel = this._models.resolveThinkingLevel(this._prefs.getThinkingLevel());
-            const reasoningLevel = preferenceThinkingLevel === "xhigh" && sessionThinkingLevel === "high"
-              ? "xhigh"
-              : (sessionThinkingLevel || preferenceThinkingLevel);
+            const reasoningLevel = resolveRequestReasoningLevel(this._models, this._prefs, ctx);
             return normalizeProviderPayload(p, requestModel, { mode: "chat", reasoningLevel });
           });
         },

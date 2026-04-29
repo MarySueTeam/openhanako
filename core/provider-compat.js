@@ -19,7 +19,10 @@
 
 import * as deepseek from "./provider-compat/deepseek.js";
 import * as qwen from "./provider-compat/qwen.js";
-import { getThinkingFormat as getDeclaredThinkingFormat } from "../shared/model-capabilities.js";
+import {
+  getReasoningProfile as getDeclaredReasoningProfile,
+  getThinkingFormat as getDeclaredThinkingFormat,
+} from "../shared/model-capabilities.js";
 
 /**
  * 子模块注册表。顺序敏感：first-match-wins。
@@ -56,6 +59,10 @@ export function getThinkingFormat(model) {
   if (declared) return declared;
   if (isDeepSeekModel(model)) return "deepseek";
   return null;
+}
+
+export function getReasoningProfile(model) {
+  return getDeclaredReasoningProfile(model);
 }
 
 // ── 通用 payload 处理（与 provider 无关）──
@@ -110,4 +117,28 @@ export function normalizeProviderPayload(payload, model, options = {}) {
   }
 
   return result;
+}
+
+/**
+ * Provider context 兼容化入口。运行于 Pi SDK context hook，早于 provider
+ * serializer，专门承载 replay/history 这类 payload hook 已经来不及处理的协议校验。
+ *
+ * @param {Array|any} messages — Pi SDK AgentMessage[]
+ * @param {object|null|undefined} model
+ * @param {{ mode?: "chat" | "utility", reasoningLevel?: string }} [options]
+ * @returns {Array|any}
+ */
+export function normalizeProviderContextMessages(messages, model, options = {}) {
+  if (!Array.isArray(messages)) return messages;
+
+  for (const mod of PROVIDER_MODULES) {
+    if (mod.matches(model)) {
+      if (typeof mod.normalizeContextMessages === "function") {
+        return mod.normalizeContextMessages(messages, model, options);
+      }
+      break;
+    }
+  }
+
+  return messages;
 }

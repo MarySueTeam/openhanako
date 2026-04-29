@@ -5,10 +5,10 @@
 
 ## 核心纪律
 
-1. **唯一对外入口**：所有出站 payload 兼容必须经过 [`core/provider-compat.js`](../provider-compat.js) 的 `normalizeProviderPayload(payload, model, options)`。chat 路径（`engine.js` 注册的 `before_provider_request` 钩子）和 utility 路径（`llm-client.js` 的 `callText`）共享这一个入口。
+1. **唯一对外入口**：所有出站 payload 兼容必须经过 [`core/provider-compat.js`](../provider-compat.js) 的 `normalizeProviderPayload(payload, model, options)`。chat 路径（`engine.js` 注册的 `before_provider_request` 钩子）和 utility 路径（`llm-client.js` 的 `callText`）共享这一个入口。需要在 provider serializer 之前处理的 replay/history 规则走同文件的 `normalizeProviderContextMessages(messages, model, options)`。
 2. **通用补丁留主入口**：与 provider 无关的处理（空 tools 数组剥离、按 `compat.thinkingFormat` 剥离不兼容的 `thinking` 字段）写在 `provider-compat.js` 主入口。
 3. **Provider-specific 补丁拆子文件**：每个 provider 一个 `core/provider-compat/<name>.js`，互不串扰。
-4. **接口契约**：每个子文件 export `matches(model) → boolean`（必须容忍 `model = null/undefined`，不抛错）和 `apply(payload, model, options) → payload`（不可 mutate 输入 payload）。
+4. **接口契约**：每个子文件 export `matches(model) → boolean`（必须容忍 `model = null/undefined`，不抛错）和 `apply(payload, model, options) → payload`（不可 mutate 输入 payload）。如果该 provider 有 serializer 前的 replay/history 约束，可以额外 export `normalizeContextMessages(messages, model, options) → messages`。
 5. **dispatch 单调性**：dispatcher 按数组顺序遍历，第一个 `matches` 返回 true 的子模块负责处理（first-match-wins）。一个 model 只匹配一个子模块。新 provider 默认加在数组末尾；只有当模块的 `matches` 是另一模块的子集（更具体的规则）时才前置，避免被通用规则吞掉。
 6. **禁止散落**：调用点（`callText`、`engine.js` 钩子、route handler 等）禁止内联 provider-specific 补丁。一旦发现，迁移到本目录。
 
@@ -80,9 +80,26 @@ export function apply(payload, model, options) { ... }
 | `qwen` | `enable_thinking: boolean` | DashScope / SiliconFlow / ModelScope 上的 Qwen-style 模型 |
 | `deepseek` | DeepSeek 子模块统一转换 | DeepSeek V4 / reasoner |
 
+`compat.reasoningProfile` 表示同一 wire format 内部更细的协议契约，例如
+`deepseek-v4-anthropic` 表示 Anthropic Messages 请求体，但思考强度要写入
+`output_config.effort`，并且工具调用历史需要在 serializer 前校验 thinking replay。
+
 `core/model-sync.js` 会在投影 `models.json` 时把已知模型能力补成显式
-`compat.thinkingFormat`。`shared/model-capabilities.js` 保留旧 `models.json`
-的读时兼容，避免升级后必须重新保存 provider 才恢复思考。
+`compat.thinkingFormat` / `compat.reasoningProfile`。`shared/model-capabilities.js`
+保留旧 `models.json` 的读时兼容，避免升级后必须重新保存 provider 才恢复思考。
+
+## 新增 FRC / Thinking 模型的维护规则
+
+接入新模型时按下面顺序判断，避免把 provider 契约散到调用点：
+
+1. 先确认模型是否具备 `reasoning` 能力。`reasoning: true` 只打开 UI / 偏好层的思考控制，不决定请求字段。
+2. 再确认请求体大类，优先复用已有 `compat.thinkingFormat`：`anthropic`、`qwen`、`deepseek` 等。
+3. 如果新模型和现有 format 使用同一种 wire format，但参数名、强度枚举、tool call 历史或 replay 规则不同，新增 `compat.reasoningProfile`。
+4. profile 推导优先使用显式 `model.compat.reasoningProfile`；读时兼容可以在 `shared/model-capabilities.js` 基于 provider / baseUrl / api / known model family 推导。
+5. profile 的具体行为只写在 `core/provider-compat/<provider>.js`：payload 映射走 `apply()`，serializer 前的历史校验走 `normalizeContextMessages()`。
+6. 每个 profile 都要有测试覆盖：model-sync 投影、profile 推导、chat payload、utility payload、历史回放规则。
+
+判断标准：如果换一个同 format 的 provider 之后规则还成立，放进 `thinkingFormat`；如果只对某个 provider 或某个模型族成立，放进 `reasoningProfile`。
 
 ## 已知子模块
 
