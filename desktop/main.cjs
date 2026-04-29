@@ -23,6 +23,8 @@ const {
   buildBrowserSearchUrl,
 } = require("../lib/browser/browser-search-extractors.cjs");
 
+const APP_USER_MODEL_ID = "com.hanako.app"; // Keep in sync with package.json build.appId.
+
 // preload 缺失时 Electron 会静默忽略，renderer 拿不到 window.hana →
 // onboarding/主窗口白屏且无前端报错。此处硬崩，拒绝以不可用状态启动。
 {
@@ -79,6 +81,10 @@ if (hanakoHome !== defaultHome) {
   const suffix = path.basename(hanakoHome).replace(/^\./, ""); // "hanako-dev"
   const appName = suffix.charAt(0).toUpperCase() + suffix.slice(1); // "Hanako-dev"
   app.setPath("userData", path.join(app.getPath("appData"), appName));
+}
+
+if (process.platform === "win32") {
+  app.setAppUserModelId(APP_USER_MODEL_ID);
 }
 
 let splashWindow = null;
@@ -201,13 +207,26 @@ function killPid(pid, force = false) {
 }
 
 /** 跨平台标题栏选项：macOS hiddenInset + 红绿灯，Windows/Linux 无框 */
+function windowIconOpts() {
+  if (process.platform === "win32") {
+    return { icon: path.join(__dirname, "src", "icon.ico") };
+  }
+  if (process.platform === "linux") {
+    return { icon: path.join(__dirname, "src", "icon.png") };
+  }
+  return {};
+}
+
+function framelessWindowOpts() {
+  return { frame: false, ...windowIconOpts() };
+}
+
 function titleBarOpts(trafficLight = { x: 16, y: 16 }) {
   if (process.platform === "darwin") {
     return { titleBarStyle: "hiddenInset", trafficLightPosition: trafficLight };
   }
   // Windows/Linux：无框窗口 + 前端自绘 window controls
-  const icoPath = path.join(__dirname, "src", "assets", "tray.ico");
-  return { frame: false, icon: icoPath };
+  return framelessWindowOpts();
 }
 
 /**
@@ -1053,7 +1072,7 @@ function createBrowserViewerWindow(opts = {}) {
     minWidth: 480,
     minHeight: 360,
     title: "Browser",
-    frame: false,
+    ...framelessWindowOpts(),
     backgroundColor: (themeRegistry.THEMES[_browserViewerTheme] || themeRegistry.THEMES[themeRegistry.DEFAULT_THEME]).backgroundColor,
     hasShadow: true,
     show: shouldShow,
@@ -2162,7 +2181,7 @@ wrapIpcBestEffortHandler("spawn-viewer", (_event, data) => {
     minWidth: 400,
     minHeight: 300,
     title: data.title || "Viewer",
-    frame: false,
+    ...framelessWindowOpts(),
     backgroundColor: (themeRegistry.THEMES[theme] || themeRegistry.THEMES[themeRegistry.DEFAULT_THEME]).backgroundColor,
     hasShadow: true,
     show: true,
