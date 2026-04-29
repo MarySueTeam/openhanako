@@ -245,6 +245,7 @@ export class Agent {
           console.log(`[${this.agentName}] 记忆编译完成，system prompt 已刷新`);
         },
         sessionDir: this.sessionDir,
+        memoryDir: path.dirname(this.memoryMdPath),
         memoryMdPath: this.memoryMdPath,
         todayMdPath: this.todayMdPath,
         weekMdPath: this.weekMdPath,

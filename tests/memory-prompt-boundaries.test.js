@@ -73,6 +73,7 @@ describe("memory prompt boundaries", () => {
       expect(prompt).toContain("工作相关内容只允许保留到大主题层级");
       expect(prompt).toContain("领域/项目/主题");
       expect(prompt).toContain("不要记录执行步骤、文件名、工具、命令、检查顺序、协作偏好、工作细节");
+      expect(prompt).toContain("不要输出 Markdown 标题");
     }
   });
 
@@ -87,6 +88,7 @@ describe("memory prompt boundaries", () => {
     expect(prompt).toContain("记忆不是工作日志");
     expect(prompt).toContain("用户画像");
     expect(prompt).toContain("长期关注方向");
+    expect(prompt).toContain("不要输出 Markdown 标题");
     expect(prompt).not.toContain("工作模式");
   });
 

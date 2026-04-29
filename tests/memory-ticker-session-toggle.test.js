@@ -38,12 +38,44 @@ function writeSession(sessionPath) {
   fs.writeFileSync(sessionPath, lines.map((line) => JSON.stringify(line)).join("\n") + "\n", "utf-8");
 }
 
+function writeMixedSession(sessionPath) {
+  const lines = [
+    {
+      type: "message",
+      timestamp: "2026-04-29T07:59:00.000Z",
+      message: { role: "user", content: "old user message" },
+    },
+    {
+      type: "message",
+      timestamp: "2026-04-29T07:59:10.000Z",
+      message: { role: "assistant", content: "old assistant message" },
+    },
+    {
+      type: "message",
+      timestamp: "2026-04-29T08:01:00.000Z",
+      message: { role: "user", content: "new user message" },
+    },
+    {
+      type: "message",
+      timestamp: "2026-04-29T08:01:10.000Z",
+      message: { role: "assistant", content: "new assistant message" },
+    },
+  ];
+  fs.writeFileSync(sessionPath, lines.map((line) => JSON.stringify(line)).join("\n") + "\n", "utf-8");
+}
+
+function writeResetMarker(memoryDir, resetAt) {
+  fs.mkdirSync(memoryDir, { recursive: true });
+  fs.writeFileSync(path.join(memoryDir, "reset.json"), JSON.stringify({ compiledResetAt: resetAt }, null, 2), "utf-8");
+}
+
 function makeTicker(tmpDir, isSessionMemoryEnabled) {
   const summaryManager = {
     rollingSummary: vi.fn().mockResolvedValue("summary"),
     getSummary: vi.fn().mockReturnValue(null),
   };
 
+  const memoryDir = path.join(tmpDir, "memory");
   const ticker = createMemoryTicker({
     summaryManager,
     configPath: path.join(tmpDir, "config.yaml"),
@@ -53,11 +85,12 @@ function makeTicker(tmpDir, isSessionMemoryEnabled) {
     isSessionMemoryEnabled,
     onCompiled: vi.fn(),
     sessionDir: path.join(tmpDir, "sessions"),
-    memoryMdPath: path.join(tmpDir, "memory.md"),
-    todayMdPath: path.join(tmpDir, "today.md"),
-    weekMdPath: path.join(tmpDir, "week.md"),
-    longtermMdPath: path.join(tmpDir, "longterm.md"),
-    factsMdPath: path.join(tmpDir, "facts.md"),
+    memoryDir,
+    memoryMdPath: path.join(memoryDir, "memory.md"),
+    todayMdPath: path.join(memoryDir, "today.md"),
+    weekMdPath: path.join(memoryDir, "week.md"),
+    longtermMdPath: path.join(memoryDir, "longterm.md"),
+    factsMdPath: path.join(memoryDir, "facts.md"),
   });
 
   return { ticker, summaryManager };
@@ -106,6 +139,7 @@ describe("memory ticker respects session-level memory toggle", () => {
       rollingSummary: vi.fn(() => new Promise(() => {})), // 永不 resolve
       getSummary: vi.fn().mockReturnValue(null),
     };
+    const memoryDir = path.join(tmpDir, "memory");
     const ticker = createMemoryTicker({
       summaryManager,
       configPath: path.join(tmpDir, "config.yaml"),
@@ -115,11 +149,12 @@ describe("memory ticker respects session-level memory toggle", () => {
       isSessionMemoryEnabled: () => true,
       onCompiled: vi.fn(),
       sessionDir: path.join(tmpDir, "sessions"),
-      memoryMdPath: path.join(tmpDir, "memory.md"),
-      todayMdPath: path.join(tmpDir, "today.md"),
-      weekMdPath: path.join(tmpDir, "week.md"),
-      longtermMdPath: path.join(tmpDir, "longterm.md"),
-      factsMdPath: path.join(tmpDir, "facts.md"),
+      memoryDir,
+      memoryMdPath: path.join(memoryDir, "memory.md"),
+      todayMdPath: path.join(memoryDir, "today.md"),
+      weekMdPath: path.join(memoryDir, "week.md"),
+      longtermMdPath: path.join(memoryDir, "longterm.md"),
+      factsMdPath: path.join(memoryDir, "facts.md"),
     });
 
     ticker.notifyTurn(sessionPath);
@@ -138,5 +173,31 @@ describe("memory ticker respects session-level memory toggle", () => {
     await ticker.notifySessionEnd(sessionPath);
     expect(summaryManager.rollingSummary).not.toHaveBeenCalled();
     expect(compileToday).not.toHaveBeenCalled();
+  });
+
+  it("summarizes only post-reset messages in an existing session", async () => {
+    const memoryDir = path.join(tmpDir, "memory");
+    writeResetMarker(memoryDir, "2026-04-29T08:00:00.000Z");
+    writeMixedSession(sessionPath);
+    const { ticker, summaryManager } = makeTicker(tmpDir, () => true);
+
+    ticker.notifyTurn(sessionPath);
+    await ticker.notifySessionEnd(sessionPath);
+
+    const messages = summaryManager.rollingSummary.mock.calls[0][1];
+    expect(messages.map((m) => m.content)).toEqual(["new user message", "new assistant message"]);
+    expect(summaryManager.rollingSummary.mock.calls[0][3]).toEqual({ resetAt: "2026-04-29T08:00:00.000Z" });
+  });
+
+  it("startup recovery skips sessions whose file mtime is before the reset watermark", async () => {
+    const memoryDir = path.join(tmpDir, "memory");
+    writeResetMarker(memoryDir, "2026-04-29T08:00:00.000Z");
+    writeSession(sessionPath);
+    fs.utimesSync(sessionPath, new Date("2026-04-29T07:00:00.000Z"), new Date("2026-04-29T07:00:00.000Z"));
+    const { ticker, summaryManager } = makeTicker(tmpDir, () => true);
+
+    await ticker.tick();
+
+    expect(summaryManager.rollingSummary).not.toHaveBeenCalled();
   });
 });

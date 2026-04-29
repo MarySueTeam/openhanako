@@ -10,6 +10,11 @@ import { t } from "../i18n.js";
 import { debugLog } from "../../lib/debug-log.js";
 import { getRawConfig, clearConfigCache } from "../../lib/memory/config-loader.js";
 import { FactStore } from "../../lib/memory/fact-store.js";
+import {
+  writeCompiledResetMarker,
+  clearCompiledMemoryArtifacts,
+  clearCompiledSummarySources,
+} from "../../lib/memory/compiled-memory-state.js";
 import { splitByScope, injectGlobalFields } from '../../shared/config-scope.js';
 import { mergeWorkspaceHistory, normalizeWorkspacePath } from "../../shared/workspace-history.js";
 import { resolveAgent, resolveAgentStrict, AgentNotFoundError } from "../utils/resolve-agent.js";
@@ -382,19 +387,16 @@ export function createConfigRoute(engine) {
   // 清除编译产物（today/week/longterm/facts/memory.md + fingerprints）
   route.delete("/memories/compiled", async (c) => {
     try {
-      const agent = resolveAgent(engine, c);
+      const agent = resolveAgentStrict(engine, c);
       const memDir = path.dirname(agent.memoryMdPath);
-      const targets = ["memory.md", "today.md", "week.md", "longterm.md", "facts.md"];
-      for (const f of targets) {
-        const p = path.join(memDir, f);
-        await fs.writeFile(p, "", "utf-8").catch(() => {});
-        await fs.unlink(p + ".fingerprint").catch(() => {});
-      }
+      writeCompiledResetMarker(memDir);
+      clearCompiledMemoryArtifacts(memDir);
+      clearCompiledSummarySources(agent.summariesDir, agent.summaryManager);
       debugLog()?.log("api", `DELETE /api/memories/compiled agent=${agent.id}`);
-      const resolvedAgent = engine.getAgent(agent.id);
-      if (resolvedAgent) await resolvedAgent.updateConfig({});
+      await engine.updateConfig({}, { agentId: agent.id });
       return c.json({ ok: true });
     } catch (err) {
+      if (err instanceof AgentNotFoundError) return c.json({ error: err.message }, 404);
       return c.json({ error: err.message }, 500);
     }
   });
@@ -403,17 +405,19 @@ export function createConfigRoute(engine) {
   route.delete("/memories", async (c) => {
     let tempStore = null;
     try {
-      const agent = resolveAgent(engine, c);
-      const { store, isTemp } = getStoreForAgent(c.req.query("agentId"));
+      const agent = resolveAgentStrict(engine, c);
+      const { store, isTemp } = getStoreForAgent(agent.id);
       if (isTemp) tempStore = store;
+      const memDir = path.dirname(agent.memoryMdPath);
+      writeCompiledResetMarker(memDir);
       store.clearAll();
-      const mdPath = agent.memoryMdPath;
-      await fs.writeFile(mdPath, "", "utf-8");
+      clearCompiledMemoryArtifacts(memDir);
+      clearCompiledSummarySources(agent.summariesDir, agent.summaryManager);
       debugLog()?.log("api", `DELETE /api/memories agent=${agent.id}`);
-      const resolvedAgent = engine.getAgent(agent.id);
-      if (resolvedAgent) await resolvedAgent.updateConfig({});
+      await engine.updateConfig({}, { agentId: agent.id });
       return c.json({ ok: true });
     } catch (err) {
+      if (err instanceof AgentNotFoundError) return c.json({ error: err.message }, 404);
       return c.json({ error: err.message }, 500);
     } finally {
       tempStore?.close();

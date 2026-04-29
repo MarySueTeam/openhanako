@@ -22,7 +22,7 @@ vi.mock("../server/i18n.js", () => ({
   getLocale: () => "zh-CN",
 }));
 
-import { compileToday, compileWeek } from "../lib/memory/compile.js";
+import { compileToday, compileWeek, compileFacts, assemble } from "../lib/memory/compile.js";
 import { callText } from "../core/llm-client.js";
 
 function makeFakeSummaryManager(summaries) {
@@ -154,5 +154,92 @@ describe("compileWeek empty-sessions fingerprint trap fix", () => {
     await compileWeek(mgrEmpty, weekPath, RESOLVED_MODEL);
 
     expect(fs.existsSync(fpPath)).toBe(false);
+  });
+});
+
+describe("compiled section formatting", () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-compile-format-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("strips model-emitted headings before writing today.md", async () => {
+    callText.mockResolvedValueOnce("# 今日概要\n\n用户关注记忆系统。");
+    const todayPath = path.join(tmpDir, "today.md");
+    const mgr = makeFakeSummaryManager([
+      { session_id: "s1", updated_at: "2026-04-29T08:30:00.000Z", summary: "用户关注记忆系统。" },
+    ]);
+
+    await compileToday(mgr, todayPath, RESOLVED_MODEL);
+
+    expect(fs.readFileSync(todayPath, "utf-8")).toBe("用户关注记忆系统。");
+  });
+
+  it("assemble strips legacy nested headings from source sections", async () => {
+    const factsPath = path.join(tmpDir, "facts.md");
+    const todayPath = path.join(tmpDir, "today.md");
+    const weekPath = path.join(tmpDir, "week.md");
+    const longtermPath = path.join(tmpDir, "longterm.md");
+    const memoryPath = path.join(tmpDir, "memory.md");
+    fs.writeFileSync(factsPath, "[\"用户喜欢清晰边界\"]", "utf-8");
+    fs.writeFileSync(todayPath, "# 今天概要\n\n用户关注记忆系统。", "utf-8");
+    fs.writeFileSync(weekPath, "# 本周主题概要\n\n用户持续关注 Project Hana。", "utf-8");
+    fs.writeFileSync(longtermPath, "# 长期背景记录\n\n## 偏好\n\n用户偏好沉静 UI。", "utf-8");
+
+    assemble(factsPath, todayPath, weekPath, longtermPath, memoryPath);
+
+    const output = fs.readFileSync(memoryPath, "utf-8");
+    expect(output).toContain("## 重要事实\n\n- 用户喜欢清晰边界");
+    expect(output).toContain("## 今天\n\n用户关注记忆系统。");
+    expect(output).toContain("## 本周早些时候\n\n用户持续关注 Project Hana。");
+    expect(output).toContain("## 长期情况\n\n用户偏好沉静 UI。");
+    expect(output).not.toContain("# 本周主题概要");
+    expect(output).not.toContain("# 长期背景记录");
+  });
+});
+
+describe("compiled memory reset watermark filtering", () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "hana-compile-since-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("passes since to summary range queries for today and week", async () => {
+    const summaries = [
+      { session_id: "new", updated_at: "2026-04-29T08:30:00.000Z", summary: "new summary" },
+    ];
+    const mgr = makeFakeSummaryManager(summaries);
+
+    await compileToday(mgr, path.join(tmpDir, "today.md"), RESOLVED_MODEL, { since: "2026-04-29T08:00:00.000Z" });
+    await compileWeek(mgr, path.join(tmpDir, "week.md"), RESOLVED_MODEL, { since: "2026-04-29T08:00:00.000Z" });
+
+    expect(mgr.getSummariesInRange.mock.calls[0][2]).toEqual({ since: "2026-04-29T08:00:00.000Z" });
+    expect(mgr.getSummariesInRange.mock.calls[1][2]).toEqual({ since: "2026-04-29T08:00:00.000Z" });
+  });
+
+  it("passes since to summary range queries for facts", async () => {
+    const mgr = makeFakeSummaryManager([
+      {
+        session_id: "new",
+        updated_at: "2026-04-29T08:30:00.000Z",
+        summary: "## 重要事实\n用户关注记忆系统。\n\n## 事情经过\n无",
+      },
+    ]);
+
+    await compileFacts(mgr, path.join(tmpDir, "facts.md"), RESOLVED_MODEL, { since: "2026-04-29T08:00:00.000Z" });
+
+    expect(mgr.getSummariesInRange.mock.calls[0][2]).toEqual({ since: "2026-04-29T08:00:00.000Z" });
   });
 });

@@ -6,7 +6,7 @@ import { loadSettingsConfig } from '../actions';
 import { SettingsSection } from '../components/SettingsSection';
 import { SettingsRow } from '../components/SettingsRow';
 import { ExpandableRow } from '../components/ExpandableRow';
-import iconUrl from '../../../assets/Hanako.png';
+import appIconUrl from '../../../icon.png';
 import styles from '../Settings.module.css';
 import type { AutoUpdateState } from '../../types';
 
@@ -127,7 +127,7 @@ export function AboutTab() {
     <div className={`${styles['settings-tab-content']} ${styles['active']}`} data-tab="about">
       {/* Hero：保留原 about-hero 独立视觉组件（icon + name + tagline + version + update + check 按钮） */}
       <div className={styles['about-hero']}>
-        <img className={styles['about-icon']} src={iconUrl} alt="Hanako" />
+        <img className={styles['about-icon']} src={appIconUrl} alt="Hanako" />
         <div className={styles['about-name']}>Hanako</div>
         <div className={styles['about-tagline']}>{t('settings.about.tagline')}</div>
         {version && <div className={styles['about-version']}>v{version}</div>}
