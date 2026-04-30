@@ -20,6 +20,10 @@ const { readTextFileSnapshot, writeTextFileIfUnchanged } = require("./file-text-
 const { wrapIpcHandler, wrapIpcBestEffortHandler, wrapIpcOn } = require('./ipc-wrapper.cjs');
 const themeRegistry = require('./src/shared/theme-registry.cjs');
 const {
+  configureClientSingleInstance,
+  focusExistingWindow,
+} = require("./src/shared/single-instance-lock.cjs");
+const {
   buildBrowserSearchExtractionScript,
   buildBrowserSearchUrl,
 } = require("../lib/browser/browser-search-extractors.cjs");
@@ -78,11 +82,11 @@ const hanakoHome = process.env.HANA_HOME
 // 生产: ~/Library/Application Support/Hanako
 // 开发: ~/Library/Application Support/Hanako-dev
 const defaultHome = path.join(os.homedir(), ".hanako");
-if (hanakoHome !== defaultHome) {
-  const suffix = path.basename(hanakoHome).replace(/^\./, ""); // "hanako-dev"
-  const appName = suffix.charAt(0).toUpperCase() + suffix.slice(1); // "Hanako-dev"
-  app.setPath("userData", path.join(app.getPath("appData"), appName));
-}
+configureClientSingleInstance(app, {
+  hanakoHome,
+  defaultHome,
+  onSecondInstance: () => showPrimaryWindow(),
+});
 
 if (process.platform === "win32") {
   app.setAppUserModelId(APP_USER_MODEL_ID);
@@ -648,7 +652,7 @@ function monitorServer() {
 function showPrimaryWindow() {
   if (process.platform === "darwin") app.dock.show();
   const win = mainWindow || onboardingWindow;
-  if (win && !win.isDestroyed()) { win.show(); win.focus(); }
+  focusExistingWindow(win);
   if (!mainWindow || mainWindow.isDestroyed()) return;
   if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.show();
   if (browserViewerWindow && !browserViewerWindow.isDestroyed()) browserViewerWindow.show();

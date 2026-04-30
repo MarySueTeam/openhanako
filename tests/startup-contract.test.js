@@ -23,6 +23,16 @@ describe("local startup contract", () => {
     expect(mainCjs).toContain("HANA_DEV_NODE_BIN");
   });
 
+  it("desktop main installs the client single-instance lock before app readiness", () => {
+    const mainCjs = fs.readFileSync(path.join(ROOT, "desktop", "main.cjs"), "utf-8");
+
+    expect(mainCjs).toContain("configureClientSingleInstance(app");
+    expect(mainCjs).toContain("onSecondInstance: () => showPrimaryWindow()");
+    expect(mainCjs.indexOf("configureClientSingleInstance(app")).toBeLessThan(
+      mainCjs.indexOf("app.whenReady()"),
+    );
+  });
+
   it("keeps jsdom external in the server bundle for packaged runtime", () => {
     const external = viteServerConfig.build?.rollupOptions?.external || [];
 
