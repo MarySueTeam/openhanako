@@ -22,6 +22,10 @@ function getModelId(model, context = {}) {
   return lower(model?.id || context.id || context.modelId || context.model);
 }
 
+function normalizeBoolean(value) {
+  return value === true;
+}
+
 function isOfficialDeepSeekEndpoint(model, context = {}) {
   return getProvider(model, context) === "deepseek"
     || getBaseUrl(model, context).includes("api.deepseek.com");
@@ -127,4 +131,53 @@ export function withThinkingFormatCompat(model, context = {}) {
       ...(profile ? { reasoningProfile: profile } : {}),
     },
   };
+}
+
+/**
+ * Resolve stable visual grounding capabilities for an auxiliary vision model.
+ *
+ * This deliberately reads an explicit capability object instead of inferring
+ * from provider or model name. Plain image support means the model can see;
+ * grounding means we can ask for coordinates with a known coordinate contract.
+ */
+export function normalizeVisionCapabilities(value) {
+  if (!isPlainObject(value)) return null;
+  if (!normalizeBoolean(value.grounding) && !normalizeBoolean(value.visualGrounding)) return null;
+
+  const coordinateSpace = value.coordinateSpace === undefined || value.coordinateSpace === "norm-1000"
+    ? "norm-1000"
+    : null;
+  let boxOrder = null;
+  if (value.boxOrder === undefined || value.boxOrder === "xyxy") boxOrder = "xyxy";
+  if (value.boxOrder === "yxyx") boxOrder = "yxyx";
+  const boxes = value.boxes === false ? false : true;
+  const points = value.points === true;
+  const outputFormat = ["gemini", "qwen", "anchor", "hanako"].includes(lower(value.outputFormat))
+    ? lower(value.outputFormat)
+    : "hanako";
+  const groundingMode = ["native", "prompted"].includes(lower(value.groundingMode))
+    ? lower(value.groundingMode)
+    : "native";
+
+  if (!coordinateSpace || !boxOrder) return null;
+  if (!boxes && !points) return null;
+
+  return {
+    grounding: true,
+    boxes,
+    points,
+    coordinateSpace,
+    boxOrder,
+    outputFormat,
+    groundingMode,
+  };
+}
+
+export function getVisionCapabilities(model) {
+  if (!isPlainObject(model)) return null;
+  return normalizeVisionCapabilities(model.visionCapabilities);
+}
+
+export function modelSupportsVisualGrounding(model) {
+  return getVisionCapabilities(model)?.grounding === true;
 }

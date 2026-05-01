@@ -5,21 +5,48 @@
     "context": 1000000,
     "maxOutput": 128000,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "anchor",
+      "groundingMode": "prompted"
+    }
   },
   "claude-opus-4-6": {
     "name": "Claude Opus 4.6",
     "context": 200000,
     "maxOutput": 128000,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "anchor",
+      "groundingMode": "prompted"
+    }
   },
   "claude-sonnet-4-6": {
     "name": "Claude Sonnet 4.6",
     "context": 200000,
     "maxOutput": 64000,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "anchor",
+      "groundingMode": "prompted"
+    }
   },
   "deepseek-v4-pro": {
     "name": "DeepSeek V4 Pro",
@@ -42,7 +69,16 @@
     "context": 1048576,
     "maxOutput": 65536,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": false,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "yxyx",
+      "outputFormat": "gemini",
+      "groundingMode": "native"
+    }
   },
   "glm-5.1": {
     "name": "GLM-5.1",
@@ -63,28 +99,64 @@
     "context": 1050000,
     "maxOutput": 128000,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "anchor",
+      "groundingMode": "prompted"
+    }
   },
   "gpt-5.4-mini": {
     "name": "GPT-5.4 Mini",
     "context": 400000,
     "maxOutput": 128000,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "anchor",
+      "groundingMode": "prompted"
+    }
   },
   "gpt-5.4-nano": {
     "name": "GPT-5.4 Nano",
     "context": 400000,
     "maxOutput": 128000,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "anchor",
+      "groundingMode": "prompted"
+    }
   },
   "gpt-5.5": {
     "name": "GPT-5.5",
     "context": 1050000,
     "maxOutput": 128000,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "anchor",
+      "groundingMode": "prompted"
+    }
   },
   "grok-4.20-multi-agent": {
     "name": "Grok 4.20 Multi Agent",
@@ -111,7 +183,16 @@
     "context": 262144,
     "maxOutput": 98304,
     "image": true,
-    "reasoning": true
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "anchor",
+      "groundingMode": "prompted"
+    }
   },
   "labs-leanstral-2603": {
     "name": "Labs Leanstral 2603",
@@ -139,6 +220,84 @@
     "maxOutput": 256000,
     "reasoning": true
   },
+  "qwen3-vl-plus": {
+    "name": "Qwen3 Vl Plus",
+    "context": 260096,
+    "maxOutput": 32768,
+    "image": true,
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "qwen",
+      "groundingMode": "native"
+    }
+  },
+  "qwen3-vl-235b-a22b-instruct": {
+    "name": "Qwen3 Vl 235b A22b Instruct",
+    "context": 131072,
+    "maxOutput": 32768,
+    "image": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "qwen",
+      "groundingMode": "native"
+    }
+  },
+  "qwen3-vl-235b-a22b-thinking": {
+    "name": "Qwen3 Vl 235b A22b Thinking",
+    "context": 131072,
+    "maxOutput": 32768,
+    "image": true,
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "qwen",
+      "groundingMode": "native"
+    }
+  },
+  "qwen3-vl-32b-instruct": {
+    "name": "Qwen3 Vl 32b Instruct",
+    "context": 131072,
+    "maxOutput": 32768,
+    "image": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "qwen",
+      "groundingMode": "native"
+    }
+  },
+  "qwen3-vl-32b-thinking": {
+    "name": "Qwen3 Vl 32b Thinking",
+    "context": 131072,
+    "maxOutput": 32768,
+    "image": true,
+    "reasoning": true,
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "qwen",
+      "groundingMode": "native"
+    }
+  },
   "qwen3.6-plus": {
     "name": "Qwen 3.6 Plus",
     "context": 1000000,
@@ -147,7 +306,16 @@
     "reasoning": true,
     "quirks": [
       "enable_thinking"
-    ]
+    ],
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "qwen",
+      "groundingMode": "native"
+    }
   },
   "qwen3.6-flash": {
     "name": "Qwen 3.6 Flash",
@@ -157,7 +325,16 @@
     "reasoning": true,
     "quirks": [
       "enable_thinking"
-    ]
+    ],
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "qwen",
+      "groundingMode": "native"
+    }
   },
   "qwen3.6-max-preview": {
     "name": "Qwen 3.6 Max Preview",
@@ -167,6 +344,15 @@
     "reasoning": true,
     "quirks": [
       "enable_thinking"
-    ]
+    ],
+    "visionCapabilities": {
+      "grounding": true,
+      "boxes": true,
+      "points": true,
+      "coordinateSpace": "norm-1000",
+      "boxOrder": "xyxy",
+      "outputFormat": "qwen",
+      "groundingMode": "native"
+    }
   }
 }

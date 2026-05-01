@@ -24,8 +24,15 @@ export const SHARED_MODEL_KEYS = [
   ["vision",         "vision_model"],
 ];
 
+export const VISION_AUXILIARY_ENABLED_PREF_KEY = "vision_auxiliary_enabled";
+
 function hasOwn(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+export function sharedModelsPatchRequiresModelSync(patch) {
+  if (!patch || typeof patch !== "object") return false;
+  return SHARED_MODEL_KEYS.some(([field]) => hasOwn(patch, field));
 }
 
 export function normalizeSharedModelsPatch(partial) {
@@ -46,6 +53,15 @@ export function normalizeSharedModelsPatch(partial) {
       result[field] = requireModelRef(raw);
     } catch (err) {
       throw new Error(`shared model ${field}: ${err.message}`);
+    }
+  }
+  if (hasOwn(partial, "vision_enabled")) {
+    const raw = partial.vision_enabled;
+    if (raw !== undefined) {
+      if (typeof raw !== "boolean") {
+        throw new Error("shared model vision_enabled must be a boolean");
+      }
+      result.vision_enabled = raw;
     }
   }
   return result;
@@ -134,6 +150,7 @@ export class ConfigCoordinator {
         result[field] = null;
       }
     }
+    result.vision_enabled = prefs[VISION_AUXILIARY_ENABLED_PREF_KEY] === true;
     return result;
   }
 
@@ -141,6 +158,7 @@ export class ConfigCoordinator {
     const normalized = normalizeSharedModelsPatch(partial);
     const prefs = this._prefs();
     const changed = [];
+    let shouldSyncAgentRuntimeModels = false;
     for (const [field, prefKey] of SHARED_MODEL_KEYS) {
       if (hasOwn(normalized, field)) {
         if (normalized[field] !== null && normalized[field] !== "") prefs[prefKey] = normalized[field];
@@ -150,12 +168,22 @@ export class ConfigCoordinator {
           : typeof v === "object" ? `${v.provider || "?"}/${v.id || "?"}`
           : String(v);
         changed.push(`${field}=${repr}`);
+        if (field === "utility" || field === "utility_large") {
+          shouldSyncAgentRuntimeModels = true;
+        }
       }
     }
+    if (hasOwn(normalized, "vision_enabled")) {
+      if (normalized.vision_enabled) prefs[VISION_AUXILIARY_ENABLED_PREF_KEY] = true;
+      else delete prefs[VISION_AUXILIARY_ENABLED_PREF_KEY];
+      changed.push(`vision_enabled=${normalized.vision_enabled ? "on" : "off"}`);
+    }
     this._savePrefs(prefs);
-    if (changed.length) {
+    if (shouldSyncAgentRuntimeModels) {
       const fresh = this.getSharedModels();
       this._syncSharedModelsToAgents(fresh);
+    }
+    if (changed.length) {
       log.log(`setSharedModels: ${changed.join(", ")}`);
     }
   }

@@ -14,13 +14,14 @@ import { t, getLocale } from "../server/i18n.js";
 import { safeReadJSON } from "../shared/safe-fs.js";
 import { findModel } from "../shared/model-ref.js";
 import { teardownSessionResources } from "./session-teardown.js";
+import { requireVisionAuxiliaryEnabled } from "./vision-auxiliary-policy.js";
 
 function getSteerPrefix() {
   const isZh = getLocale().startsWith("zh");
   return isZh ? "（插话，无需 MOOD）\n" : "(Interjection, no MOOD needed)\n";
 }
 
-function withVisionExtension(resourceLoader, getBridge, getSessionPath, warn) {
+function withVisionExtension(resourceLoader, getBridge, getSessionPath, isEnabled, warn) {
   return Object.create(resourceLoader, {
     getExtensions: {
       value: () => {
@@ -34,6 +35,7 @@ function withVisionExtension(resourceLoader, getBridge, getSessionPath, warn) {
               [
                 async (event) => {
                   try {
+                    if (isEnabled?.() !== true) return undefined;
                     const bridge = getBridge?.();
                     if (!bridge) return undefined;
                     const { messages, injected } = bridge.injectNotes(event.messages, getSessionPath?.() || null);
@@ -85,6 +87,7 @@ export class BridgeSessionManager {
    * @param {() => object} deps.getPreferences
    * @param {(cwd: string, customTools?, opts?) => {tools: any[], customTools: any[]}} deps.buildTools
    * @param {() => string} deps.getHomeCwd
+   * @param {() => boolean} [deps.isVisionAuxiliaryEnabled]
    */
   constructor(deps) {
     this._deps = deps;
@@ -282,6 +285,7 @@ export class BridgeSessionManager {
           tempResourceLoader,
           () => this._deps.getVisionBridge?.(),
           () => sessionPathRef.current,
+          () => this._deps.isVisionAuxiliaryEnabled?.() === true,
           (msg) => console.warn(`[bridge-session] ${msg}`),
         );
 
@@ -348,6 +352,9 @@ export class BridgeSessionManager {
         // 非 image 模型：用视觉桥生成隐藏纸条，历史由 context extension 注入
         const bridgeInput = session.model?.input;
         if (opts.images?.length && Array.isArray(bridgeInput) && !bridgeInput.includes("image")) {
+          requireVisionAuxiliaryEnabled({
+            isVisionAuxiliaryEnabled: this._deps.isVisionAuxiliaryEnabled,
+          });
           const visionBridge = this._deps.getVisionBridge?.();
           if (!visionBridge) {
             throw new Error("vision auxiliary model is required for image input with the current text-only model");
@@ -512,6 +519,7 @@ export class BridgeSessionManager {
       ownerResourceLoader,
       () => this._deps.getVisionBridge?.(),
       () => sessionPathRef.current,
+      () => this._deps.isVisionAuxiliaryEnabled?.() === true,
       (msg) => console.warn(`[bridge-session] ${msg}`),
     );
 

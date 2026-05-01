@@ -84,4 +84,24 @@ describe("browser screenshot vision adaptation", () => {
       { type: "screenshot", base64: "SCREENSHOT_BASE64", mimeType: "image/png" },
     ]);
   });
+
+  it("returns a clear error for text-only screenshot adaptation when auxiliary vision is disabled", async () => {
+    const prepare = vi.fn();
+    const tool = createBrowserTool(() => "/tmp/session.jsonl", {
+      getSessionModel: () => ({ id: "deepseek-v4-pro", provider: "deepseek", input: ["text"] }),
+      getVisionBridge: () => ({ prepare }),
+      isVisionAuxiliaryEnabled: () => false,
+    });
+
+    const result = await tool.execute("call-1", { action: "screenshot" }, null, null, makeCtx());
+
+    expect(prepare).not.toHaveBeenCalled();
+    expect(result.content[0]).toEqual(expect.objectContaining({ type: "text" }));
+    expect(result.details).toEqual(expect.objectContaining({
+      action: "screenshot",
+      thumbnail: "SCREENSHOT_BASE64",
+      visionAdapted: false,
+      visionError: expect.stringContaining("vision auxiliary is disabled"),
+    }));
+  });
 });

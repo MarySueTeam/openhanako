@@ -197,6 +197,7 @@ export class HanaEngine {
       buildTools: (cwd, customTools, opts) => this.buildTools(cwd, customTools, opts),
       getHomeCwd: (agentId) => this.getHomeCwd(agentId),
       getVisionBridge: () => this._visionBridge,
+      isVisionAuxiliaryEnabled: () => this.isVisionAuxiliaryEnabled(),
     });
 
     // ── Slash Command System ──
@@ -476,8 +477,10 @@ export class HanaEngine {
   setBridgeReceiptEnabled(v) { this._prefs.setBridgeReceiptEnabled(v); }
   getSharedModels() { return this._configCoord.getSharedModels(); }
   setSharedModels(p) { return this._configCoord.setSharedModels(p); }
+  isVisionAuxiliaryEnabled() { return this.getSharedModels()?.vision_enabled === true; }
   getVisionBridge() { return this._visionBridge; }
   resolveVisionConfig() {
+    if (!this.isVisionAuxiliaryEnabled()) return null;
     const ref = this.getSharedModels()?.vision || null;
     if (!ref) return null;
     return this.resolveModelWithCredentials(ref);

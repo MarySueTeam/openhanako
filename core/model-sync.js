@@ -7,7 +7,7 @@
 
 import fs from "fs";
 import { lookupKnown } from "../shared/known-models.js";
-import { withThinkingFormatCompat } from "../shared/model-capabilities.js";
+import { normalizeVisionCapabilities, withThinkingFormatCompat } from "../shared/model-capabilities.js";
 import { providerCredentialAllowsMissingApiKey } from "../shared/provider-auth.js";
 
 const DEFAULT_CONTEXT_WINDOW = 128_000;
@@ -60,6 +60,12 @@ function buildModelEntry(modelEntry, provider, baseUrl = "", api = "openai-compl
   if (maxOutput) entry.maxTokens = maxOutput;
 
   if (known?.quirks?.length) entry.quirks = known.quirks;
+
+  const rawVisionCapabilities = isObj && modelEntry.visionCapabilities !== undefined
+    ? modelEntry.visionCapabilities
+    : known?.visionCapabilities;
+  const visionCapabilities = image ? normalizeVisionCapabilities(rawVisionCapabilities) : null;
+  if (visionCapabilities) entry.visionCapabilities = visionCapabilities;
 
   // Pi SDK compat 覆盖：
   // 1. 非 OpenAI provider 不发 developer role（dashscope 等不支持）— 与 reasoning 无关

@@ -159,6 +159,47 @@ describe("updateConfig with agentId", () => {
     expect(focusAgent.setMemoryModel).not.toHaveBeenCalledWith({ id: "gpt-4o", provider: "openai" });
   });
 
+  it("getSharedModels exposes auxiliary vision as disabled by default", () => {
+    const { deps } = makeDeps({
+      getPrefs: () => ({
+        getPreferences: () => ({}),
+        savePreferences: vi.fn(),
+      }),
+    });
+    const coord = new ConfigCoordinator(deps);
+
+    expect(coord.getSharedModels()).toEqual(expect.objectContaining({
+      vision_enabled: false,
+    }));
+  });
+
+  it("setSharedModels stores and clears auxiliary vision without mutating utility or memory runtime state", () => {
+    let prefs = {};
+    const { focusAgent, deps } = makeDeps({
+      getPrefs: () => ({
+        getPreferences: () => prefs,
+        savePreferences: (next) => { prefs = { ...next }; },
+      }),
+    });
+    focusAgent.setUtilityModel = vi.fn();
+    focusAgent.setMemoryModel = vi.fn();
+    const coord = new ConfigCoordinator(deps);
+
+    coord.setSharedModels({ vision_enabled: true });
+    expect(prefs.vision_auxiliary_enabled).toBe(true);
+    expect(coord.getSharedModels()).toEqual(expect.objectContaining({
+      vision_enabled: true,
+    }));
+    expect(focusAgent.setUtilityModel).not.toHaveBeenCalled();
+    expect(focusAgent.setMemoryModel).not.toHaveBeenCalled();
+
+    coord.setSharedModels({ vision_enabled: false });
+    expect(prefs).not.toHaveProperty("vision_auxiliary_enabled");
+    expect(coord.getSharedModels()).toEqual(expect.objectContaining({
+      vision_enabled: false,
+    }));
+  });
+
   it("agentId 等于焦点 agent 时，模型切换逻辑正常执行", async () => {
     const models = {
       availableModels: [{ id: "gpt-4", provider: "openai", name: "GPT-4" }],

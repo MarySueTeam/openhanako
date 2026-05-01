@@ -302,6 +302,7 @@ export class Agent {
         return engine?.getSessionByPath?.(sessionPath)?.model || null;
       },
       getVisionBridge: () => this._cb?.getEngine?.()?.getVisionBridge?.() || null,
+      isVisionAuxiliaryEnabled: () => this._cb?.getEngine?.()?.isVisionAuxiliaryEnabled?.() === true,
     });
     this._notifyTool = createNotifyTool({
       onNotify: (title, body) => this._notifyHandler?.(title, body),

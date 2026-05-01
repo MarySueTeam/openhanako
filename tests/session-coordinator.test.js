@@ -356,6 +356,77 @@ describe("SessionCoordinator", () => {
     expect(appendPrompt.join("\n")).not.toContain("DeepSeek 输出契约");
   });
 
+  it("blocks image prompts for text-only models when auxiliary vision is disabled", async () => {
+    const sessionFile = path.join(tempDir, "text-only-images.jsonl");
+    const sessionPrompt = vi.fn();
+    const prepare = vi.fn(async () => ({
+      text: "vision notes",
+      images: [],
+    }));
+    const textOnlyModel = { id: "deepseek-v4-pro", provider: "deepseek", input: ["text"] };
+    const agent = {
+      id: "hana",
+      agentDir: tempDir,
+      sessionDir: tempDir,
+      sessionMemoryEnabled: true,
+      memoryMasterEnabled: true,
+      config: { locale: "zh-CN" },
+      setMemoryEnabled: vi.fn(),
+      buildSystemPrompt: () => "BASE",
+      tools: [],
+    };
+    createAgentSessionMock.mockResolvedValueOnce({
+      session: {
+        sessionManager: { getSessionFile: () => sessionFile },
+        subscribe: vi.fn(() => vi.fn()),
+        setActiveToolsByName: vi.fn(),
+        prompt: sessionPrompt,
+        model: textOnlyModel,
+      },
+    });
+
+    const coordinator = new SessionCoordinator({
+      agentsDir: tempDir,
+      getAgent: () => agent,
+      getActiveAgentId: () => "hana",
+      getModels: () => ({
+        currentModel: textOnlyModel,
+        authStorage: {},
+        modelRegistry: {},
+        resolveThinkingLevel: () => "medium",
+      }),
+      getResourceLoader: () => ({
+        getSystemPrompt: () => "BASE",
+        getAppendSystemPrompt: () => [],
+        getExtensions: () => ({ extensions: [], errors: [] }),
+      }),
+      getSkills: () => null,
+      buildTools: () => ({ tools: [], customTools: [] }),
+      emitEvent: () => {},
+      getHomeCwd: () => tempDir,
+      agentIdFromSessionPath: () => "hana",
+      switchAgentOnly: async () => {},
+      getConfig: () => ({}),
+      getPrefs: () => ({ getThinkingLevel: () => "medium" }),
+      getAgents: () => new Map(),
+      getActivityStore: () => null,
+      getAgentById: () => agent,
+      listAgents: () => [],
+      getEngine: () => ({
+        isVisionAuxiliaryEnabled: () => false,
+        getVisionBridge: () => ({ prepare }),
+      }),
+    });
+
+    await coordinator.createSession(null, tempDir, true);
+
+    await expect(coordinator.prompt("看一下", {
+      images: [{ type: "image", data: "abc", mimeType: "image/png" }],
+    })).rejects.toThrow(/vision auxiliary is disabled/);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(sessionPrompt).not.toHaveBeenCalled();
+  });
+
   it("fresh session freezes the effective memory state into meta for cache safety", async () => {
     const sessionFile = path.join(tempDir, "frozen-memory.jsonl");
     let sessionMemoryEnabled = true;

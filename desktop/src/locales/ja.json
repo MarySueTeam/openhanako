@@ -748,6 +748,7 @@
       "utilityLargeModel": "ユーティリティ（大）",
       "utilityLargeModelHint": "アクティビティ要約、タスク分解など。空の場合はユーティリティ（小）にフォールバックします",
       "visionModel": "補助ビジョンモデル",
+      "visionAuxiliaryToggle": "補助ビジョン",
       "visionModelHint": "現在のチャットモデルが画像を受け取れない場合だけ、先に画像を読み取って簡潔な説明を渡します",
       "searchProvider": "検索サービス",
       "searchProviderField": "検索エンジン",

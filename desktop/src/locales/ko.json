@@ -748,6 +748,7 @@
       "utilityLargeModel": "유틸리티 (대형)",
       "utilityLargeModelHint": "활동 요약, 작업 분해 등. 비어 있으면 소형 유틸리티로 대체해요",
       "visionModel": "보조 시각 모델",
+      "visionAuxiliaryToggle": "보조 시각",
       "visionModelHint": "현재 채팅 모델이 이미지를 받을 수 없을 때만 먼저 이미지를 읽고 간단한 설명을 전달해요",
       "searchProvider": "검색 서비스",
       "searchProviderField": "검색 엔진",

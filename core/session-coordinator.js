@@ -22,6 +22,7 @@ import { buildUiContextReminder, injectReminderIntoLastUserMessage } from "./ui-
 import { isActiveSessionPath } from "./message-utils.js";
 import { formatWorkspaceScopePrompt, normalizeWorkspaceScope } from "../shared/workspace-scope.js";
 import { getProviderPromptPatches } from "./provider-prompt-patches.js";
+import { requireVisionAuxiliaryEnabled } from "./vision-auxiliary-policy.js";
 
 const log = createModuleLogger("session");
 
@@ -195,6 +196,7 @@ export class SessionCoordinator {
             async (event, ctx) => {
               try {
                 const engine = getEngine?.();
+                if (!engine?.isVisionAuxiliaryEnabled?.()) return undefined;
                 const bridge = engine?.getVisionBridge?.();
                 if (!bridge) return undefined;
                 const sp = ctx.sessionManager?.getSessionFile?.();
@@ -549,7 +551,9 @@ After dispatching subagent or other background tasks:
     // model.input 缺失/非数组时视为未知，放行让 API 决定。
     const inputMods = this._session.model?.input;
     if (opts?.images?.length && Array.isArray(inputMods) && !inputMods.includes("image")) {
-      const bridge = this._d.getEngine?.()?.getVisionBridge?.();
+      const engine = this._d.getEngine?.();
+      requireVisionAuxiliaryEnabled(engine);
+      const bridge = engine?.getVisionBridge?.();
       if (!bridge) {
         throw new Error("vision auxiliary model is required for image input with the current text-only model");
       }
@@ -610,7 +614,9 @@ After dispatching subagent or other background tasks:
     // 非 image 模型：剥离新贴的图片（历史净化见 core/message-sanitizer.js）
     const inputMods2 = entry.session.model?.input;
     if (opts?.images?.length && Array.isArray(inputMods2) && !inputMods2.includes("image")) {
-      const bridge = this._d.getEngine?.()?.getVisionBridge?.();
+      const engine = this._d.getEngine?.();
+      requireVisionAuxiliaryEnabled(engine);
+      const bridge = engine?.getVisionBridge?.();
       if (!bridge) {
         throw new Error("vision auxiliary model is required for image input with the current text-only model");
       }

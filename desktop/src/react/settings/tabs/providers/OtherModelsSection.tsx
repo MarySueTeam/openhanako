@@ -8,6 +8,7 @@ import { loadSettingsConfig } from '../../actions';
 import { SelectWidget } from '../../widgets/SelectWidget';
 import { ModelWidget } from '../../widgets/ModelWidget';
 import { KeyInput } from '../../widgets/KeyInput';
+import { Toggle } from '../../widgets/Toggle';
 import styles from '../../Settings.module.css';
 
 type ModelRef = { id: string; provider: string };
@@ -139,6 +140,7 @@ export function OtherModelsSection({ providers }: { providers: Record<string, { 
   const utilityVal = toModelRef(globalModelsConfig?.models?.utility);
   const utilityLargeVal = toModelRef(globalModelsConfig?.models?.utility_large);
   const visionVal = toModelRef(globalModelsConfig?.models?.vision);
+  const visionAuxiliaryEnabled = globalModelsConfig?.models?.vision_enabled === true;
   const imageCapableOnly = (model: { input?: string[] }) => (
     Array.isArray(model.input) && model.input.includes('image')
   );
@@ -182,6 +184,15 @@ export function OtherModelsSection({ providers }: { providers: Record<string, { 
       <div className={styles['settings-row']}>
         <div className={`${styles['settings-field']} ${styles['settings-field-half']}`}>
           <label className={styles['settings-field-label']}>{t('settings.api.visionModel')}</label>
+          <div className={styles['settings-toggle-row']}>
+            <Toggle
+              on={visionAuxiliaryEnabled}
+              onChange={(on) => {
+                autoSaveGlobalModels({ models: { vision_enabled: on } });
+              }}
+              label={t('settings.api.visionAuxiliaryToggle')}
+            />
+          </div>
           <div className={styles['pv-tool-model-row']}>
             <ModelWidget
               providers={providers}

@@ -9,7 +9,10 @@ import { Hono } from "hono";
 import { emitAppEvent } from "../app-events.js";
 import { safeJson } from "../hono-helpers.js";
 import { debugLog } from "../../lib/debug-log.js";
-import { normalizeSharedModelsPatch } from "../../core/config-coordinator.js";
+import {
+  normalizeSharedModelsPatch,
+  sharedModelsPatchRequiresModelSync,
+} from "../../core/config-coordinator.js";
 import { modelSupportsImage } from "../../core/message-sanitizer.js";
 
 export function createPreferencesRoute(engine) {
@@ -49,7 +52,7 @@ export function createPreferencesRoute(engine) {
 
       const sections = [];
       let needsModelSync = false;
-      // 共享模型（utility / utility_large）
+      // 共享模型与辅助视觉开关
       if (body.models) {
         let modelsPatch;
         try {
@@ -70,7 +73,7 @@ export function createPreferencesRoute(engine) {
         }
         engine.setSharedModels(modelsPatch);
         sections.push("models");
-        needsModelSync = true;
+        needsModelSync = sharedModelsPatchRequiresModelSync(modelsPatch);
       }
 
       // 搜索配置

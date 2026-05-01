@@ -779,6 +779,7 @@
       "utilityLargeModel": "大工具模型",
       "utilityLargeModelHint": "活动摘要、任务拆解等需要理解力的场景，留空则复用小工具模型",
       "visionModel": "视觉辅助模型",
+      "visionAuxiliaryToggle": "辅助视觉开关",
       "visionModelHint": "仅在当前聊天模型不能接收图片时，用来先看图并递交简洁说明",
       "searchProvider": "搜索服务",
       "searchProviderField": "搜索引擎",

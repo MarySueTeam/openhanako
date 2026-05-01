@@ -774,6 +774,7 @@
       "utilityLargeModel": "Utility (large)",
       "utilityLargeModelHint": "Activity summaries, task breakdown, etc. Falls back to small utility if empty",
       "visionModel": "Vision auxiliary model",
+      "visionAuxiliaryToggle": "Auxiliary vision",
       "visionModelHint": "Used only when the current chat model cannot accept images",
       "searchProvider": "Search Service",
       "searchProviderField": "Search engine",

@@ -163,6 +163,43 @@ describe("model sync related routes", () => {
     expectAppEvent(engine.emitEvent, "models-changed", { agentId: "hana" });
   });
 
+  it("auxiliary vision toggle updates shared prefs without refreshing the model registry", async () => {
+    const { createPreferencesRoute } = await import("../server/routes/preferences.js");
+    const app = new Hono();
+    const engine = {
+      getSharedModels: vi.fn(() => ({ vision_enabled: false })),
+      getSearchConfig: vi.fn(() => ({ provider: null, api_key: null })),
+      getUtilityApi: vi.fn(() => ({ provider: null, base_url: null, api_key: null })),
+      resolveModelWithCredentials: vi.fn(),
+      setSharedModels: vi.fn(),
+      setSearchConfig: vi.fn(),
+      setUtilityApi: vi.fn(),
+      syncModelsAndRefresh: vi.fn().mockResolvedValue(true),
+      currentAgentId: "hana",
+      emitEvent: vi.fn(),
+    };
+
+    app.route("/api", createPreferencesRoute(engine));
+
+    const res = await app.request("/api/preferences/models", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        models: {
+          vision_enabled: true,
+        },
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(engine.setSharedModels).toHaveBeenCalledWith({
+      vision_enabled: true,
+    });
+    expect(engine.resolveModelWithCredentials).not.toHaveBeenCalled();
+    expect(engine.syncModelsAndRefresh).not.toHaveBeenCalled();
+    expectAppEvent(engine.emitEvent, "models-changed", { agentId: "hana" });
+  });
+
   it("shared model preference updates return an error and emit no event when model refresh fails", async () => {
     const { createPreferencesRoute } = await import("../server/routes/preferences.js");
     const app = new Hono();
