@@ -15,6 +15,7 @@ interface AgentCardGeometry {
   total: number;
   cardSize: number;
   spreadStep: number;
+  edgeBleed: number;
   groupWidth: number;
   spreadWidth: number;
   positions: number[];
@@ -25,15 +26,18 @@ export function calculateAgentCardGeometry(totalCards: number): AgentCardGeometr
   const compactWidth = 260;
   const cardSize = 62;
   const spreadStep = 72;
+  const edgeBleed = 18;
   const groupWidth = (total - 1) * spreadStep + cardSize;
-  const spreadWidth = Math.max(compactWidth, groupWidth);
-  const spreadOffset = (spreadWidth - groupWidth) / 2;
-  const positions = Array.from({ length: total }, (_unused, index) => spreadOffset + index * spreadStep);
+  const visualWidth = groupWidth + edgeBleed * 2;
+  const spreadWidth = Math.max(compactWidth, visualWidth);
+  const spreadOffset = (spreadWidth - visualWidth) / 2;
+  const positions = Array.from({ length: total }, (_unused, index) => spreadOffset + edgeBleed + index * spreadStep);
 
   return {
     total,
     cardSize,
     spreadStep,
+    edgeBleed,
     groupWidth,
     spreadWidth,
     positions,

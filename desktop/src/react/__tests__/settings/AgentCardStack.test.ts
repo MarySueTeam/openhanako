@@ -25,7 +25,14 @@ describe('AgentCardStack geometry', () => {
   it('uses the natural group width once the expanded stack is wider than compact width', () => {
     const geometry = calculateAgentCardGeometry(5);
 
-    expect(geometry.spreadWidth).toBe(350);
-    expect(geometry.positions).toEqual([0, 72, 144, 216, 288]);
+    expect(geometry.spreadWidth).toBe(386);
+    expect(geometry.positions).toEqual([18, 90, 162, 234, 306]);
+  });
+
+  it('adds edge bleed before the expanded cards touch the scroll boundary', () => {
+    const geometry = calculateAgentCardGeometry(4);
+
+    expect(geometry.spreadWidth).toBe(314);
+    expect(geometry.positions).toEqual([18, 90, 162, 234]);
   });
 });
