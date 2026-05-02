@@ -51,6 +51,12 @@ jobs:
             node scripts/build-server.mjs win32 ${{ matrix.arch }}
           fi
 
+      - name: Build Computer Use helper
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          HANA_COMPUTER_USE_HELPER_ARCH=${{ matrix.arch }} node scripts/build-computer-use-helper.mjs ${{ matrix.arch }}
+
       - name: Build client bundles (main + preload + renderer)
         run: npm run build:client
 

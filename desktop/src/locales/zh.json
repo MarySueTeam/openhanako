@@ -596,6 +596,7 @@
       "active": "运行中",
       "idle": "空闲",
       "requestPermissions": "请求系统权限",
+      "requestPermissionsFailed": "请求系统权限失败",
       "refresh": "刷新"
     },
     "agent": {

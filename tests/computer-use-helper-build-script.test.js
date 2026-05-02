@@ -4,6 +4,7 @@ import {
   computerUseHelperOutputDir,
   patchCuaDriverAppStateSource,
   patchCuaDriverClickToolSource,
+  resolveComputerUseHelperBuildArch,
   shouldBuildComputerUseHelper,
   swiftBuildScratchPath,
   swiftArchForNodeArch,
@@ -19,6 +20,19 @@ describe("Computer Use helper build script", () => {
   it("maps Node architecture names to Swift architecture names", () => {
     expect(swiftArchForNodeArch("arm64")).toBe("arm64");
     expect(swiftArchForNodeArch("x64")).toBe("x86_64");
+  });
+
+  it("lets CI choose the helper build architecture explicitly", () => {
+    expect(resolveComputerUseHelperBuildArch({
+      argv: ["node", "scripts/build-computer-use-helper.mjs", "x64"],
+      env: { HANA_COMPUTER_USE_HELPER_ARCH: "arm64" },
+      arch: "arm64",
+    })).toBe("x64");
+    expect(resolveComputerUseHelperBuildArch({
+      argv: ["node", "scripts/build-computer-use-helper.mjs"],
+      env: { HANA_COMPUTER_USE_HELPER_ARCH: "x64" },
+      arch: "arm64",
+    })).toBe("x64");
   });
 
   it("writes the macOS helper into the Electron extraResources source directory", () => {

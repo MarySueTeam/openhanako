@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const hanaFetchMock = vi.fn();
 
@@ -30,10 +30,12 @@ vi.mock('../../widgets/Toggle', () => ({
 }));
 
 import { ComputerUseTab } from '../ComputerUseTab';
+import { useSettingsStore } from '../../store';
 
 afterEach(() => {
   cleanup();
   hanaFetchMock.mockReset();
+  useSettingsStore.setState({ toastMessage: '', toastType: '', toastVisible: false });
 });
 
 function jsonResponse(body: unknown) {
@@ -58,5 +60,28 @@ describe('ComputerUseTab', () => {
 
     expect(warning.textContent || '').toContain('Computer use 功能属于测试阶段');
     expect(warning.textContent || '').toContain('建议只是尝鲜');
+  });
+
+  it('shows a toast when requesting permissions fails', async () => {
+    hanaFetchMock
+      .mockResolvedValueOnce(jsonResponse({
+        selectedProviderId: 'macos:cua',
+        settings: { enabled: false, app_approvals: [] },
+        status: {
+          providers: [{ providerId: 'macos:cua', status: { available: false, reason: 'binary-not-found', permissions: [] } }],
+          activeLease: null,
+        },
+      }))
+      .mockRejectedValueOnce(new Error('hanaFetch /api/preferences/computer-use/request-permissions: 400 Bad Request'));
+
+    render(<ComputerUseTab />);
+
+    await waitFor(() => expect(hanaFetchMock).toHaveBeenCalledWith('/api/preferences/computer-use'));
+    fireEvent.click(screen.getByText('settings.computerUse.requestPermissions'));
+
+    await waitFor(() => {
+      expect(useSettingsStore.getState().toastType).toBe('error');
+      expect(useSettingsStore.getState().toastMessage).toContain('400 Bad Request');
+    });
   });
 });

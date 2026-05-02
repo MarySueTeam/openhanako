@@ -591,6 +591,7 @@
       "active": "Active",
       "idle": "Idle",
       "requestPermissions": "Request Permissions",
+      "requestPermissionsFailed": "Failed to request permissions",
       "refresh": "Refresh"
     },
     "agent": {

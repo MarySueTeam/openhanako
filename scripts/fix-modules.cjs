@@ -27,6 +27,19 @@ exports.default = async function (context) {
     ? path.join(context.appOutDir, context.packager.appInfo.productFilename + ".app",
         "Contents", "Resources")
     : path.join(context.appOutDir, "resources");
+  if (platformName === "mac") {
+    const computerUseHelper = path.join(resourcesDir, "computer-use", "macos", "hana-computer-use-helper");
+    if (!fs.existsSync(computerUseHelper)) {
+      throw new Error(
+        `[fix-modules] Computer Use helper missing from macOS app resources: ${computerUseHelper}. ` +
+        "Run scripts/build-computer-use-helper.mjs before electron-builder.",
+      );
+    }
+    const mode = fs.statSync(computerUseHelper).mode;
+    if ((mode & 0o111) === 0) {
+      throw new Error(`[fix-modules] Computer Use helper is not executable: ${computerUseHelper}`);
+    }
+  }
   const serverDir = path.join(resourcesDir, "server");
   const osDirName = platformName === "mac" ? "mac" : platformName === "windows" ? "win" : "linux";
   const serverBuildModules = path.join(__dirname, "..", "dist-server", `${osDirName}-${arch}`, "node_modules");

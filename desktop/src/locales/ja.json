@@ -551,6 +551,7 @@
       "active": "実行中",
       "idle": "待機中",
       "requestPermissions": "権限を要求",
+      "requestPermissionsFailed": "権限の要求に失敗しました",
       "refresh": "更新"
     },
     "appearance": {

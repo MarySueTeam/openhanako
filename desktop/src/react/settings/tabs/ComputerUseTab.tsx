@@ -4,6 +4,7 @@ import { t } from '../helpers';
 import { SettingsSection } from '../components/SettingsSection';
 import { SettingsRow } from '../components/SettingsRow';
 import { Toggle } from '../widgets/Toggle';
+import { useSettingsStore } from '../store';
 import styles from '../Settings.module.css';
 
 interface ComputerProviderStatus {
@@ -53,6 +54,7 @@ export function ComputerUseTab() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const showToast = useSettingsStore((state) => state.showToast);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +80,7 @@ export function ComputerUseTab() {
 
   const enabled = data?.settings?.enabled === true;
   const available = selectedProvider?.status?.available === true;
+  const availabilityIssue = selectedProvider?.status?.reason || selectedProvider?.status?.error || '';
   const permissions = selectedProvider?.status?.permissions || [];
   const permissionText = permissions.length > 0
     ? permissions.map((p) => `${p.name || 'permission'}:${p.granted ? 'ok' : 'missing'}`).join(' · ')
@@ -122,6 +125,9 @@ export function ComputerUseTab() {
         body: JSON.stringify({ providerId: data?.selectedProviderId || undefined }),
       });
       await load();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      showToast(`${t('settings.computerUse.requestPermissionsFailed')}: ${message}`, 'error');
     } finally {
       setRequesting(false);
     }
@@ -169,7 +175,7 @@ export function ComputerUseTab() {
         />
         <SettingsRow
           label={t('settings.computerUse.availability')}
-          hint={selectedProvider?.status?.reason || selectedProvider?.status?.error || undefined}
+          hint={availabilityIssue || undefined}
           control={<StatusText ok={available} text={available ? t('settings.computerUse.available') : t('settings.computerUse.unavailable')} />}
         />
         <SettingsRow

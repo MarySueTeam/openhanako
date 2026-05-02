@@ -551,6 +551,7 @@
       "active": "실행 중",
       "idle": "대기 중",
       "requestPermissions": "권한 요청",
+      "requestPermissionsFailed": "권한 요청 실패",
       "refresh": "새로고침"
     },
     "appearance": {

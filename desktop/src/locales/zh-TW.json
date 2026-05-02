@@ -551,6 +551,7 @@
       "active": "執行中",
       "idle": "空閒",
       "requestPermissions": "請求系統權限",
+      "requestPermissionsFailed": "請求系統權限失敗",
       "refresh": "刷新"
     },
     "appearance": {

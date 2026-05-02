@@ -15,6 +15,15 @@ export function swiftArchForNodeArch(arch = process.arch) {
   return arch;
 }
 
+export function resolveComputerUseHelperBuildArch({
+  argv = process.argv,
+  env = process.env,
+  arch = process.arch,
+} = {}) {
+  const explicitArg = Array.isArray(argv) ? argv[2] : null;
+  return explicitArg || env.HANA_COMPUTER_USE_HELPER_ARCH || arch;
+}
+
 export function computerUseHelperOutputDir({
   rootDir = path.resolve(__dirname, ".."),
   osName = "mac",
@@ -403,8 +412,8 @@ function read(command, args, options = {}) {
 export function buildComputerUseHelper({
   rootDir = path.resolve(__dirname, ".."),
   platform = process.platform,
-  arch = process.arch,
   env = process.env,
+  arch = env.HANA_COMPUTER_USE_HELPER_ARCH || process.arch,
 } = {}) {
   if (!shouldBuildComputerUseHelper({ platform })) {
     console.log(`[computer-use-helper] skipped on ${platform}`);
@@ -412,7 +421,7 @@ export function buildComputerUseHelper({
   }
 
   const packageDir = path.join(rootDir, "desktop", "native", "HanaComputerUseHelper");
-  const swiftArch = swiftArchForNodeArch(env.HANA_COMPUTER_USE_HELPER_ARCH || arch);
+  const swiftArch = swiftArchForNodeArch(arch);
   const scratchPath = swiftBuildScratchPath({ rootDir, arch });
   const baseArgs = [
     "--package-path",
@@ -450,7 +459,7 @@ export function buildComputerUseHelper({
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
   try {
-    buildComputerUseHelper();
+    buildComputerUseHelper({ arch: resolveComputerUseHelperBuildArch() });
   } catch (err) {
     console.error(err?.stack || err?.message || String(err));
     process.exitCode = 1;
