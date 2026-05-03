@@ -63,7 +63,12 @@ export async function runAgentSession(agentId, rounds, { engine, signal, session
     customTools = [];
   } else {
     const agentToolsSnapshot = typeof agent.getToolsSnapshot === "function"
-      ? agent.getToolsSnapshot({ forceMemoryEnabled: agent.memoryMasterEnabled !== false })
+      ? agent.getToolsSnapshot({
+        forceMemoryEnabled: agent.memoryMasterEnabled !== false,
+        ...(typeof agent.experienceEnabled === "boolean"
+          ? { forceExperienceEnabled: agent.experienceEnabled === true }
+          : {}),
+      })
       : agent.tools;
     const built = ctx.buildTools(cwd, agentToolsSnapshot, { agentDir, workspace: engine.getHomeCwd(agentId) });
     if (readOnly) {

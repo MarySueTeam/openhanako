@@ -913,6 +913,9 @@
     "experience": {
       "title": "経験",
       "hint": "エージェントが学んだ教訓をカテゴリ別に整理しています。作業前に関連する経験を確認します",
+      "toggleLabel": "経験を有効化",
+      "toggleHint": "デフォルトではオフです。オンにすると、アシスタントは作業経験を自動で要約して成長しますが、コンテキストを汚染するリスクがあります。",
+      "paused": "経験は一時停止中です。既存の内容は保持されますが、アシスタントは読み取りも記録もできません。",
       "empty": "経験はまだありません",
       "edit": "編集",
       "deleteCategory": "カテゴリを削除"
@@ -1390,6 +1393,7 @@
     "expEmptyInput": "カテゴリ名と経験内容は空にできません。",
     "expDuplicate": "この経験は既に記録されています。",
     "expRecorded": "経験を記録しました [{category}]：{content}",
+    "expPaused": "経験は一時停止中です。",
     "outputFileNeedPaths": "filepaths 配列または filePath が必要です。",
     "outputFileNotAbsolute": "パスは絶対パスである必要があります: {path}",
     "outputFileNotFound": "ファイルが見つかりません: {path}",
@@ -1710,6 +1714,8 @@
       "thinkingBudget": "思考の深さ",
       "memory": "メモリシステム",
       "memoryDesc": "現在の Agent のメモリ機能を有効/無効にする",
+      "experience": "経験",
+      "experienceDesc": "現在の Agent の経験ライブラリを有効/無効にする",
       "agentName": "Agent 名",
       "userName": "ユーザー名",
       "workingDir": "作業ディレクトリ",

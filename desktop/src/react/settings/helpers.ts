@@ -111,7 +111,7 @@ export async function autoSaveConfig(
     const cfgRes = await hanaFetch(`/api/agents/${agentId}/config`);
     const newConfig = await cfgRes.json();
     const prev = useSettingsStore.getState().settingsConfig || {};
-    for (const k of ['_identity', '_ishiki', '_userProfile']) {
+    for (const k of ['_identity', '_ishiki', '_publicIshiki', '_userProfile', '_experience']) {
       if (k in prev && !(k in newConfig)) newConfig[k] = (prev as any)[k];
     }
     useSettingsStore.setState({ settingsConfig: newConfig });

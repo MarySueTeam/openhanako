@@ -222,7 +222,7 @@ describe("agents route", () => {
     const agentId = "hana";
     const agentDir = path.join(tempRoot, agentId);
     fs.mkdirSync(agentDir, { recursive: true });
-    fs.writeFileSync(path.join(agentDir, "config.yaml"), "agent:\n  name: Hana\n", "utf-8");
+    fs.writeFileSync(path.join(agentDir, "config.yaml"), "agent:\n  name: Hana\nexperience:\n  enabled: true\n", "utf-8");
     fs.writeFileSync(path.join(agentDir, "identity.md"), "original identity\n", "utf-8");
 
     const { createAgentsRoute } = await import("../server/routes/agents.js");

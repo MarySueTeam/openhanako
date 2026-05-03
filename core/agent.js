@@ -89,6 +89,7 @@ export class Agent {
     this._experienceTools = [];
     this._memoryMasterEnabled = true;   // agent 级别总开关（config.yaml memory.enabled）
     this._memorySessionEnabled = true;  // per-session 开关（WelcomeScreen toggle）
+    this._experienceEnabled = false;    // agent 级别经验能力开关（config.yaml experience.enabled，默认关闭）
     this._enabledSkills = [];
     this._systemPrompt = "";
     this._descriptionRefreshHandler = null;
@@ -134,6 +135,7 @@ export class Agent {
     this.userName = this._config.user?.name || (isZh ? "用户" : "User");
     this.agentName = this._config.agent?.name || "Hanako";
     this._memoryMasterEnabled = this._config.memory?.enabled !== false;
+    this._experienceEnabled = this._config.experience?.enabled === true;
   }
 
   async init(log = () => {}, sharedModels = {}, resolveModel = null) {
@@ -154,6 +156,7 @@ export class Agent {
     this.userName = this._config.user?.name || (isZh ? "用户" : "User");
     this.agentName = this._config.agent?.name || "Hanako";
     this._memoryMasterEnabled = this._config.memory?.enabled !== false;
+    this._experienceEnabled = this._config.experience?.enabled === true;
 
     // 3. 初始化各模块
     log(`  [agent] 3. 模块初始化完成`);
@@ -279,7 +282,9 @@ export class Agent {
     this._webFetchTool = createWebFetchTool();
     this._todoTool = createTodoTool();
     this._pinnedMemoryTools = createPinnedMemoryTools(this.agentDir);
-    this._experienceTools = createExperienceTools(this.agentDir);
+    this._experienceTools = createExperienceTools(this.agentDir, {
+      isEnabled: () => this._experienceEnabled === true,
+    });
 
     // 8. Desk 系统（与 memory 完全独立）
     log(`  [agent] 8. Desk 系统...`);
@@ -510,6 +515,8 @@ export class Agent {
   get memoryEnabled() { return this._memoryMasterEnabled && this._memorySessionEnabled; }
   /** agent 级别总开关 */
   get memoryMasterEnabled() { return this._memoryMasterEnabled; }
+  /** agent 级别经验能力开关，缺省关闭 */
+  get experienceEnabled() { return this._experienceEnabled === true; }
   /** per-session 级别（持久化、API 返回用，不受 master 影响） */
   get sessionMemoryEnabled() { return this._memorySessionEnabled; }
   get yuanPrompt() { return this._readYuan(); }
@@ -545,19 +552,26 @@ export class Agent {
     const forceMemoryEnabled = Object.prototype.hasOwnProperty.call(options, "forceMemoryEnabled")
       ? options.forceMemoryEnabled
       : null;
+    const forceExperienceEnabled = Object.prototype.hasOwnProperty.call(options, "forceExperienceEnabled")
+      ? options.forceExperienceEnabled
+      : null;
     const memoryEnabled = typeof forceMemoryEnabled === "boolean"
       ? forceMemoryEnabled
       : this.memoryEnabled;
+    const experienceEnabled = typeof forceExperienceEnabled === "boolean"
+      ? forceExperienceEnabled
+      : this.experienceEnabled;
     const memTools = memoryEnabled ? [
       this._memorySearchTool,
       ...this._pinnedMemoryTools,
-      ...this._experienceTools,
     ] : [];
+    const experienceTools = experienceEnabled ? this._experienceTools : [];
     const computerUseTools = this._isComputerUseAvailableForThisAgent()
       ? [this._computerUseTool]
       : [];
     return [
       ...memTools,
+      ...experienceTools,
       this._webSearchTool,
       this._webFetchTool,
       this._todoTool,
@@ -656,6 +670,9 @@ export class Agent {
     if (partial.memory && "enabled" in partial.memory) {
       this._memoryMasterEnabled = this._config.memory?.enabled !== false;
     }
+    if (partial.experience && "enabled" in partial.experience) {
+      this._experienceEnabled = this._config.experience?.enabled === true;
+    }
 
     // 刷新受影响的模块
     if (partial.search) {
@@ -740,12 +757,18 @@ export class Agent {
     const forceMemoryEnabled = Object.prototype.hasOwnProperty.call(options, "forceMemoryEnabled")
       ? options.forceMemoryEnabled
       : null;
+    const forceExperienceEnabled = Object.prototype.hasOwnProperty.call(options, "forceExperienceEnabled")
+      ? options.forceExperienceEnabled
+      : null;
     const cwdOverride = Object.prototype.hasOwnProperty.call(options, "cwdOverride")
       ? (typeof options.cwdOverride === "string" ? options.cwdOverride : "")
       : null;
     const memoryEnabled = typeof forceMemoryEnabled === "boolean"
       ? forceMemoryEnabled
       : this.memoryEnabled;
+    const experienceEnabled = typeof forceExperienceEnabled === "boolean"
+      ? forceExperienceEnabled
+      : this.experienceEnabled;
     const isZh = String(this._config.locale || "").startsWith("zh");
 
     const readFile = (filePath) => safeReadFile(filePath, "");
@@ -859,25 +882,27 @@ export class Agent {
         "This helps the user track your progress. Simple single-step tasks (answering questions, single lookups, simple edits) do not need todo_write."
     );
 
-    // 经验库引导
-    parts.push(isZh
-      ? "\n## 经验库\n\n" +
-        "你有一个经验库，记录着过往工作中踩过的坑和学到的教训。\n\n" +
-        "**查**：接到工作任务时，先调用 recall_experience 扫一眼索引，看有没有相关经验。\n\n" +
-        "**记**：工作中遇到以下情况时，用 record_experience 记录一条简洁的教训：\n" +
-        "- 用户纠正了你的错误\n" +
-        "- 用户表现出不满或反复强调某件事\n" +
-        "- 你自己试错后找到了正确做法\n" +
-        "- 巡检或自主工作时踩了坑"
-      : "\n## Experience Library\n\n" +
-        "You have an experience library that stores lessons from past work — mistakes, corrections, and discoveries.\n\n" +
-        "**Recall**: When you receive a work task, call recall_experience to scan the index for relevant experience first.\n\n" +
-        "**Record**: During work, use record_experience to log a concise lesson when:\n" +
-        "- The user corrects a mistake you made\n" +
-        "- The user shows frustration or repeatedly emphasizes something\n" +
-        "- You discover the right approach after trial and error\n" +
-        "- You hit a pitfall during patrol or autonomous work"
-    );
+    // 经验库引导。经验是独立能力：缺省关闭，开启后才把规则写入新 session 的 prompt。
+    if (experienceEnabled) {
+      parts.push(isZh
+        ? "\n## 经验库\n\n" +
+          "你有一个经验库，记录着过往工作中踩过的坑和学到的教训。\n\n" +
+          "**查**：接到工作任务时，先调用 recall_experience 扫一眼索引，看有没有相关经验。\n\n" +
+          "**记**：工作中遇到以下情况时，用 record_experience 记录一条简洁的教训：\n" +
+          "- 用户纠正了你的错误\n" +
+          "- 用户表现出不满或反复强调某件事\n" +
+          "- 你自己试错后找到了正确做法\n" +
+          "- 巡检或自主工作时踩了坑"
+        : "\n## Experience Library\n\n" +
+          "You have an experience library that stores lessons from past work — mistakes, corrections, and discoveries.\n\n" +
+          "**Recall**: When you receive a work task, call recall_experience to scan the index for relevant experience first.\n\n" +
+          "**Record**: During work, use record_experience to log a concise lesson when:\n" +
+          "- The user corrects a mistake you made\n" +
+          "- The user shows frustration or repeatedly emphasizes something\n" +
+          "- You discover the right approach after trial and error\n" +
+          "- You hit a pitfall during patrol or autonomous work"
+      );
+    }
 
     // 工具使用纪律（轻量优先）
     parts.push(isZh

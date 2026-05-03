@@ -153,6 +153,22 @@ export class SessionCoordinator {
     const frozenMemoryEnabled = restore
       ? !!memoryEnabled
       : (agent.memoryMasterEnabled !== false && !!memoryEnabled);
+    let restoredExperienceEnabled = false;
+    if (restore && sessionPathForMeta) {
+      try {
+        const metaPath = path.join(agent.sessionDir, "session-meta.json");
+        const meta = await this._readMetaCached(metaPath);
+        restoredExperienceEnabled = meta[path.basename(sessionPathForMeta)]?.experienceEnabled === true;
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          log.warn(`session-meta.json 读取 experienceEnabled 失败: ${err.message}`);
+        }
+      }
+    }
+    const agentHasExperienceSwitch = typeof agent.experienceEnabled === "boolean";
+    const frozenExperienceEnabled = restore
+      ? restoredExperienceEnabled
+      : (agentHasExperienceSwitch ? agent.experienceEnabled === true : false);
 
     // 切换 session 级记忆状态后立即快照 prompt（下方 promptSnapshot）。
     // /rc 冷恢复这类"附着到旧 session"的路径不应污染当前 agent 的运行态，
@@ -191,7 +207,10 @@ export class SessionCoordinator {
 
     // 快照当前 system prompt，per-session 隔离。
     // 后续记忆编译、技能变更只影响新对话，已有对话的 prompt 不变（保护 prefix cache）。
-    const promptSnapshot = agent.buildSystemPrompt({ forceMemoryEnabled: frozenMemoryEnabled });
+    const promptSnapshot = agent.buildSystemPrompt({
+      forceMemoryEnabled: frozenMemoryEnabled,
+      forceExperienceEnabled: frozenExperienceEnabled,
+    });
     if (preserveAgentMemoryState) {
       creatingAgent.setMemoryEnabled(prevSessionMemoryEnabled);
     }
@@ -308,8 +327,12 @@ After dispatching subagent or other background tasks:
     }
     const resourceLoader = Object.create(baseResourceLoader, resourceLoaderProps);
 
+    const toolSnapshotOptions = { forceMemoryEnabled: frozenMemoryEnabled };
+    if (agentHasExperienceSwitch) {
+      toolSnapshotOptions.forceExperienceEnabled = frozenExperienceEnabled;
+    }
     const agentToolsSnapshot = typeof agent.getToolsSnapshot === "function"
-      ? agent.getToolsSnapshot({ forceMemoryEnabled: frozenMemoryEnabled })
+      ? agent.getToolsSnapshot(toolSnapshotOptions)
       : agent.tools;
     const { tools: sessionTools, customTools: sessionCustomTools } = this._d.buildTools(
       effectiveCwd,
@@ -431,6 +454,7 @@ After dispatching subagent or other background tasks:
       session,
       agentId: creatingAgentId,
       memoryEnabled: frozenMemoryEnabled,
+      experienceEnabled: frozenExperienceEnabled,
       modelId: resolvedModel?.id || effectiveModel?.id || null,
       modelProvider: resolvedModel?.provider || effectiveModel?.provider || null,
       workspaceFolders: workspaceScope.workspaceFolders,
@@ -457,6 +481,7 @@ After dispatching subagent or other background tasks:
     if (!restore && sessionPath) {
       const metaPatch = {
         memoryEnabled: frozenMemoryEnabled,
+        experienceEnabled: frozenExperienceEnabled,
         workspaceFolders: workspaceScope.workspaceFolders,
         permissionMode: initialPermissionMode,
         accessMode: initialAccessMode,
@@ -1651,7 +1676,12 @@ After dispatching subagent or other background tasks:
       const execModel = models.resolveExecutionModel(resolvedModel);
       tempSessionMgr = SessionManager.create(execCwd, sessionDir);
       const targetAgentToolsSnapshot = typeof targetAgent.getToolsSnapshot === "function"
-        ? targetAgent.getToolsSnapshot({ forceMemoryEnabled: targetAgent.memoryMasterEnabled !== false })
+        ? targetAgent.getToolsSnapshot({
+          forceMemoryEnabled: targetAgent.memoryMasterEnabled !== false,
+          ...(typeof targetAgent.experienceEnabled === "boolean"
+            ? { forceExperienceEnabled: targetAgent.experienceEnabled === true }
+            : {}),
+        })
         : targetAgent.tools;
       const { tools: allBuiltinTools, customTools: allCustomTools } = this._d.buildTools(
         execCwd,

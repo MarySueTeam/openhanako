@@ -479,7 +479,12 @@ export class BridgeSessionManager {
     const prefs = this._deps.getPreferences();
     const bridgeReadOnly = prefs?.bridge?.readOnly === true;
     const agentToolsSnapshot = typeof agent.getToolsSnapshot === "function"
-      ? agent.getToolsSnapshot({ forceMemoryEnabled: agent.memoryMasterEnabled !== false })
+      ? agent.getToolsSnapshot({
+        forceMemoryEnabled: agent.memoryMasterEnabled !== false,
+        ...(typeof agent.experienceEnabled === "boolean"
+          ? { forceExperienceEnabled: agent.experienceEnabled === true }
+          : {}),
+      })
       : agent.tools;
     const { tools: baseTools, customTools: baseCustomTools } = this._deps.buildTools(
       homeCwd, agentToolsSnapshot,
@@ -511,6 +516,9 @@ export class BridgeSessionManager {
     const ownerPromptSnapshot = agent.buildSystemPrompt({
       cwdOverride: homeCwd,
       forceMemoryEnabled: agent.memoryMasterEnabled,
+      ...(typeof agent.experienceEnabled === "boolean"
+        ? { forceExperienceEnabled: agent.experienceEnabled === true }
+        : {}),
     });
     const ownerResourceLoader = Object.create(this._deps.getResourceLoader(), {
       getSystemPrompt: { value: () => ownerPromptSnapshot },

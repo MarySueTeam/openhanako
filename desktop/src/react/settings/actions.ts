@@ -67,7 +67,7 @@ export async function loadSettingsConfig() {
   try {
     const agentId = store.getSettingsAgentId();
     const agentBase = `/api/agents/${agentId}`;
-    const [configRes, identityRes, ishikiRes, publicIshikiRes, userProfileRes, pinnedRes, globalModelsRes, experienceRes] =
+    const [configRes, identityRes, ishikiRes, publicIshikiRes, userProfileRes, pinnedRes, globalModelsRes] =
       await Promise.all([
         hanaFetch(`${agentBase}/config`, { signal: controller.signal }),
         hanaFetch(`${agentBase}/identity`, { signal: controller.signal }),
@@ -76,7 +76,6 @@ export async function loadSettingsConfig() {
         hanaFetch('/api/user-profile', { signal: controller.signal }),
         hanaFetch(`${agentBase}/pinned`, { signal: controller.signal }),
         hanaFetch('/api/preferences/models', { signal: controller.signal }),
-        hanaFetch(`${agentBase}/experience`, { signal: controller.signal }),
       ]);
 
     const config = await configRes.json();
@@ -90,8 +89,12 @@ export async function loadSettingsConfig() {
     const userProfileData = await userProfileRes.json();
     config._userProfile = userProfileData.content || '';
     const pinnedData = await pinnedRes.json();
-    const experienceData = await experienceRes.json();
-    config._experience = experienceData.content || '';
+    config._experience = '';
+    if (config.experience?.enabled === true) {
+      const experienceRes = await hanaFetch(`${agentBase}/experience`, { signal: controller.signal });
+      const experienceData = await experienceRes.json();
+      config._experience = experienceData.content || '';
+    }
     if (myVersion !== _settingsConfigLoadVersion) return;
     if (_settingsConfigAbortController !== controller) return;
 

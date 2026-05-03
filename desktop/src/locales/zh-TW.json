@@ -913,6 +913,9 @@
     "experience": {
       "title": "經驗",
       "hint": "助手累積的工作經驗，按分類整理。助手在開始工作前會自動檢查相關經驗",
+      "toggleLabel": "啟用經驗",
+      "toggleHint": "預設關閉。開啟後，助手會自動總結工作經驗並不斷成長，但有污染上下文的風險。",
+      "paused": "經驗已暫停。已有內容會保留，但助手不能讀取或記錄經驗。",
       "empty": "暫無經驗累積",
       "edit": "編輯",
       "deleteCategory": "刪除分類"
@@ -1390,6 +1393,7 @@
     "expEmptyInput": "分類名和經驗內容不能為空。",
     "expDuplicate": "這條經驗已經記錄過了。",
     "expRecorded": "已記錄經驗 [{category}]：{content}",
+    "expPaused": "經驗已暫停。",
     "outputFileNeedPaths": "需要提供 filepaths 陣列或 filePath。",
     "outputFileNotAbsolute": "路徑必須是絕對路徑: {path}",
     "outputFileNotFound": "檔案不存在: {path}",
@@ -1710,6 +1714,8 @@
       "thinkingBudget": "思考深度",
       "memory": "記憶系統",
       "memoryDesc": "開啟/關閉目前 Agent 的記憶功能",
+      "experience": "經驗",
+      "experienceDesc": "開啟/關閉目前 Agent 的經驗庫",
       "agentName": "Agent 名稱",
       "userName": "使用者名稱",
       "workingDir": "工作目錄",

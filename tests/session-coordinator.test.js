@@ -154,6 +154,64 @@ describe("SessionCoordinator", () => {
     );
   });
 
+  it("passes the frozen experience state into the agent tool snapshot", async () => {
+    const sessionFile = path.join(tempDir, "agents", "hana", "sessions", "experience.jsonl");
+    const agent = {
+      id: "hana",
+      agentDir: path.join(tempDir, "agents", "hana"),
+      sessionDir: path.join(tempDir, "agents", "hana", "sessions"),
+      memoryEnabled: true,
+      experienceEnabled: false,
+      setMemoryEnabled: vi.fn(),
+      buildSystemPrompt: () => "BASE",
+      getToolsSnapshot: vi.fn(() => []),
+    };
+    fs.mkdirSync(agent.sessionDir, { recursive: true });
+    createAgentSessionMock.mockResolvedValueOnce({
+      session: {
+        sessionManager: { getSessionFile: () => sessionFile },
+        subscribe: vi.fn(() => vi.fn()),
+        setActiveToolsByName: vi.fn(),
+      },
+    });
+
+    const coordinator = new SessionCoordinator({
+      agentsDir: path.join(tempDir, "agents"),
+      getAgent: () => agent,
+      getActiveAgentId: () => "hana",
+      getModels: () => ({
+        currentModel: { name: "test-model" },
+        authStorage: {},
+        modelRegistry: {},
+        resolveThinkingLevel: () => "medium",
+      }),
+      getResourceLoader: () => ({
+        getSystemPrompt: () => "BASE",
+        getAppendSystemPrompt: () => [],
+        getExtensions: () => ({ extensions: [], errors: [] }),
+      }),
+      getSkills: () => null,
+      buildTools: vi.fn(() => ({ tools: [], customTools: [] })),
+      emitEvent: () => {},
+      getHomeCwd: () => tempDir,
+      agentIdFromSessionPath: () => "hana",
+      switchAgentOnly: async () => {},
+      getConfig: () => ({}),
+      getPrefs: () => ({ getThinkingLevel: () => "medium" }),
+      getAgents: () => new Map(),
+      getActivityStore: () => null,
+      getAgentById: () => agent,
+      listAgents: () => [],
+    });
+
+    await coordinator.createSession(null, tempDir, true);
+
+    expect(agent.getToolsSnapshot).toHaveBeenCalledWith({
+      forceMemoryEnabled: true,
+      forceExperienceEnabled: false,
+    });
+  });
+
   it("threads extra workspace folders into tools, prompt context, and session meta", async () => {
     const sessionFile = path.join(tempDir, "agents", "hana", "sessions", "scope.jsonl");
     const agent = {

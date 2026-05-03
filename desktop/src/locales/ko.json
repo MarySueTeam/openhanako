@@ -913,6 +913,9 @@
     "experience": {
       "title": "경험",
       "hint": "에이전트가 배운 교훈을 카테고리별로 정리한 것이에요. 에이전트는 작업을 시작하기 전에 관련 경험을 확인해요",
+      "toggleLabel": "경험 사용",
+      "toggleHint": "기본값은 꺼짐이에요. 켜면 어시스턴트가 작업 경험을 자동으로 요약하며 성장하지만, 컨텍스트를 오염시킬 위험이 있어요.",
+      "paused": "경험은 일시 중지되어 있어요. 기존 내용은 유지되지만 어시스턴트는 읽거나 기록할 수 없어요.",
       "empty": "아직 경험이 없어요",
       "edit": "편집",
       "deleteCategory": "카테고리 삭제"
@@ -1390,6 +1393,7 @@
     "expEmptyInput": "카테고리 이름과 경험 내용을 비워둘 수 없어요.",
     "expDuplicate": "이 경험은 이미 기록되어 있어요.",
     "expRecorded": "경험을 기록했어요 [{category}]: {content}",
+    "expPaused": "경험은 일시 중지되어 있어요.",
     "outputFileNeedPaths": "filepaths 배열 또는 filePath가 필요해요.",
     "outputFileNotAbsolute": "경로는 절대 경로여야 해요: {path}",
     "outputFileNotFound": "파일을 찾을 수 없어요: {path}",
@@ -1710,6 +1714,8 @@
       "thinkingBudget": "사고 깊이",
       "memory": "메모리 시스템",
       "memoryDesc": "현재 Agent의 메모리 기능 켜기/끄기",
+      "experience": "경험",
+      "experienceDesc": "현재 Agent의 경험 라이브러리 켜기/끄기",
       "agentName": "Agent 이름",
       "userName": "사용자 이름",
       "workingDir": "작업 디렉토리",

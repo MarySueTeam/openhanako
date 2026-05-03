@@ -944,6 +944,9 @@
     "experience": {
       "title": "经验",
       "hint": "助手积累的工作经验，按分类整理。助手在开始工作前会自动检查相关经验",
+      "toggleLabel": "启用经验",
+      "toggleHint": "默认关闭。开启后，助手会自动总结工作经验并不断成长，但有污染上下文的风险。",
+      "paused": "经验已暂停。已有内容会保留，但助手不能读取或记录经验。",
       "empty": "暂无经验积累",
       "edit": "编辑",
       "deleteCategory": "删除分类"
@@ -1440,6 +1443,7 @@
     "expEmptyInput": "分类名和经验内容不能为空。",
     "expDuplicate": "这条经验已经记录过了。",
     "expRecorded": "已记录经验 [{category}]：{content}",
+    "expPaused": "经验已暂停。",
     "outputFileNeedPaths": "需要提供 filepaths 数组或 filePath。",
     "outputFileNotAbsolute": "路径必须是绝对路径: {path}",
     "outputFileNotFound": "文件不存在: {path}",
@@ -1768,6 +1772,8 @@
       "thinkingBudget": "思考深度",
       "memory": "记忆系统",
       "memoryDesc": "开启/关闭当前 Agent 的记忆功能",
+      "experience": "经验",
+      "experienceDesc": "开启/关闭当前 Agent 的经验库",
       "agentName": "Agent 名称",
       "userName": "用户名称",
       "workingDir": "工作目录",

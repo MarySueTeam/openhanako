@@ -56,6 +56,31 @@ function getGlobalValue(globalFields, key) {
   return globalFields.find((field) => field.key === key)?.value;
 }
 
+function isExperienceEnabled(engine, id) {
+  const agent = typeof engine.getAgent === "function" ? engine.getAgent(id) : null;
+  if (typeof agent?.experienceEnabled === "boolean") {
+    return agent.experienceEnabled === true;
+  }
+
+  try {
+    const cfgPath = path.join(agentDir(engine, id), "config.yaml");
+    const cfg = YAML.load(fsSync.readFileSync(cfgPath, "utf-8")) || {};
+    return cfg.experience?.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeExperienceConfigForResponse(config) {
+  const current = (config.experience && typeof config.experience === "object" && !Array.isArray(config.experience))
+    ? config.experience
+    : {};
+  config.experience = {
+    ...current,
+    enabled: current.enabled === true,
+  };
+}
+
 function emitAgentConfigAppEvents(engine, agentId, { globalFields, agentPartial, providersChanged }) {
   if (
     providersChanged
@@ -286,6 +311,7 @@ export function createAgentsRoute(engine) {
       const config = YAML.load(await fs.readFile(configPath, "utf-8")) || {};
 
       // API key 不做掩码（本地应用，前端用 type="password" 控制显隐）
+      normalizeExperienceConfigForResponse(config);
 
       // 附带 raw 结构
       config._raw = {
@@ -369,6 +395,9 @@ export function createAgentsRoute(engine) {
             400
           );
         }
+      }
+      if (partial.experience?.enabled !== undefined && typeof partial.experience.enabled !== "boolean") {
+        return c.json({ error: "experience.enabled must be a boolean" }, 400);
       }
 
       // ── schema-driven 全局字段分流 ──
@@ -625,6 +654,9 @@ export function createAgentsRoute(engine) {
     if (!validateId(id) || !agentExists(engine, id)) {
       return c.json({ error: "agent not found" }, 404);
     }
+    if (!isExperienceEnabled(engine, id)) {
+      return c.json({ error: "experience is paused" }, 403);
+    }
     try {
       const expDir = path.join(agentDir(engine, id), "experience");
       const docs = listExperienceDocuments(expDir).sort((a, b) => a.title.localeCompare(b.title));
@@ -645,6 +677,9 @@ export function createAgentsRoute(engine) {
     const id = c.req.param("id");
     if (!validateId(id) || !agentExists(engine, id)) {
       return c.json({ error: "agent not found" }, 404);
+    }
+    if (!isExperienceEnabled(engine, id)) {
+      return c.json({ error: "experience is paused" }, 403);
     }
     try {
       const body = await safeJson(c);

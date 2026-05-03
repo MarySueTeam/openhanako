@@ -9,6 +9,8 @@ import { YuanSelector } from './agent/YuanSelector';
 import { MemorySection } from './agent/AgentMemory';
 import { AgentToolsSection } from './agent/AgentToolsSection';
 import { SettingsSection } from '../components/SettingsSection';
+import { SettingsRow } from '../components/SettingsRow';
+import { Toggle } from '../widgets/Toggle';
 import styles from '../Settings.module.css';
 import {
   type ExpCategory, parseExperience,
@@ -78,6 +80,7 @@ export function AgentTab() {
   }, [availableModels, currentModel]);
 
   const memoryEnabled = settingsConfig?.memory?.enabled !== false;
+  const experienceEnabled = settingsConfig?.experience?.enabled === true;
   const hasAvailableToolsField = !!settingsConfig && Object.prototype.hasOwnProperty.call(settingsConfig, 'availableTools');
   const availableTools = hasAvailableToolsField ? settingsConfig?.availableTools : undefined;
 
@@ -270,16 +273,21 @@ export function AgentTab() {
 
       {/* 经验 */}
       <SettingsSection title={t('settings.experience.title')}>
+        <SettingsRow
+          label={t('settings.experience.toggleLabel')}
+          hint={t('settings.experience.toggleHint')}
+          control={<Toggle
+            on={experienceEnabled}
+            onChange={async (on) => {
+              const saved = await autoSaveConfig({ experience: { enabled: on } }, { silent: true });
+              if (saved) await loadSettingsConfig();
+            }}
+          />}
+        />
         <div style={{ padding: 'var(--space-sm) var(--space-md)' }}>
-          <p style={{
-            fontSize: '0.7rem',
-            color: 'var(--text-muted)',
-            lineHeight: 1.4,
-            margin: '0 0 var(--space-md)',
-          }}>
-            {t('settings.experience.hint')}
-          </p>
-          {expCategories.length === 0 ? (
+          {!experienceEnabled ? (
+            <div className={styles['exp-empty']}>{t('settings.experience.paused')}</div>
+          ) : expCategories.length === 0 ? (
             <div className={styles['exp-empty']}>{t('settings.experience.empty')}</div>
           ) : (
             <div className={styles['exp-list']}>

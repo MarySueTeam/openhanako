@@ -45,6 +45,11 @@ memory:
   compile_threshold: 4.5           # 分数低于此值的记忆不进入 memory.md
   forget_speed: 1.0                # 遗忘倍率（1.0 = 正常，2.0 = 忘得快一倍）
 
+# 经验库（默认关闭）：开启后助手会总结工作经验并在后续任务中参考，
+# 但经验可能污染上下文，建议明确需要时再打开。
+experience:
+  enabled: false
+
 # 网页搜索（可选）
 # 支持免 Key 浏览器搜索：bing_browser / google_browser / duckduckgo_browser。
 # 也支持 API provider：tavily / serper / brave（需要填写 api_key）。

@@ -939,6 +939,9 @@
     "experience": {
       "title": "Experience",
       "hint": "Lessons the agent has learned, organized by category. The agent checks relevant experience before starting work",
+      "toggleLabel": "Enable experience",
+      "toggleHint": "Off by default. When enabled, the assistant automatically summarizes work lessons and keeps growing, but this can pollute context.",
+      "paused": "Experience is paused. Existing entries are kept, but the assistant cannot read or record them.",
       "empty": "No experience yet",
       "edit": "Edit",
       "deleteCategory": "Delete category"
@@ -1435,6 +1438,7 @@
     "expEmptyInput": "Category name and experience content cannot be empty.",
     "expDuplicate": "This experience has already been recorded.",
     "expRecorded": "Experience recorded [{category}]: {content}",
+    "expPaused": "Experience is paused.",
     "outputFileNeedPaths": "filepaths array or filePath is required.",
     "outputFileNotAbsolute": "Path must be absolute: {path}",
     "outputFileNotFound": "File not found: {path}",
@@ -1763,6 +1767,8 @@
       "thinkingBudget": "Thinking Depth",
       "memory": "Memory System",
       "memoryDesc": "Enable/disable memory for current Agent",
+      "experience": "Experience",
+      "experienceDesc": "Enable/disable the current Agent's experience library",
       "agentName": "Agent Name",
       "userName": "User Name",
       "workingDir": "Working Directory",

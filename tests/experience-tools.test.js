@@ -8,6 +8,7 @@ import {
   recordEntry,
   rebuildIndex,
 } from "../lib/tools/experience.js";
+import { loadLocale } from "../server/i18n.js";
 
 function mktemp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "hana-experience-"));
@@ -15,6 +16,8 @@ function mktemp() {
 
 describe("experience tools", () => {
   let tmpDir;
+
+  loadLocale("en");
 
   afterEach(() => {
     if (tmpDir) {
@@ -34,7 +37,7 @@ describe("experience tools", () => {
 
   it("stores display title separately from the storage filename", async () => {
     tmpDir = mktemp();
-    const tools = createExperienceTools(tmpDir);
+    const tools = createExperienceTools(tmpDir, { isEnabled: () => true });
     const recordTool = tools.find((tool) => tool.name === "record_experience");
     const recallTool = tools.find((tool) => tool.name === "recall_experience");
 
@@ -60,5 +63,35 @@ describe("experience tools", () => {
     const recallResult = await recallTool.execute("call-2", { category: "Design Notes" });
     expect(recallResult.content[0].text).toContain("# Design Notes");
     expect(recallResult.content[0].text).toContain("1. Remember to preserve owner session identity.");
+  });
+
+  it("keeps stored content but blocks recall and record while paused", async () => {
+    tmpDir = mktemp();
+    let enabled = true;
+    const tools = createExperienceTools(tmpDir, { isEnabled: () => enabled });
+    const recordTool = tools.find((tool) => tool.name === "record_experience");
+    const recallTool = tools.find((tool) => tool.name === "recall_experience");
+
+    await recordTool.execute("call-1", {
+      category: "writing workflow",
+      content: "Keep the source of truth explicit.",
+    });
+    const indexPath = path.join(tmpDir, "experience.md");
+    expect(fs.readFileSync(indexPath, "utf-8")).toContain("writing workflow");
+
+    enabled = false;
+    const pausedRecall = await recallTool.execute("call-2", {});
+    expect(pausedRecall.content[0].text).toContain("Experience is paused");
+
+    const pausedRecord = await recordTool.execute("call-3", {
+      category: "writing workflow",
+      content: "This should not be added while paused.",
+    });
+    expect(pausedRecord.content[0].text).toContain("Experience is paused");
+    expect(fs.readFileSync(indexPath, "utf-8")).not.toContain("This should not be added");
+
+    enabled = true;
+    const resumedRecall = await recallTool.execute("call-4", { category: "writing workflow" });
+    expect(resumedRecall.content[0].text).toContain("Keep the source of truth explicit.");
   });
 });
