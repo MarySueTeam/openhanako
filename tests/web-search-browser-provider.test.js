@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const searchWebMock = vi.fn();
 
@@ -12,6 +12,7 @@ vi.mock("../lib/browser/browser-manager.js", () => ({
 
 import {
   createWebSearchTool,
+  resetWebSearchRateLimiterForTests,
   searchProviderRequiresApiKey,
   verifySearchKey,
 } from "../lib/tools/web-search.js";
@@ -19,6 +20,11 @@ import {
 describe("web_search browser providers", () => {
   beforeEach(() => {
     searchWebMock.mockReset();
+    resetWebSearchRateLimiterForTests();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("does not require API keys for browser-backed providers", async () => {
@@ -80,6 +86,75 @@ describe("web_search browser providers", () => {
       },
     });
     expect(result.content[0].type).toBe("text");
+  });
+
+  it("routes provider execution through the injected rate limiter", async () => {
+    searchWebMock.mockResolvedValue({
+      query: "hana limited",
+      provider: "bing_browser",
+      source_type: "browser",
+      results: [
+        {
+          title: "Limited Result",
+          url: "https://example.com/limited",
+          content: "Limited snippet",
+          rank: 1,
+          score: null,
+          metadata: { engine: "bing" },
+        },
+      ],
+      diagnostics: { blocked: false, captcha: false },
+    });
+    const rateLimiter = {
+      run: vi.fn(async (_provider, _sourceType, operation) => operation()),
+    };
+
+    const tool = createWebSearchTool({
+      searchConfigResolver: () => ({ provider: "bing_browser", api_key: "" }),
+      rateLimiter,
+    });
+    const result = await tool.execute("call-limited", { query: "hana limited", maxResults: 1 });
+
+    expect(result.details.results).toHaveLength(1);
+    expect(rateLimiter.run).toHaveBeenCalledWith(
+      "bing_browser",
+      "browser",
+      expect.any(Function),
+    );
+  });
+
+  it("surfaces API 429 responses as rate limit errors with Retry-After", async () => {
+    let capturedError = null;
+    const rateLimiter = {
+      run: vi.fn(async (_provider, _sourceType, operation) => {
+        try {
+          return await operation();
+        } catch (err) {
+          capturedError = err;
+          throw err;
+        }
+      }),
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ error: "too many requests" }),
+      {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "3" },
+      },
+    )));
+
+    const tool = createWebSearchTool({
+      searchConfigResolver: () => ({ provider: "brave", api_key: "test-key" }),
+      rateLimiter,
+    });
+    await tool.execute("call-429", { query: "hana limited", maxResults: 1 });
+
+    expect(rateLimiter.run).toHaveBeenCalledWith("brave", "api", expect.any(Function));
+    expect(capturedError).toMatchObject({
+      name: "SearchRateLimitError",
+      status: 429,
+      retryAfterMs: 3_000,
+    });
   });
 
   it("defaults to Bing browser search when no search provider is configured", async () => {
