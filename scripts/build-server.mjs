@@ -4,7 +4,7 @@
  *
  * 策略：Vite bundle + 外部依赖 npm install + Node.js runtime
  * Vite 把 server/core/lib/shared/hub 源码打成几个 chunk，
- * 只有 native addon 和无法 bundle 的 SDK 作为 external 走 npm ci。
+ * 只有 native addon 和无法 bundle 的 SDK 作为 external 走目标 Node 的 npm。
  *
  * 关键设计：用目标 Node.js runtime 来装依赖和编译 native addon，
  * 确保 better-sqlite3 的 ABI 跟运行时一致（系统 Node 版本可能不同）。
@@ -36,7 +36,7 @@
  *     desktop/src/locales/    ← i18n 资源
  *     skills2set/             ← 技能包
  *     package.json            ← external deps + version（node_modules 解析 + 运行时版本读取）
- *     package-lock.json       ← 锁定依赖版本
+ *     package-lock.json       ← npm install 生成，记录 external 安装结果
  *     node_modules/           ← 仅 external deps（~50 packages）
  */
 import fs from "fs";
@@ -44,6 +44,10 @@ import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { builtinModules } from "module";
+import {
+  buildExternalPackage,
+  verifyExternalEntrypoints,
+} from "./build-server-deps.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -60,7 +64,7 @@ fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
 // ── 1. 下载 / 缓存 Node.js runtime ──
-// 先拿到目标 Node，后续 npm ci 全用它跑，保证 ABI 一致
+// 先拿到目标 Node，后续 npm install 全用它跑，保证 ABI 一致
 const NODE_VERSION = "v22.16.0";
 const cacheDir = path.join(ROOT, ".cache", "node-runtime");
 fs.mkdirSync(cacheDir, { recursive: true });
@@ -254,27 +258,32 @@ for (const ext of viteExternals) {
 
 console.log(`[build-server] derived external deps: ${Object.keys(externalDeps).join(", ")}`);
 
-const externalPkg = {
-  name: "hanako-server",
-  version: rootPkg.version,
-  type: "module",
-  dependencies: externalDeps,
-};
+const rootLock = JSON.parse(fs.readFileSync(path.join(ROOT, "package-lock.json"), "utf-8"));
+// jsdom is externalized and loads lru-cache at runtime. Keep this transitive
+// dependency on the same exact version validated by the root lockfile, so a
+// fresh packaging install cannot float to a broken package export.
+const PINNED_RUNTIME_TRANSITIVES = ["lru-cache"];
+const externalPkg = buildExternalPackage(rootPkg, externalDeps, {
+  rootLock,
+  pinnedTransitiveDeps: PINNED_RUNTIME_TRANSITIVES,
+});
+const pinnedDeps = Object.entries(externalPkg.dependencies)
+  .map(([name, version]) => `${name}@${version}`)
+  .join(", ");
+console.log(`[build-server] pinned server deps: ${pinnedDeps}`);
 
 fs.writeFileSync(
   path.join(outDir, "package.json"),
   JSON.stringify(externalPkg, null, 2) + "\n",
 );
 
-// 不复制 lockfile：精简后的 package.json 依赖数量少，
-// 跟完整 lockfile 不匹配，npm ci 会报错。用 npm install 代替。
-
 // ── 5. 用目标 Node 的 npm 安装 external deps ──
 // 不加 --ignore-scripts：better-sqlite3 的 install 脚本需要跑
 // （prebuild-install 下载正确 ABI 的预编译二进制）
-// 用 npm install 而非 npm ci：lockfile 跟精简 package.json 不匹配
+// package.json 中的 server external 依赖来自根 lockfile 的精确版本，避免
+// CI fresh install 把直接 external 依赖解析到尚未验证的新版本。
 console.log("[build-server] installing external dependencies...");
-runWithTargetNode(`"${cachedNpmCli}" install --omit=dev`);
+runWithTargetNode(`"${cachedNpmCli}" install --omit=dev --no-audit --no-fund`);
 
 // ── 5b. 验证所有 Vite external 在 node_modules 中可达 ──
 // 遍历 string 类型的 external，检查 node_modules 中是否存在。
@@ -294,6 +303,13 @@ if (missing.length > 0) {
   console.error(`[build-server] ❌ Vite externals missing from node_modules: ${missing.join(", ")}`);
   console.error(`[build-server]   These packages are external in the bundle but not installed.`);
   console.error(`[build-server]   Fix: add them to root package.json dependencies, or check transitive dep chains.`);
+  process.exit(1);
+}
+
+try {
+  verifyExternalEntrypoints(outDir, Object.keys(externalPkg.dependencies));
+} catch (err) {
+  console.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
 }
 
@@ -353,20 +369,20 @@ for (const f of fileList) {
   tracedFiles.add(path.resolve(outDir, f));
 }
 
-// Vite externals 是显式标记为运行时必须的包，nft 不一定能正确追踪
-// （CJS/ESM 交叉解析在 Windows 上有边缘情况），整个包目录跳过裁剪。
+// Server package.json 里的依赖都是显式运行时入口，nft 不一定能正确追踪
+// 条件导出和 CJS/ESM 交叉解析，整个包目录跳过裁剪。
 const protectedDirs = new Set();
-for (const ext of viteExternals) {
-  if (typeof ext === "string" && !builtinSet.has(ext)) {
-    // path.join 自动处理 scoped 包（@scope/pkg → node_modules/@scope/pkg）
-    const pkgDir = path.resolve(nmDir, ext);
-    if (fs.existsSync(pkgDir)) protectedDirs.add(pkgDir);
+for (const packageName of Object.keys(externalPkg.dependencies)) {
+  // path.join 自动处理 scoped 包（@scope/pkg → node_modules/@scope/pkg）
+  const pkgDir = path.resolve(nmDir, packageName);
+  if (fs.existsSync(pkgDir)) {
+    protectedDirs.add(pkgDir);
   }
 }
 
 if (protectedDirs.size > 0) {
   const names = [...protectedDirs].map(d => path.relative(nmDir, d));
-  console.log(`[build-server] nft: protecting ${protectedDirs.size} Vite externals from pruning: ${names.join(", ")}`);
+  console.log(`[build-server] nft: protecting ${protectedDirs.size} server deps from pruning: ${names.join(", ")}`);
 }
 
 // 遍历 node_modules，删除未追踪的文件（跳过受保护的包）
@@ -404,6 +420,13 @@ const keptFiles = fileList.size;
 const MB = (n) => (n / 1024 / 1024).toFixed(0);
 console.log(`[build-server] nft: kept ${keptFiles} files, removed ${removedFiles} files (${MB(removedSize)}MB)`);
 } // end if (fileList)
+
+try {
+  verifyExternalEntrypoints(outDir, Object.keys(externalPkg.dependencies));
+} catch (err) {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+}
 
 // ── 8b. 删除 koffi 多余平台二进制 ──
 // koffi 带了 18 个平台的 .node 文件，nft 全部追踪到了（因为 require 路径指向包根）。
