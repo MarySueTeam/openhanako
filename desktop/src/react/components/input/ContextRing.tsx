@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../../stores';
 import { useI18n } from '../../hooks/use-i18n';
 import { getWebSocket } from '../../services/websocket';
+import { shouldShowContextRing } from './context-ring-visibility';
 import styles from './InputArea.module.css';
 
 export function ContextRing() {
@@ -45,8 +46,7 @@ export function ContextRing() {
 
   const pct = percent ?? 0;
   if (tokens == null) return null;
-  // 压缩中保留显示以给出反馈，否则低于 50% 隐藏
-  if (!compacting && pct < 50) return null;
+  if (!shouldShowContextRing({ tokens, contextWindow, compacting })) return null;
 
   // SVG 圆环参数（更小更粗）
   const r = 6;

@@ -264,6 +264,75 @@ describe('ws-message-handler background chat stream routing', () => {
   });
 });
 
+describe('ws-message-handler compaction lifecycle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useStore.setState({
+      currentSessionPath: '/session/a.jsonl',
+      pendingNewSession: false,
+      sessions: [
+        {
+          path: '/session/a.jsonl',
+          title: 'A',
+          firstMessage: 'hello',
+          modified: '2026-04-24T10:00:00.000Z',
+          messageCount: 1,
+          agentId: 'a1',
+          agentName: 'Hana',
+          cwd: null,
+        },
+        {
+          path: '/session/b.jsonl',
+          title: 'B',
+          firstMessage: 'hi',
+          modified: '2026-04-24T10:01:00.000Z',
+          messageCount: 1,
+          agentId: 'a1',
+          agentName: 'Hana',
+          cwd: null,
+        },
+      ],
+      chatSessions: {},
+      compactingSessions: [],
+      contextTokens: null,
+      contextWindow: null,
+      contextPercent: null,
+      contextBySession: {},
+    } as never);
+  });
+
+  it('tracks compaction_start for a background session before stream routing returns', () => {
+    handleServerMessage({
+      type: 'compaction_start',
+      sessionPath: '/session/b.jsonl',
+      reason: 'threshold',
+    });
+
+    expect(useStore.getState().compactingSessions).toEqual(['/session/b.jsonl']);
+  });
+
+  it('tracks compaction_end and preserves the provided context window when tokens are unknown', () => {
+    useStore.setState({
+      compactingSessions: ['/session/b.jsonl'],
+    } as never);
+
+    handleServerMessage({
+      type: 'compaction_end',
+      sessionPath: '/session/b.jsonl',
+      tokens: null,
+      contextWindow: 200_000,
+      percent: null,
+    });
+
+    expect(useStore.getState().compactingSessions).toEqual([]);
+    expect(useStore.getState().contextBySession['/session/b.jsonl']).toEqual({
+      tokens: null,
+      window: 200_000,
+      percent: null,
+    });
+  });
+});
+
 describe('ws-message-handler app events', () => {
   beforeEach(() => {
     vi.clearAllMocks();
