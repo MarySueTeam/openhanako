@@ -171,7 +171,7 @@ return {
 };
 ```
 
-框架会自动提取 `details.media` 并根据上下文投递：桌面端渲染文件卡片，Bridge 按平台能力发送给对方，未来移动端也消费同一份 `SessionFile` 身份。新协议优先消费 `details.media.items` 里的结构化 `session_file`；`mediaUrls` 只保留为兼容旧工具的字段，不建议新插件使用，计划不早于 v0.133 移除。内置 `stage_files` 会自动登记 SessionFile 并返回结构化媒体项，插件交付用户可见文件时应复用这条语义，不要让插件自己判断运行平台。
+框架会自动提取 `details.media` 并根据上下文投递：桌面端渲染文件卡片，Bridge 按平台能力发送给对方，未来移动端也消费同一份 `SessionFile` 身份。新协议优先消费 `details.media.items` 里的结构化 `session_file`；`mediaUrls` 只保留为兼容旧工具和远程 URL 的字段，不建议新插件使用，计划不早于 v0.133 移除。本地文件不得通过 `MEDIA:/path`、`file://` 或 `mediaUrls` 绕过 StageFile，必须先登记成 `session_file`。内置 `stage_files` 会自动登记 SessionFile 并返回结构化媒体项，插件交付用户可见文件时应复用这条语义，不要让插件自己判断运行平台。
 
 插件直接产出本地文件时，调用 `ctx.stageFile({ sessionPath, filePath, label })` 绑定到当前 session，并得到可直接放入 `details.media.items` 的 `mediaItem`。`registerSessionFile` 仍保留为低层兼容 API，新插件应优先使用 `stageFile`，这样文件归属和媒体交付不会被拆散。`sessionPath` 必须显式传入，`filePath` 必须是绝对路径。框架会把这类文件记为 `storageKind: "plugin_data"`，它们属于插件数据或生成结果，不会被 session 临时缓存清理器删除。插件不应把任意本地路径标成临时缓存，缓存生命周期由框架拥有。
 

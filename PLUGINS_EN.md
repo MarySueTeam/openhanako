@@ -171,7 +171,7 @@ return {
 };
 ```
 
-The framework automatically extracts `details.media` and delivers files according to context: desktop renders file cards, Bridge sends through the target platform, and future mobile surfaces can consume the same `SessionFile` identity. The new protocol prefers structured `session_file` entries in `details.media.items`; `mediaUrls` remains only as a compatibility field for old tools and is planned for removal no earlier than v0.133.
+The framework automatically extracts `details.media` and delivers files according to context: desktop renders file cards, Bridge sends through the target platform, and future mobile surfaces can consume the same `SessionFile` identity. The new protocol prefers structured `session_file` entries in `details.media.items`; `mediaUrls` remains only as a compatibility field for old tools and remote URLs, and is planned for removal no earlier than v0.133. Local files must not bypass StageFile through `MEDIA:/path`, `file://`, or `mediaUrls`; register them as `session_file` entries first.
 
 When a plugin produces local files directly, call `ctx.stageFile({ sessionPath, filePath, label })` to attach them to the current session and obtain a ready-to-return media item. `registerSessionFile` remains available as a lower-level compatibility API, but new plugins should use `stageFile` so file ownership and media delivery stay coupled. `sessionPath` is explicit and `filePath` must be absolute. Hana records these files as `storageKind: "plugin_data"`, so they are treated as plugin data or generated output and are not removed by the session temporary-cache cleaner. Plugins should not assign temporary-cache lifecycle to arbitrary local paths; that lifecycle belongs to the framework.
 

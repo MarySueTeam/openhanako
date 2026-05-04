@@ -238,7 +238,7 @@ describe("MediaDeliveryService", () => {
       chatId: "chat-1",
       platform: "qq",
       mediaItem: { type: "session_file", fileId: "sf_image" },
-    })).rejects.toThrow(/公网可访问 URL/);
+    })).rejects.toThrow(/bridge_media_public_base_url/);
     expect(adapter.sendMedia).not.toHaveBeenCalled();
     expect(adapter.sendMediaBuffer).not.toHaveBeenCalled();
   });

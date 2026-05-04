@@ -174,6 +174,20 @@ describe("update-settings-tool", () => {
       expect(engine.setBridgeMediaPublicBaseUrl).toHaveBeenCalledWith("https://hana.example.com");
       expect(engine._prefs._store.bridge.mediaPublicBaseUrl).toBe("https://hana.example.com");
     });
+
+    it("allows clearing the Bridge media public URL with an empty value", async () => {
+      const { tool, engine } = buildTool({
+        prefsData: { bridge: { mediaPublicBaseUrl: "https://hana.example.com" } },
+      });
+      await tool.execute("c-bridge-url-clear", {
+        action: "apply",
+        key: "bridge_media_public_base_url",
+        value: "",
+      });
+
+      expect(engine.setBridgeMediaPublicBaseUrl).toHaveBeenCalledWith("");
+      expect(engine._prefs._store.bridge.mediaPublicBaseUrl).toBe("");
+    });
   });
 
   describe("models.chat — 复合键写路径", () => {

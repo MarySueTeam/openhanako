@@ -99,7 +99,7 @@ tests/          Vitest 测试
 
 Session 内的用户可见文件通过 `SessionFile` sidecar 统一登记，桌面端、Bridge 和未来移动端按各自能力消费同一份文件身份。Bridge 平台媒体发送规则见 `.docs/BRIDGE-MEDIA-CAPABILITIES.md`，插件文件贡献规则见 `PLUGINS.md`。
 
-需要让 QQ 等只接受公网 URL 的平台发送本机 staged 文件时，先把 Hana Server 暴露成一个可被平台访问的 HTTP/HTTPS base URL，然后设置 `preferences.bridge.mediaPublicBaseUrl`，或在启动时设置 `HANA_BRIDGE_PUBLIC_BASE_URL`。该 URL 只作为 `/api/bridge/media/:token` 临时文件路由的 origin，文件本身仍由短期 token、下载次数和本地路径白名单保护。
+需要让 QQ 等只接受公网 URL 的平台发送本机 staged 文件时，先把 Hana Server 暴露成一个可被平台访问的 HTTP/HTTPS base URL，然后设置 `preferences.bridge.mediaPublicBaseUrl`，或在启动时设置 `HANA_BRIDGE_PUBLIC_BASE_URL`。推荐用 `update_settings` 搜索 `public url`，再 apply `bridge_media_public_base_url=https://...`；传空值会清除持久配置并回退到环境变量。该 URL 只作为 `/api/bridge/media/:token` 临时文件路由的 origin，文件本身仍由短期 token、下载次数和本地路径白名单保护。Hana 不会自动开启公网 tunnel，公网入口必须由用户显式提供。
 
 Server 以独立 Node.js 进程运行（由 Electron spawn 或独立启动），通过 Vite 打包，@vercel/nft 追踪依赖。与 Electron 渲染进程通过 WebSocket 通信。
 用户数据目录由 `HANA_HOME` 决定（生产默认 `~/.hanako`，开发默认 `~/.hanako-dev`）。Pi SDK 自己的数据隔离在 `${HANA_HOME}/.pi/` 下。
